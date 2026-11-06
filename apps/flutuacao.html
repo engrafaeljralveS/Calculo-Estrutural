@@ -3787,14 +3787,16 @@ window.E3 = (function () {
     if (!Number.isFinite(lo)) { lo = 0; hi = 0; }
     const signed = !/^W[EI]|^p$/.test(c);
     const arco = st.pal !== 'duas';
+    // na envoltória mínima o maior esforço é o mais negativo: a escala arco-íris inverte para ele ficar vermelho
+    const sg = arco && st.k === 'emin' ? -1 : 1, clo = sg > 0 ? lo : -hi, chi = sg > 0 ? hi : -lo, nfs = v => nf(sg * v);
     const esc = arco
-      ? Motor3D.escala([], { tipo: 'arco-iris', limites: hi > lo ? [lo, hi] : [Math.min(lo, 0), Math.max(hi, 0) || 1], faixas: st.pal === 'faixas' ? 12 : 0 })
+      ? Motor3D.escala([], { tipo: 'arco-iris', limites: chi > clo ? [clo, chi] : [Math.min(clo, 0), Math.max(chi, 0) || 1], faixas: st.pal === 'faixas' ? 12 : 0 })
       : Motor3D.escala([], { limites: [Math.min(lo, 0), Math.max(hi, 0)], tipo: signed ? 'divergente' : 'sequencial' });
     const size = Math.max(G.Bc || 0, G.Lc || G.Bc || 0, Hc, 1);
     const fator = showDef && dmax > 1e-12 ? st.fat * 0.06 * size / dmax : 0;
     V.limpar();
     parts.forEach(({ s, mesh, vals, desl }) => {
-      V.superficie({ nos: mesh.nos, quads: mesh.quads, valores: vals || undefined, escala: vals ? esc : undefined, cor: vals ? undefined : '--concrete',
+      V.superficie({ nos: mesh.nos, quads: mesh.quads, valores: vals ? (sg < 0 ? vals.map(v => -v) : vals) : undefined, escala: vals ? esc : undefined, cor: vals ? undefined : '--concrete',
         opacidade: vals ? 1 : 0.55, desloc: desl || undefined, fator, arestas: st.mal, info: { s, nos: mesh.nos } });
       if (showDef && st.mal === false) V.superficie({ nos: mesh.nos, quads: mesh.quads, cor: '--muted', opacidade: 0.08, arestas: false });
     });
@@ -3803,23 +3805,23 @@ window.E3 = (function () {
     if (worst && lo < 0) V.ponto(worst.q, arco ? '#1a237e' : '--neg', size * 0.012);
     const key = [circ, f2(G.Bc), f2(G.Lc || 0), f2(Hc)].join('|');
     if (key !== fitKey) { V.ajustar(); fitKey = key; }
-    $('e3-leg').innerHTML = Motor3D.legendaHTML(esc, unit, nf);
+    $('e3-leg').innerHTML = Motor3D.legendaHTML(esc, unit, nfs);
     $('e3-lv').hidden = !arco;
-    if (arco) $('e3-lv').innerHTML = Motor3D.legendaHTML(esc, unit, nf, { vertical: true, altura: window.innerWidth < 640 ? 11 : 15 });
+    if (arco) $('e3-lv').innerHTML = Motor3D.legendaHTML(esc, unit, nfs, { vertical: true, altura: window.innerWidth < 640 ? 11 : 15 });
     const where = b => b ? ` em ${NM[b.s] || b.s}` : '';
     const zc = z => m.z.base + p.ei / 2 + z;
     $('e3-ext').innerHTML = (hi > 0 || !signed ? `Máximo <b>${nf(hi)}</b> ${unit}${where(best)}` : '') + (signed && lo < 0 ? `${hi > 0 ? ' · ' : ''}Mínimo <b>${nf(lo)}</b> ${unit}${where(worst)}` : '') + (circ ? '' : ' <span style="color:var(--muted)">(fora dos nós parede-laje)</span>');
     const nm = env ? (st.k === 'emax' ? 'Envoltória ELU (máximos)' : 'Envoltória ELU (mínimos)') : ($('e3-k').selectedOptions[0] || {}).textContent;
     const defTxt = showDef ? ` Deformada ampliada ${fmt(fator, 0)} vezes.` : (st.def && env ? ' A deformada não existe para a envoltória: escolha uma combinação.' : '');
-    $('e3-note').innerHTML = `${nm}. ${cdef[1]}. ${signed && c[0] === 'M' ? 'M > 0 traciona a face externa. ' : ''}${arco ? 'Vermelho: maior valor; azul' + (lo >= 0 ? ' claro' : '') + ': menor. ' : ''}${noTop ? 'Etapa construtiva: sem a laje de topo. ' : ''}${c === 'p' ? 'Pressão só sob a laje de fundo; as outras peças aparecem em cinza. ' : ''}Arraste para girar · roda do mouse, pinça ou + e − para o zoom · botão direito ou dois dedos para mover.${defTxt}`;
+    $('e3-note').innerHTML = `${nm}. ${cdef[1]}. ${signed && c[0] === 'M' ? 'M > 0 traciona a face externa. ' : ''}${arco ? (sg < 0 ? 'Vermelho: o mais negativo (maior esforço da envoltória mínima). ' : 'Vermelho: maior valor; azul' + (lo >= 0 ? ' claro' : '') + ': menor. ') : ''}${noTop ? 'Etapa construtiva: sem a laje de topo. ' : ''}${c === 'p' ? 'Pressão só sob a laje de fundo; as outras peças aparecem em cinza. ' : ''}Arraste para girar · roda do mouse, pinça ou + e − para o zoom · botão direito ou dois dedos para mover.${defTxt}`;
     $('e3-fat').closest('.e3fat').classList.toggle('off', !showDef);
-    lastPick = { unit, zc, c };
+    lastPick = { unit, zc, c, sg };
     $('e3-pick').innerHTML = 'Clique na estrutura para ler o valor no ponto.';
   }
   function pick(h) {
     if (!h || !lastPick) { $('e3-pick').innerHTML = 'Clique na estrutura para ler o valor no ponto.'; return; }
     const q = h.info.nos[h.no];
-    $('e3-pick').innerHTML = `${NM[h.info.s] || ''} · x = ${fmt(q[0], 2)} m, y = ${fmt(q[1], 2)} m, cota ${fmt(lastPick.zc(q[2]), 2)} m: <b>${nf(h.valor)}</b> ${lastPick.unit}`;
+    $('e3-pick').innerHTML = `${NM[h.info.s] || ''} · x = ${fmt(q[0], 2)} m, y = ${fmt(q[1], 2)} m, cota ${fmt(lastPick.zc(q[2]), 2)} m: <b>${nf(lastPick.sg * h.valor)}</b> ${lastPick.unit}`;
   }
 
   function visible() { const b = $('e3-box'); return b && b.offsetParent !== null && b.clientWidth > 0; }
