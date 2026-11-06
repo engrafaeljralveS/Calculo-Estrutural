@@ -1,6 +1,6 @@
 /*!
  * Motor 3D — visualizador de estruturas e resultados de elementos finitos
- * Conjunto "Cálculo Estrutural" · versão 1.0 · nov/2026
+ * Conjunto "Cálculo Estrutural" · versão 1.1 · nov/2026
  *
  * Motor genérico, sem nada específico de um programa. Desenha:
  *   - superfícies de casca (quadriláteros ou triângulos) com mapa de cores por nó e deformada;
@@ -26,7 +26,7 @@
  */
 (function (global) {
   'use strict';
-  const VERSAO = '1.0';
+  const VERSAO = '1.1';
   const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
   const ORBIT_URL = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
 
@@ -79,11 +79,14 @@
     const neg = rgb(c.neg || '--neg', [43, 108, 176]), zero = rgb(c.zero || '#f7f8f9', [247, 248, 249]), pos = rgb(c.pos || '--pos', [192, 97, 42]);
     const amax = Math.max(Math.abs(lo), Math.abs(hi), 1e-12);
     const span = Math.max(hi - lo, 1e-12);
+    // rampa em 3 pontos: zero → cor → cor escurecida (mais contraste nos extremos, sem distorcer a escala)
+    const dark = c => c.map(x => x * 0.62);
+    const ramp = (c, t) => t <= 0.55 ? mix(zero, c, t / 0.55) : mix(c, dark(c), (t - 0.55) / 0.45);
     const cor = tipo === 'divergente'
-      ? v => { const t = Math.max(-1, Math.min(1, v / amax)); return t >= 0 ? mix(zero, pos, t) : mix(zero, neg, -t); }
+      ? v => { const t = Math.max(-1, Math.min(1, v / amax)); return t >= 0 ? ramp(pos, t) : ramp(neg, -t); }
       : (hi <= 0 && lo < 0)
-        ? v => mix(zero, neg, Math.max(0, Math.min(1, (hi - v) / span)))
-        : v => mix(zero, pos, Math.max(0, Math.min(1, (v - lo) / span)));
+        ? v => ramp(neg, Math.max(0, Math.min(1, (hi - v) / span)))
+        : v => ramp(pos, Math.max(0, Math.min(1, (v - lo) / span)));
     return { tipo, min: lo, max: hi, amax, cor, cores: { neg, zero, pos } };
   }
   /** HTML de uma barra de cores com os extremos e o zero. fmt(v) formata os números. */
@@ -91,7 +94,7 @@
     fmt = fmt || (v => v.toLocaleString('pt-BR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }));
     const div = esc.tipo === 'divergente';
     const a = div ? -esc.amax : esc.min, b = div ? esc.amax : esc.max;
-    const stops = [0, 0.25, 0.5, 0.75, 1].map(t => `${hex(esc.cor(a + (b - a) * t))} ${t * 100}%`).join(',');
+    const stops = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1].map(t => `${hex(esc.cor(a + (b - a) * t))} ${t * 100}%`).join(',');
     const ticks = div ? [a, 0, b] : [a, (a + b) / 2, b];
     return `<div class="m3-leg"><div class="m3-bar" style="background:linear-gradient(90deg,${stops})"></div>` +
       `<div class="m3-ticks">${ticks.map(t => `<span>${fmt(t)}</span>`).join('')}</div>` +
@@ -160,9 +163,9 @@
     const cam = new T.PerspectiveCamera(opts.fov || 38, 1, 0.01, 2000);
     const ctl = new T.OrbitControls(cam, R.domElement);
     ctl.enableDamping = false; ctl.screenSpacePanning = true;
-    cena.add(new T.HemisphereLight(0xffffff, 0x8a96a3, 0.9));
-    const l1 = new T.DirectionalLight(0xffffff, 0.5); l1.position.set(6, 12, 8); cena.add(l1);
-    const l2 = new T.DirectionalLight(0xffffff, 0.25); l2.position.set(-8, 4, -6); cena.add(l2);
+    cena.add(new T.HemisphereLight(0xffffff, 0x9aa4b0, 0.62));
+    const l1 = new T.DirectionalLight(0xffffff, 0.42); l1.position.set(6, 12, 8); cena.add(l1);
+    const l2 = new T.DirectionalLight(0xffffff, 0.18); l2.position.set(-8, 4, -6); cena.add(l2);
     let grupo = new T.Group(); cena.add(grupo);
     let planos = [];                      // planos de corte ativos (three.Plane)
     const pegaveis = [];                  // malhas com valores por nó (para a leitura no clique)

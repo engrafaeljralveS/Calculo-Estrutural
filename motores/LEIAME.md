@@ -7,7 +7,7 @@ Código reaproveitável entre os programas. Cada motor é um arquivo `.js` indep
 | `motor-elementos-finitos.js` | Análise por elementos finitos de casca de caixas de concreto (retangular em 1/4 ou circular axissimétrica), com molas de Winkler só de compressão | Flutuação em Caixas (cópia interna), Alas (versão adaptada) |
 | `visualizador-3d.js` | Visualizador 3D: superfícies com mapa de cores, deformada, sólidos, setas, corte, zoom e leitura do valor no clique | Flutuação em Caixas, aba Esforços (Esforços em 3D) |
 
-Versão 1.0, novembro de 2026.
+Versões: motor de elementos finitos 1.0 e visualizador 3D 1.1, novembro de 2026.
 
 ---
 
