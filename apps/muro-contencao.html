@@ -90,20 +90,136 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
 @media (max-width: 760px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
 .maps svg { display: block; width: 100%; height: auto; }
 .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 3.5px; stroke-linejoin: round; }
+.seg { display: inline-flex; margin-left: auto; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { background: var(--surface); border: 0; border-left: 1px solid var(--line); padding: 4px 14px; font: 500 13px var(--f-body); color: var(--muted); cursor: pointer; letter-spacing: 0; }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.inp select { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); padding: 4px 6px; font: 500 12.5px var(--f-body); outline: none; }
+.btn.sm { padding: 4px 10px; font-size: 12.5px; }
+.v3bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.v3grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.v3chk { gap: 6px 14px; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.v3chk label { display: flex; gap: 5px; align-items: center; cursor: pointer; }
+.v3chk input { accent-color: var(--accent); }
+.v3chk select { font: 500 12.5px var(--f-body); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; max-width: 260px; }
+.v3box { position: relative; height: min(68vh, 560px); min-height: 340px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #f7f9fb; touch-action: none; }
+.v3msg { position: absolute; inset: auto 0 0 0; padding: 12px; text-align: center; }
+#v3leg { margin-top: 8px; }
+#v3leg .m3-leg { max-width: 420px; }
+.leg3 { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.leg3 span { display: flex; gap: 6px; align-items: center; }
+.leg3 i { width: 13px; height: 13px; display: inline-block; border: 1px solid var(--concrete-line); }
+.detfig svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.detfig h3 { margin-top: 4px; }
+.shape svg { display: block; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style></head><body><script>/* ponte da suíte: downloads pela página principal (troca de mensagens); demais recursos repassados */(function(){try{if(window.claude||window.parent===window)return;var n=0,pend={};window.addEventListener("message",function(e){var d=e.data;if(!d||d.tipo!=="suite-claude-r"||!pend[d.id])return;var f=pend[d.id];delete pend[d.id];f(d);});function ask(m,ms){return new Promise(function(res){var id="c"+(++n)+Math.random().toString(36).slice(2);var t=setTimeout(function(){if(pend[id]){delete pend[id];res({nulo:true});}},ms);pend[id]=function(d){clearTimeout(t);res(d);};m.tipo="suite-claude";m.id=id;window.parent.postMessage(m,"*");});}function erro(x){var e=new Error(x.message||"erro");e.code=x.code;return e;}window.claude={use:function(cap){if(cap==="downloads")return ask({cap:cap,op:"probe"},6000).then(function(d){if(!d.ok)return null;return Object.freeze({save:function(a){return ask({cap:cap,op:"save",args:{filename:a.filename,data:a.data}},900000).then(function(d){if(d.erro)throw erro(d.erro);if(!d.ok)throw erro({code:"unavailable",message:"Download indisponível"});return d.r;});}});});try{var p=window.parent.claude;return p&&p.use?p.use(cap):Promise.resolve(null);}catch(e){return Promise.resolve(null);}}};}catch(e){}})();</script><title>Muro de Contenção</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: painel de dados à esquerda; à direita veredito, corte em escala e memória de cálculo. Paleta clara da suíte. */
+:root {
+  --bg: #f4f6f8; --surface: #ffffff; --field: #ffffff; --ink: #1f2b37; --muted: #5e6b78; --line: #d9e0e7; --soft: #eef2f5;
+  --accent: #2b6cb0; --accent-ink: #ffffff; --accent-soft: #e7f0f9;
+  --concrete: #cfd6dc; --concrete-line: #6b7884; --soil: #e6d5b1; --soil-line: #8c6c3c; --found: #ead9b8;
+  --ativo: #c0612a; --passivo: #2b6cb0; --q: #7a4fb0; --sig: #2e7d50;
+  --ok: #2e7d50; --ok-bg: #e6f4ec; --bad: #b83a2e; --bad-bg: #fbe8e5; --warn: #8c5d08; --warn-bg: #fbf1dc;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14.5px; line-height: 1.5;
+  padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1340px; margin: 0 auto; display: grid; gap: 14px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+h1 { font-family: var(--f-display); font-weight: 600; font-size: clamp(32px, 5vw, 44px); line-height: 1; margin: 0 0 6px; text-wrap: balance; }
+.sub { margin: 0; color: var(--muted); max-width: 78ch; }
+.notice { margin: 0; padding: 8px 12px; background: var(--warn-bg); color: var(--warn); border-radius: 4px; font-size: 13px; }
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); flex-wrap: wrap; align-items: end; }
+.tabs [role=tab] { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 8px 16px 7px; font: 600 20px var(--f-display); letter-spacing: .03em; color: var(--muted); cursor: pointer; }
+.tabs [role=tab]:hover { color: var(--ink); }
+.tabs [role=tab][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .sp { flex: 1; }
+.app { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } .inputs { position: static !important; max-height: none !important; } }
+.inputs { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 12px; font-size: 13px; }
+.inputs section + section { border-top: 1px solid var(--line); padding-top: 10px; }
+.inputs h2 { font-family: var(--f-display); font-weight: 600; font-size: 17px; margin: 0 0 6px; display: flex; gap: 6px; align-items: baseline; }
+.inputs h2 .n { color: var(--accent); font: 500 12px var(--f-mono); }
+.g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 8px; }
+.g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px 8px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: flex-end; }
+.field label { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+.field label sub { font-size: 8.5px; }
+.inp { display: flex; border: 1px solid var(--line); background: var(--field); border-radius: 4px; }
+.inp:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.inp input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); padding: 4px 7px; font: 500 12.5px var(--f-mono); text-align: right; outline: none; }
+.inp .u { padding: 4px 6px; color: var(--muted); font-size: 10.5px; border-left: 1px solid var(--line); white-space: nowrap; display: flex; align-items: center; }
+.field.bad .inp { border-color: var(--bad); }
+.check { display: flex; gap: 7px; align-items: flex-start; font-size: 12px; color: var(--ink); margin: 2px 0 6px; cursor: pointer; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+.gnote { margin: 4px 0 0; font-size: 10.5px; line-height: 1.35; color: var(--muted); }
+.off { opacity: .45; pointer-events: none; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 6px 12px; font: 500 13px var(--f-body); cursor: pointer; }
+.btn:hover { background: var(--accent); color: var(--accent-ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .55; cursor: wait; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.results { display: grid; gap: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.panel h2 { font-family: var(--f-display); font-weight: 600; font-size: 21px; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.panel h2 .n { color: var(--accent); font: 500 13px var(--f-mono); }
+.panel h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
+.card.bad { border-left-color: var(--bad); } .card.warn { border-left-color: var(--warn); }
+.card .t { font-size: 12.5px; color: var(--muted); }
+.card .v { font: 500 26px var(--f-mono); line-height: 1.1; }
+.card.bad .v { color: var(--bad); } .card .s { font-size: 12px; color: var(--muted); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.bad { background: var(--bad-bg); color: var(--bad); } .pill.warn { background: var(--warn-bg); color: var(--warn); }
+.warns { display: grid; gap: 6px; } .warns p { margin: 0; padding: 7px 11px; background: var(--warn-bg); color: var(--warn); border-radius: 4px; font-size: 13px; }
+.figscroll { overflow-x: auto; } .figscroll svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 6px; } .sw { width: 13px; height: 13px; display: inline-block; border: 1px solid var(--concrete-line); }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 7px; text-align: right; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th:first-child, td:first-child, .l { text-align: left; }
+th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; }
+td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+tr.grp td { background: var(--soft); font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: left; }
+tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
+.eq { font: 12.5px var(--f-mono); color: var(--ink); margin: 2px 0; }
+.note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; max-width: 95ch; }
+.lim { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+.barsel { display: flex; gap: 3px; align-items: center; justify-content: flex-end; white-space: nowrap; color: var(--muted); font-size: 12px; }
+.barsel select { font: 500 12px var(--f-mono); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 2px; }
+.tagman { font-size: 10px; color: var(--accent); font-weight: 600; margin-left: 4px; }
+.cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
+@media (max-width: 760px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
+.maps svg { display: block; width: 100%; height: auto; }
+.halo { paint-order: stroke; stroke: #ffffff; stroke-width: 3.5px; stroke-linejoin: round; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">Aplicativo v1.0 · NBR 6118 · NBR 11682 · NBR 6122 · verificação preliminar</p>
+    <p class="eyebrow">Aplicativo v1.1 · NBR 6118 · NBR 11682 · NBR 6122 · verificação preliminar</p>
     <h1>Muro de Contenção</h1>
-    <p class="sub">Muro de flexão em concreto armado, com dente sob a base e contrafortes opcionais: empuxos, estabilidade (tombamento, deslizamento e tensões no solo) e dimensionamento das armaduras.</p>
+    <p class="sub">Muro de flexão em concreto armado, com chaveta sob a base e contrafortes opcionais: empuxos, estabilidade (tombamento, deslizamento e tensões no solo), dimensionamento e detalhamento das armaduras.</p>
   </header>
   <p class="notice">Cálculo preliminar: confira as hipóteses e os resultados antes de usar em projeto executivo.</p>
 
   <nav class="tabs" role="tablist" aria-label="Etapas do cálculo">
     <button type="button" role="tab" id="tb-est" aria-controls="tab-est" aria-selected="true">Estabilidade</button>
     <button type="button" role="tab" id="tb-arm" aria-controls="tab-arm" aria-selected="false">Armaduras</button>
+    <button type="button" role="tab" id="tb-det" aria-controls="tab-det" aria-selected="false">Detalhamento</button>
     <span class="sp"></span>
     <div class="btnrow" style="padding-bottom:6px"><button class="btn primary" type="button" id="memo">Gerar memorial de cálculo (Word)</button></div>
   </nav>
@@ -111,7 +227,7 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
 
   <div class="app">
     <aside class="inputs" aria-label="Dados de entrada">
-      <section><h2><span class="n">1</span>Muro e base</h2>
+      <section data-tabs="est"><h2><span class="n">1</span>Muro e base</h2>
         <div class="g3">
           <div class="field" data-k="H"><label>Altura do muro, H</label><div class="inp"><input id="in-H"><span class="u">m</span></div></div>
           <div class="field" data-k="tt"><label>Espessura no topo</label><div class="inp"><input id="in-tt"><span class="u">m</span></div></div>
@@ -121,18 +237,19 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
           <div class="field"><label>Largura da base, B</label><div class="inp"><input id="out-B" disabled><span class="u">m</span></div></div>
           <div class="field" data-k="hs"><label>Base junto ao muro</label><div class="inp"><input id="in-hs"><span class="u">m</span></div></div>
           <div class="field" data-k="he"><label>Base nas pontas</label><div class="inp"><input id="in-he"><span class="u">m</span></div></div>
+          <div class="field" data-k="Lp" id="fld-Lp"><label>Pano entre juntas</label><div class="inp"><input id="in-Lp"><span class="u">m</span></div></div>
         </div>
-        <p class="gnote">H vai da face superior da base ao topo do muro; o aterro chega ao topo. A face da frente é vertical; a de trás se inclina da espessura da base à do topo.</p>
+        <p class="gnote">H vai da face superior da base ao topo do muro; o aterro chega ao topo. A face da frente é vertical; a de trás se inclina da espessura da base à do topo. O pano entre juntas serve à planta, ao 3D e às quantidades de barras (com contrafortes, o pano é o vão entre eles).</p>
       </section>
-      <section><h2><span class="n">2</span>Dente sob a base</h2>
-        <label class="check"><input type="checkbox" id="in-dOn"> Com dente (chaveta) contra o deslizamento</label>
+      <section data-tabs="est"><h2><span class="n">2</span>Chaveta sob a base</h2>
+        <label class="check"><input type="checkbox" id="in-dOn"> Com chaveta contra o deslizamento</label>
         <div class="g3" id="grp-dente">
-          <div class="field" data-k="bd"><label>Largura</label><div class="inp"><input id="in-bd"><span class="u">m</span></div></div>
-          <div class="field" data-k="hd"><label>Altura</label><div class="inp"><input id="in-hd"><span class="u">m</span></div></div>
-          <div class="field" data-k="xd"><label>Eixo a partir da ponta</label><div class="inp"><input id="in-xd"><span class="u">m</span></div></div>
+          <div class="field" data-k="dPos" style="grid-column:1/-1"><label>Posição</label><div class="inp"><select id="in-dPos"><option value="frente">Na extremidade da frente (ponta)</option><option value="tras">Na extremidade de trás (talão)</option><option value="parede">Junto à parede (sob o muro)</option></select></div></div>
+          <div class="field" data-k="bd"><label>Espessura</label><div class="inp"><input id="in-bd"><span class="u">m</span></div></div>
+          <div class="field" data-k="hd"><label>Profundidade</label><div class="inp"><input id="in-hd"><span class="u">m</span></div></div>
         </div>
       </section>
-      <section><h2><span class="n">3</span>Contrafortes</h2>
+      <section data-tabs="est"><h2><span class="n">3</span>Contrafortes</h2>
         <label class="check"><input type="checkbox" id="in-cOn"> Com contrafortes (do lado do aterro)</label>
         <div class="g2" id="grp-cont">
           <div class="field" data-k="s"><label>Espaçamento entre eixos</label><div class="inp"><input id="in-s"><span class="u">m</span></div></div>
@@ -142,7 +259,7 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
         </div>
         <p class="gnote">A parede trabalha como placa engastada nos contrafortes e na base (elementos finitos); o contraforte, como viga T em balanço; o talão, como laje contínua entre contrafortes.</p>
       </section>
-      <section><h2><span class="n">4</span>Aterro e sobrecarga</h2>
+      <section data-tabs="est"><h2><span class="n">4</span>Aterro e sobrecarga</h2>
         <div class="g2">
           <div class="field" data-k="ga"><label>Peso específico, γ</label><div class="inp"><input id="in-ga"><span class="u">kN/m³</span></div></div>
           <div class="field" data-k="fa"><label>Ângulo de atrito, φ</label><div class="inp"><input id="in-fa"><span class="u">°</span></div></div>
@@ -150,7 +267,7 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
           <div class="field" data-k="q"><label>Sobrecarga, q</label><div class="inp"><input id="in-q"><span class="u">kN/m²</span></div></div>
         </div>
       </section>
-      <section><h2><span class="n">5</span>Solo da base e da frente</h2>
+      <section data-tabs="est"><h2><span class="n">5</span>Solo da base e da frente</h2>
         <div class="g2">
           <div class="field" data-k="gb"><label>Peso específico, γ</label><div class="inp"><input id="in-gb"><span class="u">kN/m³</span></div></div>
           <div class="field" data-k="fb"><label>Ângulo de atrito, φ</label><div class="inp"><input id="in-fb"><span class="u">°</span></div></div>
@@ -161,7 +278,7 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
         </div>
         <label class="check" style="margin-top:6px"><input type="checkbox" id="in-pOn"> Considerar o empuxo passivo na frente (no deslizamento)</label>
       </section>
-      <section><h2><span class="n">6</span>Critérios de segurança</h2>
+      <section data-tabs="est"><h2><span class="n">6</span>Critérios de segurança</h2>
         <div class="g2">
           <div class="field" data-k="FSTmin"><label>FS tombamento mínimo</label><div class="inp"><input id="in-FSTmin"><span class="u">≥</span></div></div>
           <div class="field" data-k="FSDmin"><label>FS deslizamento mínimo</label><div class="inp"><input id="in-FSDmin"><span class="u">≥</span></div></div>
@@ -172,7 +289,7 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
         <label class="check"><input type="checkbox" id="in-pTomb"> Contar o passivo a favor no tombamento</label>
         <p class="gnote">Padrão (NBR 11682): a sobrecarga é ação variável e, onde ajuda, não entra; o passivo não entra no tombamento. Marque as duas opções para reproduzir a planilha original.</p>
       </section>
-      <section><h2><span class="n">7</span>Materiais e combinações</h2>
+      <section data-tabs="arm det"><h2><span class="n">1</span>Materiais e combinações</h2>
         <div class="g3">
           <div class="field" data-k="gc"><label>Concreto, γ</label><div class="inp"><input id="in-gc"><span class="u">kN/m³</span></div></div>
           <div class="field" data-k="fck"><label>f<sub>ck</sub></label><div class="inp"><input id="in-fck"><span class="u">MPa</span></div></div>
@@ -185,6 +302,10 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
         </div>
         <p class="gnote">ELU: todas as ações × γ<sub>f</sub>. Fissuração: g + ψ<sub>1</sub>q (frequente). Flecha: g + ψ<sub>2</sub>q (quase permanente), com fluência α<sub>f</sub> = 1,32.</p>
       </section>
+      <section data-tabs="arm det"><h2><span class="n">2</span>Geometria em uso</h2>
+        <div id="geo-res" class="gnote" style="font-size:12px"></div>
+        <p class="gnote">Para mudar a geometria, o solo ou os critérios, volte à aba Estabilidade.</p>
+      </section>
       <div class="btnrow"><button class="btn" type="button" id="reset">Restaurar o exemplo da planilha</button></div>
     </aside>
 
@@ -192,9 +313,30 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
       <div class="warns" id="warns" aria-live="polite"></div>
       <div id="tab-est" role="tabpanel" aria-labelledby="tb-est" class="results">
         <section class="verdicts" id="verdicts" aria-label="Verificações"></section>
-        <section class="panel"><h2><span class="n">A</span>Corte em escala</h2>
+        <section class="panel"><h2><span class="n">A</span><span id="fig-tit">Corte em escala</span>
+            <span class="seg" role="group" aria-label="Representação"><button type="button" data-fig="corte" aria-pressed="true">Corte</button><button type="button" data-fig="planta" aria-pressed="false">Planta</button><button type="button" data-fig="3d" aria-pressed="false">3D</button></span></h2>
+          <div class="v3grp v3chk" id="np-row" hidden><label>Panos mostrados <select id="v3-np"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label></div>
           <div class="figscroll" id="fig"></div>
-          <ul class="legend">
+          <div class="figscroll" id="fig-pl" hidden></div>
+          <div id="fig-3d" hidden>
+            <div class="v3bar">
+              <div class="v3grp" role="group" aria-label="Vistas"><button class="btn sm" type="button" data-v3view="iso">Isométrica</button><button class="btn sm" type="button" data-v3view="frente">Frente</button><button class="btn sm" type="button" data-v3view="tras">Aterro</button><button class="btn sm" type="button" data-v3view="lat">Lateral</button><button class="btn sm" type="button" data-v3view="topo">Topo</button></div>
+              <div class="v3grp" role="group" aria-label="Zoom"><button class="btn sm" type="button" id="v3-in" aria-label="Aproximar" title="Aproximar">+</button><button class="btn sm" type="button" id="v3-out" aria-label="Afastar" title="Afastar">−</button><button class="btn sm" type="button" id="v3-only">Só o muro</button><button class="btn sm" type="button" id="v3-all">Mostrar tudo</button></div>
+            </div>
+            <div class="v3grp v3chk">
+              <label><input type="checkbox" data-v3l="solo" checked> Solo</label>
+              <label><input type="checkbox" data-v3l="base" checked> Sapata e chaveta</label>
+              <label><input type="checkbox" data-v3l="muro" checked> Muro</label>
+              <label id="v3-lcont"><input type="checkbox" data-v3l="cont" checked> Contrafortes</label>
+              <label><input type="checkbox" data-v3l="cargas" checked> Cargas</label>
+              <label><input type="checkbox" data-v3l="corte"> Cortar ao meio</label>
+              <label>Esforços <select id="v3-esf"></select></label>
+            </div>
+            <div id="v3box" class="v3box"><div id="v3msg" class="note v3msg">Carregando o visualizador 3D…</div></div>
+            <div id="v3leg"></div>
+            <p class="note" id="v3sel" role="status"></p>
+          </div>
+          <ul class="legend" id="fig-leg">
             <li><span class="sw" style="background:var(--concrete)"></span>Concreto</li>
             <li><span class="sw" style="background:var(--soil)"></span>Aterro e solo</li>
             <li><span class="sw" style="background:var(--ativo);opacity:.6"></span>Empuxo ativo (solo + sobrecarga)</li>
@@ -222,12 +364,24 @@ tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
         <section class="panel" id="p-cont" hidden><h2><span class="n">G</span>Contraforte</h2><div id="cont"></div></section>
         <section class="panel"><h2><span class="n">H</span>Flecha no topo do muro</h2><div id="flecha"></div></section>
       </div>
+      <div id="tab-det" role="tabpanel" aria-labelledby="tb-det" class="results" hidden>
+        <section class="panel"><h2><span class="n">I</span>Corte com as armaduras</h2>
+          <div id="det"></div>
+          <p class="note">Barras na cor vermelha; as cortadas pelo plano do desenho aparecem como pontos. Cobrimento de <span id="det-cob"></span> cm. Posições N com bitola, espaçamento e comprimento unitário (C, em cm).</p>
+        </section>
+        <section class="panel"><h2><span class="n">J</span>Quadro de barras</h2><div class="tw" id="qbar"></div></section>
+        <section class="panel"><h2><span class="n">K</span>Resumo do aço</h2><div class="tw" id="raco"></div></section>
+        <details class="panel"><summary style="cursor:pointer;font-weight:600">Critérios do detalhamento</summary>
+          <ul class="lim" style="margin-top:8px" id="det-hip"></ul>
+        </details>
+      </div>
     </main>
   </div>
 </div>
+<script src="../motores/visualizador-3d.js?v=1.2"></script>
 <script>
 /* ===================== Motor de cálculo: Muro de Contenção (funções puras, sem DOM) =====================
-   Muro de flexão em L (ou T invertido) com dente opcional sob a base e contrafortes opcionais.
+   Muro de flexão em L (ou T invertido) com chaveta opcional sob a base e contrafortes opcionais.
    Eixos: x a partir da borda da ponta (frente), crescendo para o talão (aterro); y a partir da face inferior da base, para cima.
    Unidades: kN, m, kPa (kN/m²). Esforços por metro de muro. */
 const MC = (function () {
@@ -260,7 +414,9 @@ const MC = (function () {
     // ---- polígonos
     const base = [[0, 0], [B, 0], [B, p.he], [xb, p.hs], [xf, p.hs], [0, p.he]];
     const stem = [[xf, p.hs], [xb, p.hs], [xbt, yT], [xf, yT]];
-    const dente = dOn ? [[p.xd - p.bd / 2, -p.hd], [p.xd + p.bd / 2, -p.hd], [p.xd + p.bd / 2, 0], [p.xd - p.bd / 2, 0]] : null;
+    // chaveta: na extremidade da frente, na extremidade de trás ou centrada sob a parede
+    const xd = p.dPos === 'tras' ? B - p.bd / 2 : p.dPos === 'parede' ? p.B1 + p.tb / 2 : p.bd / 2;
+    const dente = dOn ? [[xd - p.bd / 2, -p.hd], [xd + p.bd / 2, -p.hd], [xd + p.bd / 2, 0], [xd - p.bd / 2, 0]] : null;
     const cOn = !!p.cOn && p.s > 0 && p.ec > 0 && p.bc > 0 && p.hc > 0;
     // contraforte: triângulo junto à face de trás, base bc sobre o talão, altura hc
     const xBackAt = y => xb + (xbt - xb) * (y - p.hs) / p.H;
@@ -277,18 +433,18 @@ const MC = (function () {
       { k: 'base', lab: 'Base (sapata)', W: gB.A * p.gc, x: gB.x, perm: true },
       { k: 'muro', lab: 'Muro (haste)', W: gS.A * p.gc, x: gS.x, perm: true },
     ];
-    if (dOn) V.push({ k: 'dente', lab: 'Dente', W: gD.A * p.gc, x: gD.x, perm: true });
+    if (dOn) V.push({ k: 'dente', lab: 'Chaveta', W: gD.A * p.gc, x: gD.x, perm: true });
     if (cOn) V.push({ k: 'contraforte', lab: `Contrafortes (${fmtN(p.ec)} m a cada ${fmtN(p.s)} m)`, W: gC.A * p.gc * fc, x: gC.x, perm: true });
     V.push({ k: 'solo', lab: 'Solo sobre o talão', W: (gF.A - gC.A * fc) * p.ga, x: (gF.A * gF.x - gC.A * fc * gC.x) / Math.max(1e-9, gF.A - gC.A * fc), perm: true });
     const wq = B - xbt;
     if (p.q > 0 && wq > 0) V.push({ k: 'q', lab: 'Sobrecarga sobre o talão', W: p.q * wq, x: xbt + wq / 2, perm: false });
-    // ---- empuxo ativo: plano vertical na extremidade do talão, do topo do aterro até a face inferior da base (ou do dente)
+    // ---- empuxo ativo: plano vertical na extremidade do talão, do topo do aterro até a face inferior da base (ou da chaveta)
     const Ha = yT - yb;
     const sigA = (d, qq) => Math.max(0, ka * (p.ga * d + qq) - 2 * ca * Math.sqrt(ka));
     const zc = Math.max(0, (2 * ca * Math.sqrt(ka) / ka - p.q) / p.ga);   // profundidade da fenda de tração
     const EA = integ(d => sigA(d, p.q), Ha), EAs = integ(d => sigA(d, 0), Ha);
     const Ea = { R: EA.R, y: yT - EA.d, soil: EAs.R, q: EA.R - EAs.R };
-    // ---- empuxo passivo na frente: do nível do solo da frente até a face inferior da base (ou do dente)
+    // ---- empuxo passivo na frente: do nível do solo da frente até a face inferior da base (ou da chaveta)
     const hp = p.pOn ? Math.max(0, p.hf - yb) : 0;
     const sigP = d => kp * p.gb * d + 2 * cb * Math.sqrt(kp);
     const EP = hp > 0 ? integ(sigP, hp) : { R: 0, d: 0 };
@@ -317,7 +473,7 @@ const MC = (function () {
       return Number.isFinite(sMax) && u <= cont3 ? sMax * (1 - u / cont3) : 0;
     };
     return {
-      p, B, B2, xf, xb, xbt, yT, yb, dOn, cOn, fc, base, stem, dente, cont, fillP, gB, gS, gD, gC, gF, xBackAt,
+      p, B, B2, xf, xb, xbt, yT, yb, dOn, xd, cOn, fc, base, stem, dente, cont, fillP, gB, gS, gD, gC, gF, xBackAt,
       fa, fb, ca, cb, ka, kp, sigA, sigP, zc, Ha, Ea, Ep, V, Nperm, Ntot, Nres, MestV, MEp, Mest, Mtomb, FST, Rf, Rc, Rd, FSD,
       xR, e, tri, cont3, sMax, sMin, sigma, wq,
       ok: { FST: FST >= p.FSTmin, FSD: FSD >= p.FSDmin, sig: sMax <= p.sadm, e: Math.abs(e) <= B / 6 }
@@ -576,11 +732,11 @@ const DIM = (function () {
     }
     const asBase = Math.max(...rows.filter(x => x.grp !== 'Muro' && x.grp !== 'Parede entre contrafortes').map(x => x.ch.As), 0);
     rows.push(row({ key: 'sd', grp: 'Sapata', name: 'Distribuição (perpendicular à principal), cada face', h: p.hs, Md: 0, Mser: 0, minF: 0.5, asExtra: Math.max(0.2 * asBase, 0.9) }, P, p, ov));
-    // ---------- dente: balanço para baixo, carregado pelo passivo
+    // ---------- chaveta: balanço para baixo, carregado pelo passivo
     if (r.dOn) {
       const n = 100, hdd = p.hd; let Mk = 0, Vk = 0;
       for (let i = 0; i < n; i++) { const yy = -(i + 0.5) * hdd / n, d = p.hf - yy, s = r.sigP(d) * p.pRed, dy = hdd / n; Vk += s * dy; Mk += s * dy * (-yy); }
-      rows.push(row({ key: 'dt', grp: 'Dente', name: 'Vertical, face da frente', h: p.bd, Md: gf * Mk, Mser: Mk, Vd: gf * Vk }, P, p, ov));
+      rows.push(row({ key: 'dt', grp: 'Chaveta', name: 'Vertical, face da frente', h: p.bd, Md: gf * Mk, Mser: Mk, Vd: gf * Vk }, P, p, ov));
     }
     // ---------- flecha no topo (sem contrafortes): Branson com a armadura adotada; com contrafortes, da placa
     let fl = null;
@@ -606,13 +762,12 @@ const DIM = (function () {
   }
   return { run, stemMV };
 })();
-
 /* ===================== Interface ===================== */
 const fmt = (n, d = 2) => (n == null || !Number.isFinite(n)) ? '–' : n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const fz = n => (Math.abs(n) < 0.005 ? '0,00' : (n > 0 ? '+' : '') + fmt(n, 2));
 const DEFAULTS = {   // exemplo da planilha "Muro contraforte"
-  H: 1.45, tt: 0.25, tb: 0.25, B1: 0, B3: 1.20, hs: 0.25, he: 0.25,
-  dOn: false, bd: 0.30, hd: 0.30, xd: 1.30,
+  H: 1.45, tt: 0.25, tb: 0.25, B1: 0, B3: 1.20, hs: 0.25, he: 0.25, Lp: 5.00,
+  dOn: false, dPos: 'tras', bd: 0.30, hd: 0.30,
   cOn: false, s: 2.50, ec: 0.20, bc: 1.20, hc: 1.45,
   ga: 18, fa: 20, ca: 0, q: 20,
   gb: 18, fb: 20, cb: 5, sadm: 150, hf: 1.00, pOn: true, pRed: 1,
@@ -620,14 +775,15 @@ const DEFAULTS = {   // exemplo da planilha "Muro contraforte"
   gc: 25, fck: 25, fyk: 500, cob: 4, wlim: 0.3, gf: 1.4, psi1: 0.4, psi2: 0.3
 };
 const LIM = {   // validação: [mín, máx]
-  H: [0.3, 12], tt: [0.1, 2], tb: [0.1, 3], B1: [0, 10], B3: [0, 15], hs: [0.1, 3], he: [0.1, 3], bd: [0.1, 3], hd: [0.05, 3], xd: [0, 30],
+  H: [0.3, 12], tt: [0.1, 2], tb: [0.1, 3], B1: [0, 10], B3: [0, 15], hs: [0.1, 3], he: [0.1, 3], bd: [0.1, 3], hd: [0.05, 3], Lp: [1, 30],
   s: [0.5, 15], ec: [0.1, 2], bc: [0.1, 15], hc: [0.1, 12], ga: [5, 30], fa: [0, 50], ca: [0, 500], q: [0, 500], gb: [5, 30], fb: [0, 50], cb: [0, 500],
   sadm: [1, 5000], hf: [0, 12], pRed: [0, 1], FSTmin: [1, 5], FSDmin: [1, 5], gphi: [1, 3], gcoh: [1, 5], gc: [15, 30], fck: [20, 50], fyk: [250, 600],
   cob: [1.5, 10], wlim: [0.05, 0.5], gf: [1, 2], psi1: [0, 1], psi2: [0, 1]
 };
-const KEY = 'muro-contencao-v1', OVKEY = 'muro-contencao-v1-ov', TABKEY = 'muro-contencao-v1-tab';
-let state = Object.assign({}, DEFAULTS), armOv = {};
-try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o) Object.keys(DEFAULTS).forEach(k => { if (k in o && typeof o[k] === typeof DEFAULTS[k]) state[k] = o[k]; }); } catch (e) {}
+const KEY = 'muro-contencao-v1', OVKEY = 'muro-contencao-v1-ov', TABKEY = 'muro-contencao-v1-tab', FIGKEY = 'muro-contencao-v1-fig';
+const POS_OK = ['frente', 'tras', 'parede'];
+let state = Object.assign({}, DEFAULTS), armOv = {}, figMode = 'corte', curTab = 'est';
+try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o) Object.keys(DEFAULTS).forEach(k => { if (k in o && typeof o[k] === typeof DEFAULTS[k]) state[k] = o[k]; }); if (!POS_OK.includes(state.dPos)) state.dPos = DEFAULTS.dPos; } catch (e) {}
 try { const o = JSON.parse(localStorage.getItem(OVKEY) || 'null'); if (o && typeof o === 'object') armOv = o; } catch (e) {}
 const el = id => document.getElementById(id);
 const invalid = new Set();
@@ -639,11 +795,14 @@ function bind() {
     const i = el('in-' + k); if (!i) return;
     if (typeof DEFAULTS[k] === 'boolean') {
       i.checked = !!state[k];
-      i.addEventListener('change', () => { state[k] = i.checked; render(); });
+      if (!i.dataset.b) i.addEventListener('change', () => { state[k] = i.checked; render(); });
+    } else if (typeof DEFAULTS[k] === 'string') {
+      i.value = state[k];
+      if (!i.dataset.b) i.addEventListener('change', () => { state[k] = i.value; render(); });
     } else {
       i.setAttribute('inputmode', 'decimal'); i.autocomplete = 'off';
       i.value = fmt(state[k], k === 'fa' || k === 'fb' || k === 'ga' || k === 'gb' || k === 'gc' ? 1 : k === 'sadm' || k === 'fck' || k === 'fyk' || k === 'q' || k === 'ca' || k === 'cb' ? 0 : 2);
-      i.addEventListener('input', () => {
+      if (!i.dataset.b) i.addEventListener('input', () => {
         const v = parseNum(i.value), L = LIM[k], f = i.closest('.field');
         const bad = !Number.isFinite(v) || (L && (v < L[0] || v > L[1]));
         if (f) f.classList.toggle('bad', bad);
@@ -651,11 +810,31 @@ function bind() {
         render();
       });
     }
+    i.dataset.b = '1';
   });
 }
 function setTab(t) {
-  ['est', 'arm'].forEach(x => { el('tb-' + x).setAttribute('aria-selected', String(x === t)); el('tab-' + x).hidden = x !== t; });
+  curTab = t;
+  ['est', 'arm', 'det'].forEach(x => { el('tb-' + x).setAttribute('aria-selected', String(x === t)); el('tab-' + x).hidden = x !== t; });
+  document.querySelectorAll('.inputs section[data-tabs]').forEach(sec => { sec.hidden = !sec.dataset.tabs.split(' ').includes(t); });
   try { localStorage.setItem(TABKEY, t); } catch (e) {}
+  if (t === 'est' && figMode === '3d') v3show();
+}
+function setFig(m) {
+  figMode = m;
+  document.querySelectorAll('[data-fig]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fig === m)));
+  el('fig').hidden = m !== 'corte'; el('fig-pl').hidden = m !== 'planta'; el('fig-3d').hidden = m !== '3d'; el('fig-leg').hidden = m !== 'corte';
+  el('np-row').hidden = m === 'corte';
+  el('fig-tit').textContent = m === 'corte' ? 'Corte em escala' : m === 'planta' ? 'Planta em escala' : 'Vista 3D';
+  try { localStorage.setItem(FIGKEY, m); } catch (e) {}
+  drawFig();
+  if (m === '3d') v3show();
+}
+function drawFig() {
+  if (!last) return;
+  if (figMode === 'corte') el('fig').innerHTML = drawCorte(last.r).svg;
+  else if (figMode === 'planta') el('fig-pl').innerHTML = drawPlanta(last.r, +el('v3-np').value || 2).svg;
+  else if (V3.v) v3build(false);
 }
 
 /* ---------- desenho do corte (SVG). pal: cores; tela usa var(--x), memorial usa hex ---------- */
@@ -787,6 +966,7 @@ const card = (t, v, s, ok, warn) => `<div class="card ${ok ? '' : (warn ? 'warn'
 function render() {
   el('out-B').value = fmt(state.B1 + state.tb + state.B3);
   el('grp-dente').classList.toggle('off', !state.dOn);
+  el('fld-Lp').classList.toggle('off', !!state.cOn);
   el('grp-cont').classList.toggle('off', !state.cOn);
   ['in-pRed'].forEach(id => el(id).closest('.field').classList.toggle('off', !state.pOn));
   if (invalid.size) { el('warns').innerHTML = '<p>Há campos fora do intervalo aceito (em vermelho). Os resultados mostram os últimos valores válidos.</p>'; }
@@ -799,7 +979,8 @@ function render() {
   if (invalid.size) w.push('Há campos fora do intervalo aceito (em vermelho). Os resultados mostram os últimos valores válidos.');
   if (!Number.isFinite(r.sMax)) w.push('A resultante das forças cai fora da base: o muro tomba. Aumente a base (ponta ou talão).');
   else if (r.tri) w.push(`A resultante sai do núcleo central (e = ${fmt(Math.abs(r.e), 3)} m > B/6 = ${fmt(r.B / 6, 3)} m): parte da base descola. Aumente a base ou a ponta.`);
-  if (p.dOn && (p.xd - p.bd / 2 < -1e-6 || p.xd + p.bd / 2 > r.B + 1e-6)) w.push('O dente sai da largura da base: confira a posição do eixo.');
+  if (p.dOn && p.bd > r.B + 1e-6) w.push('A chaveta é mais espessa que a base: reduza a espessura.');
+  if (p.dOn && p.dPos === 'parede' && p.bd > p.tb + 1e-6) w.push('A chaveta junto à parede é mais espessa que o muro na base: ela passa a ocupar parte da ponta e do talão.');
   if (p.cOn && p.bc > p.B3 + 1e-6) w.push('O contraforte é mais comprido que o talão.');
   if (p.cOn && p.hc > p.H + 1e-6) w.push('O contraforte é mais alto que o muro.');
   if (p.tt > p.tb + 1e-6) w.push('O muro está mais espesso no topo que na base.');
@@ -814,11 +995,12 @@ function render() {
     card('Deslizamento · FS<sub>D</sub>', fmt(fsD), `mínimo ${fmt(p.FSDmin, 1)} · ${r.ok.FSD ? 'atende' : 'não atende'}`, r.ok.FSD) +
     card('Tensão máxima no solo', `${fmt(r.sMax, 1)} <small style="font-size:13px">kPa</small>`, `σ<sub>adm</sub> ${fmt(p.sadm, 0)} kPa · ${fmt(r.sMax / 98.07, 2)} kgf/cm² · ${r.ok.sig ? 'atende' : 'não atende'}`, r.ok.sig) +
     card('Excentricidade', `${fmt(Math.abs(r.e), 3)} <small style="font-size:13px">m</small>`, `B/6 = ${fmt(r.B / 6, 3)} m · ${r.ok.e ? 'base toda comprimida' : 'parte da base descola'}`, r.ok.e, true);
-  el('fig').innerHTML = drawCorte(r).svg;
+  drawFig();
+  el('geo-res').innerHTML = `Muro H = ${fmt(p.H)} m, espessura ${fmt(p.tt)} a ${fmt(p.tb)} m · base B = ${fmt(r.B)} m (ponta ${fmt(p.B1)}, talão ${fmt(p.B3)}), altura ${fmt(p.hs)} a ${fmt(p.he)} m · ${r.cOn ? `contrafortes de ${fmt(p.ec)} m a cada ${fmt(p.s)} m` : `sem contrafortes, pano de ${fmt(p.Lp)} m`} · ${r.dOn ? `chaveta ${fmt(p.bd)} × ${fmt(p.hd)} m ${POS_TXT[p.dPos]}` : 'sem chaveta'}.`;
   // empuxos
   el('emp').innerHTML = `<div class="cols2"><div>
     <p class="eq">Aterro: φ<sub>d</sub> = ${fmt(r.fa, 1)}°, c<sub>d</sub> = ${fmt(r.ca, 1)} kPa → K<sub>a</sub> = tg²(45° − φ/2) = <b>${fmt(r.ka, 3)}</b></p>
-    <p class="eq">σ<sub>a</sub>(z) = K<sub>a</sub>(γz + q) − 2c√K<sub>a</sub> ≥ 0, de 0 a ${fmt(r.Ha, 2)} m${r.dOn ? ' (até o fundo do dente)' : ''}</p>
+    <p class="eq">σ<sub>a</sub>(z) = K<sub>a</sub>(γz + q) − 2c√K<sub>a</sub> ≥ 0, de 0 a ${fmt(r.Ha, 2)} m${r.dOn ? ' (até o fundo da chaveta)' : ''}</p>
     <p class="eq">E<sub>a</sub> = <b>${fmt(r.Ea.R, 2)} kN/m</b> (solo ${fmt(r.Ea.soil, 2)} + sobrecarga ${fmt(r.Ea.q, 2)}), a ${fmt(r.Ea.y, 3)} m da face inferior da base</p>
   </div><div>
     <p class="eq">Solo da base: φ<sub>d</sub> = ${fmt(r.fb, 1)}°, c<sub>d</sub> = ${fmt(r.cb, 1)} kPa → K<sub>p</sub> = tg²(45° + φ/2) = <b>${fmt(r.kp, 3)}</b></p>
@@ -849,14 +1031,16 @@ function render() {
     'Empuxo de Rankine no plano vertical da extremidade do talão; o solo sobre o talão entra como peso. Paramento vertical na frente.',
     'Coesão: σ<sub>a</sub> = K<sub>a</sub>(γz + q) − 2c√K<sub>a</sub>, sem tração (na planilha original o termo de coesão não multiplicava a altura).',
     'Os divisores de segurança de tg φ e da coesão valem para o aterro e para o solo da base (na planilha, o do aterro não era usado).',
-    'Passivo com o γ, o φ e a coesão do solo da base (na planilha, com os do aterro), do nível do solo da frente até a face inferior da base ou do dente; fator de redução ajustável.',
+    'Passivo com o γ, o φ e a coesão do solo da base (na planilha, com os do aterro), do nível do solo da frente até a face inferior da base ou da chaveta; fator de redução ajustável.',
     'Tombamento: FS = momentos resistentes ÷ momento do empuxo ativo. Sem a sobrecarga sobre o talão e sem o passivo, salvo se marcados (a planilha considerava os dois e subtraía o passivo do momento atuante).',
     'Tensão no solo: compara-se a tensão máxima com a admissível (a planilha comparava a mínima). Quando e > B/6, distribuição triangular com parte da base descolada.',
     'Muro calculado na altura da haste (da face superior da base ao topo); a planilha usava a altura total do aterro. Seções a cada H/5.',
     'Flecha com a inércia equivalente de Branson (NBR 6118, 17.3.2.1.1) e a armadura adotada; a planilha usava uma espessura sem relação com o muro.',
+    'Chaveta na extremidade da frente, na de trás ou centrada sob a parede; o empuxo ativo e o passivo descem até o fundo dela, e o peso entra na estabilidade.',
     'Solo sobre a ponta desprezado (a favor da segurança). Sem água no aterro nesta versão.'
   ].map(t => `<li>${t}</li>`).join('');
   renderArm(o);
+  renderDet(o);
 }
 
 function renderArm(o) {
@@ -961,14 +1145,14 @@ async function buildMemorial(o) {
   const hoje = new Date().toLocaleDateString('pt-BR');
   body.push(wPar(R('MEMÓRIA DE CÁLCULO', { b: true, sz: 32, color: C.ink }), { after: 20 }));
   body.push(wPar(R('Muro de contenção em concreto armado: empuxos, estabilidade e armaduras', { sz: 22, color: C.muted }), { after: 40 }));
-  body.push(wPar(R(`Muro de ${fmt(p.H)} m sobre base de ${fmt(r.B)} m${r.dOn ? ', com dente' : ''}${r.cOn ? `, com contrafortes a cada ${fmt(p.s)} m` : ''} · ${hoje} · aplicativo Muro de Contenção v1.0`, { sz: 17, color: C.muted }), { after: 160 }));
+  body.push(wPar(R(`Muro de ${fmt(p.H)} m sobre base de ${fmt(r.B)} m${r.dOn ? ', com chaveta' : ''}${r.cOn ? `, com contrafortes a cada ${fmt(p.s)} m` : ''} · ${hoje} · aplicativo Muro de Contenção v1.1`, { sz: 17, color: C.muted }), { after: 160 }));
   // 1 dados
   body.push(H1('1. Dados de entrada'));
   const kv = (rows) => table([3600, 1500, 3606, 1500], ['Grandeza', 'Valor', 'Grandeza', 'Valor'], rows);
   body.push(kv([
     ['Altura do muro H', { t: `${fmt(p.H)} m`, al: 'right' }, 'Espessura no topo · na base', { t: `${fmt(p.tt)} · ${fmt(p.tb)} m`, al: 'right' }],
     ['Ponta B_1 · talão B_3', { t: `${fmt(p.B1)} · ${fmt(p.B3)} m`, al: 'right' }, 'Largura da base B', { t: `${fmt(r.B)} m`, al: 'right' }],
-    ['Base junto ao muro · nas pontas', { t: `${fmt(p.hs)} · ${fmt(p.he)} m`, al: 'right' }, 'Dente (largura × altura, eixo)', { t: r.dOn ? `${fmt(p.bd)} × ${fmt(p.hd)} m, x = ${fmt(p.xd)} m` : 'sem dente', al: 'right' }],
+    ['Base junto ao muro · nas pontas', { t: `${fmt(p.hs)} · ${fmt(p.he)} m`, al: 'right' }, 'Chaveta (espessura × profundidade)', { t: r.dOn ? `${fmt(p.bd)} × ${fmt(p.hd)} m, ${POS_TXT[p.dPos]}` : 'sem chaveta', al: 'right' }],
     ['Contrafortes', { t: r.cOn ? `${fmt(p.ec)} m a cada ${fmt(p.s)} m` : 'sem contrafortes', al: 'right' }, 'Contraforte: base × altura', { t: r.cOn ? `${fmt(p.bc)} × ${fmt(p.hc)} m` : '—', al: 'right' }],
     ['Aterro: γ · φ · c', { t: `${fmt(p.ga, 1)} kN/m³ · ${fmt(p.fa, 1)}° · ${fmt(p.ca, 1)} kPa`, al: 'right' }, 'Sobrecarga q', { t: `${fmt(p.q, 1)} kN/m²`, al: 'right' }],
     ['Solo da base: γ · φ · c', { t: `${fmt(p.gb, 1)} kN/m³ · ${fmt(p.fb, 1)}° · ${fmt(p.cb, 1)} kPa`, al: 'right' }, 'Tensão admissível σ_adm', { t: `${fmt(p.sadm, 0)} kPa`, al: 'right' }],
@@ -982,6 +1166,8 @@ async function buildMemorial(o) {
   body.push(txt(p.pOn ? `Solo da base: K_p = tg²(45° + φ/2) = ${fmt(r.kp, 3)}; σ_p(z) = K_pγz + 2c√K_p em ${fmt(r.Ep.h)} m; E_p = ${fmt(r.Ep.Rfull)} × ${fmt(p.pRed)} = ${fmt(r.Ep.R)} kN/m a ${fmt(r.Ep.y, 3)} m da face inferior da base.` : 'Empuxo passivo não considerado.'));
   const fig1 = await addSvg(drawCorte(r, true));
   body.push(figure(fig1, 'Figura 1 · Corte em escala: empuxo ativo (solo e sobrecarga), passivo, tensões no solo sob a base e resultante vertical.', 0.92));
+  const fig2 = await addSvg(drawPlanta(r, 2, true));
+  body.push(figure(fig2, `Figura 2 · Planta em escala (dois ${r.cOn ? 'vãos entre contrafortes' : 'panos entre juntas'}).`, 0.92));
   // 3 estabilidade
   body.push(H1('3. Estabilidade'));
   body.push(H2('3.1 Forças verticais e momentos em relação à ponta'));
@@ -1008,6 +1194,20 @@ async function buildMemorial(o) {
   body.push(H2(r.cOn ? '4.2 Flecha' : '4.1 Flecha'));
   const f = D.fl;
   body.push(txt(`Flecha no topo (combinação quase permanente): imediata ${fmt(f.imed * 1000)} mm; com fluência ${fmt(f.tot * 1000)} mm ≤ ${fmt(f.lim * 1000, 1)} mm (${f.placa ? 'L/250' : '2H/250'}): ${f.ok ? 'atende' : 'não atende'}.`));
+  // 5 detalhamento
+  const det = detalhar(o);
+  body.push(H1('5. Detalhamento das armaduras'));
+  const fA = await addSvg(drawDet(o, det, 'A', true));
+  body.push(figure(fA, `Figura ${imgs.length} · ${r.cOn ? 'Corte A–A, entre contrafortes' : 'Corte A–A, seção típica'}: posições, bitolas, espaçamentos e comprimentos (cm).`, 0.95));
+  if (r.cOn) { const fB = await addSvg(drawDet(o, det, 'B', true)); body.push(figure(fB, `Figura ${imgs.length} · Corte B–B, no contraforte.`, 0.95)); }
+  body.push(H2('5.1 Quadro de barras'));
+  body.push(txt(r.cOn ? `Quantidades por vão de ${fmt(p.s)} m (parede e sapata) e por contraforte.` : `Quantidades por pano de ${fmt(p.Lp)} m entre juntas.`, { color: C.muted }));
+  body.push(table([600, 3606, 800, 800, 900, 1100, 1100, 1300], ['N', 'Elemento', 'ø (mm)', 'c/ (cm)', 'Quant.', 'C unit. (cm)', 'C total (m)', 'Trechos (cm)'],
+    det.pos.map(b => [{ t: 'N' + b.N, b: true }, b.nome, { t: phiTxt(b.phi), al: 'right' }, { t: b.s ? phiTxt(b.s) : '—', al: 'right' }, { t: String(b.qtd), al: 'right' }, { t: b.comp + (b.var ? '*' : ''), al: 'right' }, num(b.tot), segTxt(b)])));
+  const ra = resumoAco(det);
+  body.push(H2('5.2 Resumo do aço'));
+  body.push(table([2000, 2600, 2000, 3606], ['ø (mm)', 'Comprimento (m)', 'kg/m', 'Massa (kg)'], ra.rows.map(x => [phiTxt(x.f), num(x.L), num(KGM[x.f], 3), num(x.m, 1)]).concat([[{ t: 'Total com 10% de perdas', b: true }, '', '', { t: fmt(ra.kg10, 1), b: true, al: 'right' }]])));
+  body.push(txt(`Concreto: ${fmt(det.vol, 3)} m³ por ${r.cOn ? 'vão (com um contraforte)' : 'pano'}; taxa de aço ≈ ${fmt(ra.taxa, 0)} kg/m³; ${fmt(ra.kg10 / det.Lp, 1)} kg por metro de muro. * comprimento médio dos grampos de altura variável.`));
   body.push(txt('Cálculo preliminar, gerado automaticamente. Hipóteses de solo, coeficientes e o detalhamento (ancoragens, emendas, juntas e drenagem do aterro) precisam ser validados pelo responsável técnico.', { i: true, color: C.muted, sz: 16 }));
   const sect = '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850" w:header="400" w:footer="400" w:gutter="0"/></w:sectPr>';
   const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body.join('')}${sect}</w:body></w:document>`;
@@ -1022,17 +1222,450 @@ async function buildMemorial(o) {
   ].concat(imgs.map((im, i) => ({ name: `word/media/fig${i + 1}.png`, data: im.png }))));
 }
 
+/* ---------- pano, planta, 3D e detalhamento ---------- */
+const POS_TXT = { frente: 'na extremidade da frente', tras: 'na extremidade de trás', parede: 'junto à parede' };
+const panoLen = (p, r) => r.cOn ? p.s : p.Lp;
+const fm = (v, d = 2) => fmt(v, d);
+const phiTxt = f => String(f).replace('.', ',');
+
+/* ---- planta em escala: ao longo do muro na horizontal, frente embaixo ---- */
+function drawPlanta(r, n, print) {
+  const C = k => print ? PRINT[k] : `var(--${k})`;
+  const p = r.p, B = r.B, Lp = panoLen(p, r), L = n * Lp, e0 = r.cOn ? p.ec / 2 : 0;
+  const Y0 = -e0, Y1 = L + e0, ext = Math.max(0.6, 0.35 * B);
+  const Umin = Y0 - 1.15, Umax = Y1 + 0.35, Xmin = -1.05, Xmax = B + ext + 0.25;
+  const W = 900, pad = 34, sc = Math.min((W - 2 * pad) / (Umax - Umin), 560 / (Xmax - Xmin));
+  const Wd = W, Hd = (Xmax - Xmin) * sc + 2 * pad;
+  const ox = (W - (Umax - Umin) * sc) / 2;
+  const U = u => ox + (u - Umin) * sc, V = x => pad + (Xmax - x) * sc;
+  const rect = (u0, u1, x0, x1, a) => `<rect x="${U(u0).toFixed(1)}" y="${V(x1).toFixed(1)}" width="${((u1 - u0) * sc).toFixed(1)}" height="${((x1 - x0) * sc).toFixed(1)}" ${a}/>`;
+  const T = (u, x, t, o = {}) => `<text x="${U(u).toFixed(1)}" y="${V(x).toFixed(1)}" font-size="${o.fs || 11.5}" text-anchor="${o.a || 'middle'}" fill="${o.c || C('ink')}"${o.b ? ' font-weight="600"' : ''} class="halo"${o.rot ? ` transform="rotate(-90 ${U(u).toFixed(1)} ${V(x).toFixed(1)})"` : ''}>${t}</text>`;
+  let s = `<svg viewBox="0 0 ${Wd} ${Hd.toFixed(0)}" role="img" aria-label="Planta do muro">`;
+  s += `<defs><pattern id="hs" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="${C('soil-line')}" stroke-width="1" opacity=".45"/></pattern></defs>`;
+  // aterro além do talão
+  s += rect(Y0 - 0.25, Y1 + 0.25, B, B + ext, `fill="${C('soil')}" opacity=".55"`) + rect(Y0 - 0.25, Y1 + 0.25, B, B + ext, `fill="url(#hs)"`);
+  // sapata
+  s += rect(Y0, Y1, 0, B, `fill="${C('concrete')}" fill-opacity=".45" stroke="${C('concrete-line')}" stroke-width="1.4"`);
+  // contrafortes
+  if (r.cOn) for (let i = 0; i <= n; i++) s += rect(i * Lp - p.ec / 2, i * Lp + p.ec / 2, r.xb, Math.min(B, r.xb + p.bc), `fill="${C('concrete')}" stroke="${C('concrete-line')}" stroke-width="1.4"`);
+  // muro: faixa inclinada (de xbt a xb) e topo (de xf a xbt)
+  if (r.xb - r.xbt > 0.005) s += rect(Y0, Y1, r.xbt, r.xb, `fill="${C('concrete')}" stroke="${C('concrete-line')}" stroke-width=".8" stroke-dasharray="3 3"`);
+  s += rect(Y0, Y1, r.xf, r.xbt, `fill="${C('concrete')}" stroke="${C('concrete-line')}" stroke-width="1.6"`);
+  s += rect(Y0, Y1, r.xf, r.xbt, `fill="${C('concrete-line')}" fill-opacity=".18"`);
+  // chaveta (abaixo da sapata: tracejada)
+  if (r.dOn) s += rect(Y0, Y1, r.xd - p.bd / 2, r.xd + p.bd / 2, `fill="none" stroke="${C('ink')}" stroke-width="1.1" stroke-dasharray="7 4"`);
+  // juntas
+  if (!r.cOn) for (let i = 0; i <= n; i++) { const u = i * Lp; s += `<line x1="${U(u)}" y1="${V(B + 0.12)}" x2="${U(u)}" y2="${V(-0.12)}" stroke="${C('ink')}" stroke-width="1.1" stroke-dasharray="10 3 2 3"/>`; if (i > 0 && i < n) s += T(u, -0.3, 'junta', { fs: 10.5, c: C('muted') }); }
+  // corte A–A no meio do primeiro pano e B–B no contraforte
+  const cut = (u, t) => `<line x1="${U(u)}" y1="${V(B + 0.3)}" x2="${U(u)}" y2="${V(-0.3)}" stroke="${C('accent') || '#2b6cb0'}" stroke-width="1.2" stroke-dasharray="12 4"/>` + T(u + 0.08, B + 0.36, t, { b: true, a: 'start', c: '#2b6cb0' }) + T(u + 0.08, -0.48, t, { b: true, a: 'start', c: '#2b6cb0' });
+  s += cut(Lp / 2, 'A');
+  if (r.cOn) s += cut(Lp, 'B');
+  // rótulos
+  s += T((Y0 + Y1) / 2, B + ext / 2, 'ATERRO', { c: C('soil-line'), b: true, fs: 12 });
+  s += T((Y0 + Y1) / 2, -0.55, 'FRENTE', { c: C('muted'), b: true, fs: 12 });
+  // cotas ao longo do muro (embaixo)
+  const dimU = (u0, u1, x, t) => `<line x1="${U(u0)}" y1="${V(x)}" x2="${U(u1)}" y2="${V(x)}" stroke="${C('muted')}"/><line x1="${U(u0)}" y1="${V(x) - 4}" x2="${U(u0)}" y2="${V(x) + 4}" stroke="${C('muted')}"/><line x1="${U(u1)}" y1="${V(x) - 4}" x2="${U(u1)}" y2="${V(x) + 4}" stroke="${C('muted')}"/>` + T((u0 + u1) / 2, x + 0.05, t, { fs: 10.5, c: C('muted') });
+  for (let i = 0; i < n; i++) s += dimU(i * Lp, (i + 1) * Lp, -0.78, `${r.cOn ? 's' : 'L'} = ${fm(Lp)}`);
+  // cotas transversais (à esquerda)
+  const dimX = (x0, x1, u, t) => `<line x1="${U(u)}" y1="${V(x0)}" x2="${U(u)}" y2="${V(x1)}" stroke="${C('muted')}"/><line x1="${U(u) - 4}" y1="${V(x0)}" x2="${U(u) + 4}" y2="${V(x0)}" stroke="${C('muted')}"/><line x1="${U(u) - 4}" y1="${V(x1)}" x2="${U(u) + 4}" y2="${V(x1)}" stroke="${C('muted')}"/>` + T(u - 0.06, (x0 + x1) / 2, t, { fs: 10.5, c: C('muted'), rot: true });
+  const u1 = Y0 - 0.35, u2 = Y0 - 0.8;
+  if (p.B1 > 0.005) s += dimX(0, r.xf, u1, fm(p.B1));
+  s += dimX(r.xf, r.xb, u1, fm(p.tb));
+  if (p.B3 > 0.005) s += dimX(r.xb, B, u1, fm(p.B3));
+  s += dimX(0, B, u2, `B = ${fm(B)}`);
+  if (r.cOn) s += T(p.ec / 2 + 0.06, Math.min(B, r.xb + p.bc) - 0.12, `contraforte ${fm(p.ec)} × ${fm(p.bc)}`, { a: 'start', fs: 10.5, c: C('muted') });
+  if (r.dOn) s += T(Y1 - 0.08, r.xd, `chaveta ${fm(p.bd)} × ${fm(p.hd)} (sob a sapata)`, { a: 'end', fs: 10.5, c: C('ink') });
+  s += '</svg>';
+  return { svg: s, W: Wd, H: Hd };
+}
+
+/* ---- 3D com o motor do conjunto (motores/visualizador-3d.js) ---- */
+const V3 = { v: null, starting: null, view: 'iso', esf: null };
+const V3DIR = { iso: [-0.72, -0.62, 0.42], frente: [-1, -0.02, 0.12], tras: [1, -0.25, 0.3], lat: [0.002, -1, 0.08], topo: [-0.002, -0.004, 1] };
+function v3prism(v, P, y0, y1, o) {
+  // prisma de seção P = [[x, z], ...] entre y0 e y1; vértices separados por face para o sombreamento ficar nítido
+  const n = P.length, nos = [], tris = [], quads = [], ar = [];
+  const tri = THREE.ShapeUtils.triangulateShape(P.map(([x, z]) => new THREE.Vector2(x, z)), []);
+  [y0, y1].forEach(y => { const b = nos.length; P.forEach(([x, z]) => nos.push([x, y, z])); tri.forEach(([a, c, d]) => tris.push([b + a, b + c, b + d])); ar.push(Array.from({ length: n }, (_, i) => b + i)); });
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, b = nos.length;
+    nos.push([P[i][0], y0, P[i][1]], [P[j][0], y0, P[j][1]], [P[j][0], y1, P[j][1]], [P[i][0], y1, P[i][1]]);
+    quads.push([b, b + 1, b + 2, b + 3]); ar.push([b, b + 3]);
+  }
+  return v.superficie({ nos, tris, quads, cor: o.cor || '--concrete', opacidade: o.opacidade, arestas: o.arestas === false ? null : ar, corArestas: '--concrete-line', opacArestas: o.opacArestas != null ? o.opacArestas : 0.85 });
+}
+function v3esfOpts(r) {
+  return r.cOn ? [['nenhum', 'Nenhum (só a geometria)'], ['my', 'Momento vertical m_y (ELU)'], ['mx', 'Momento horizontal m_x (ELU)']]
+    : [['nenhum', 'Nenhum (só a geometria)'], ['M', 'Momento fletor M_d (ELU)'], ['V', 'Cortante V_d (ELU)']];
+}
+function v3syncCtl(r) {
+  const sel = el('v3-esf'), opts = v3esfOpts(r), cur = V3.esf && opts.some(o => o[0] === V3.esf) ? V3.esf : opts[1][0];
+  const html = opts.map(([k, t]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t.replace(/_(\w)/, '$1')}</option>`).join('');
+  if (sel.dataset.sig !== String(r.cOn)) { sel.innerHTML = html; sel.dataset.sig = String(r.cOn); }
+  V3.esf = sel.value || cur;
+  el('v3-lcont').hidden = !r.cOn;
+}
+function v3show() {
+  const msg = el('v3msg');
+  if (V3.v) { V3.v.tamanho(); v3build(false); return; }
+  if (!V3.starting) V3.starting = (window.Motor3D ? Motor3D.carregar() : Promise.reject(new Error('motor')))
+    .then(() => { V3.v = Motor3D.criar(el('v3box'), { fundo: '#f7f9fb' }); V3.v.aoClicar(v3pick); msg.hidden = true; v3build(true); })
+    .catch(e => { V3.starting = null; msg.hidden = false; msg.textContent = e && e.message === 'motor' ? 'O motor 3D (motores/visualizador-3d.js) não foi encontrado junto do programa.' : 'Não foi possível abrir a vista 3D (biblioteca three.js da internet): ' + (e && e.message || e) + '.'; });
+}
+function v3info(o) {
+  const { r } = o;
+  return `E<sub>a</sub> = ${fm(r.Ea.R, 1)} kN/m${r.p.pOn && r.Ep.h > 0 ? ` · E<sub>p</sub> = ${fm(r.Ep.R, 1)} kN/m` : ''}${r.p.q > 0 ? ` · q = ${fm(r.p.q, 1)} kN/m²` : ''} · σ no solo de ${fm(Math.max(0, r.sMin), 1)} a ${fm(r.sMax, 1)} kPa.`;
+}
+function v3build(fit) {
+  const v = V3.v; if (!v || !last) return;
+  const { p, r, D } = last;
+  v3syncCtl(r);
+  const n = +el('v3-np').value || 2, Lp = panoLen(p, r), L = n * Lp, e0 = r.cOn ? p.ec / 2 : 0, Y0 = -e0, Y1 = L + e0;
+  const on = {}; document.querySelectorAll('[data-v3l]').forEach(c => { on[c.dataset.v3l] = c.checked; });
+  const esf = V3.esf;
+  v.limpar();
+  const legs = [];
+  // concreto
+  if (on.base) { v3prism(v, r.base, Y0, Y1, {}); if (r.dente) v3prism(v, r.dente, Y0, Y1, {}); legs.push(['--concrete', 'Concreto']); }
+  if (on.muro) {
+    v3prism(v, r.stem, Y0, Y1, {});
+    if (!r.cOn) for (let i = 1; i < n; i++) { v.linha([[r.xf - 0.003, i * Lp, p.hs], [r.xf - 0.003, i * Lp, r.yT]], '--ink', false, 0.8); v.linha([[r.xf, i * Lp, r.yT + 0.003], [r.xbt, i * Lp, r.yT + 0.003]], '--ink', false, 0.8); }
+  }
+  if (on.cont && r.cOn) for (let i = 0; i <= n; i++) v3prism(v, r.cont, i * Lp - p.ec / 2, i * Lp + p.ec / 2, {});
+  if ((on.muro || on.base) && !legs.length) legs.push(['--concrete', 'Concreto']);
+  // esforços na parede (faces da frente e do aterro)
+  let esc = null, unit = '';
+  if (on.muro && esf && esf !== 'nenhum') {
+    const nos = [], quads = [], vals = [], faces = [];
+    const addFace = (xOf, Ny, Nz, val, yA, yB) => {
+      const b = nos.length;
+      for (let j = 0; j <= Nz; j++) for (let i = 0; i <= Ny; i++) { const y = yA + (yB - yA) * i / Ny, z = p.hs + p.H * j / Nz; nos.push([xOf(z), y, z]); vals.push(val(i / Ny, j / Nz)); }
+      for (let j = 0; j < Nz; j++) for (let i = 0; i < Ny; i++) { const a = b + j * (Ny + 1) + i; quads.push([a, a + 1, a + Ny + 2, a + Ny + 1]); }
+    };
+    const xF = () => r.xf - 0.004, xB = z => r.xBackAt(z) + 0.004;
+    if (!r.cOn) {
+      const Nz = 30, cache = [];
+      for (let j = 0; j <= Nz; j++) { const zt = p.H * (1 - j / Nz), mv = DIM.stemMV(r, zt, p.q); cache.push(esf === 'M' ? p.gf * mv.M : p.gf * mv.V); }
+      const val = (u, t) => cache[Math.round(t * Nz)];
+      addFace(xF, 1, Nz, val, Y0, Y1); addFace(xB, 1, Nz, val, Y0, Y1);
+      unit = esf === 'M' ? 'M<sub>d</sub> (kN·m/m), traciona a face do aterro' : 'V<sub>d</sub> (kN/m)';
+    } else {
+      const pl = D.plate, arr = pl.res[0][esf], nx = pl.nx, ny = pl.ny;
+      for (let k = 0; k < n; k++) {
+        const val = (u, t) => arr[Math.round(t * ny) * (nx + 1) + Math.round(u * nx)];
+        addFace(xF, nx, ny, val, k * Lp, (k + 1) * Lp);
+        addFace(xB, nx, ny, val, k * Lp + p.ec / 2, (k + 1) * Lp - p.ec / 2);
+      }
+      unit = (esf === 'my' ? 'm<sub>y</sub>' : 'm<sub>x</sub>') + ' (kN·m/m, ELU): positivo traciona a face da frente';
+    }
+    esc = Motor3D.escala(vals, { tipo: 'arco-iris', faixas: 12 });
+    v.superficie({ nos, quads, valores: vals, escala: esc, info: { nome: esf === 'V' ? 'Cortante' : 'Momento', unid: esf === 'V' ? 'kN/m' : 'kN·m/m' } });
+  }
+  // solo
+  const ext = Math.max(1, 0.45 * (r.yT - r.yb));
+  if (on.solo) {
+    v3prism(v, [[r.xb, p.hs], [r.B, p.he], [r.B, 0], [r.B + ext, 0], [r.B + ext, r.yT], [r.xbt, r.yT]], Y0, Y1, { cor: '--soil', opacidade: 0.3, opacArestas: 0.25 });
+    v.solido(r.B + 2 * ext, Y1 - Y0, false, [], r.yb - 0.5, 0, { x0: r.B / 2, y0: (Y0 + Y1) / 2, cor: '--found', opacidade: 0.28, arestas: false });
+    if (p.hf > 0) v.solido(r.xf + ext, Y1 - Y0, false, [], 0, p.hf, { x0: (r.xf - ext) / 2, y0: (Y0 + Y1) / 2, cor: '--soil', opacidade: 0.3, arestas: false });
+    legs.push(['--soil', 'Aterro e solo']);
+  }
+  // cargas
+  if (on.cargas) {
+    const Hh = r.yT - r.yb, sA = Math.max(1, r.sigA(r.Ha, p.q)), kA = 0.32 * Hh / sA;
+    const sP = r.Ep.h > 0 ? r.sigP(r.Ep.h) * p.pRed : 0, kP = sP > 0 ? 0.25 * Hh / sP : 0;
+    const kS = 0.22 * Hh / Math.max(1, Number.isFinite(r.sMax) ? r.sMax : 1);
+    const ys = []; for (let k = 0; k < n; k++) ys.push((k + 0.5) * Lp);
+    ys.forEach(y => {
+      const pa = [[r.B, y, r.yT]];
+      for (let i = 0; i <= 24; i++) { const d = r.Ha * i / 24; pa.push([r.B + r.sigA(d, p.q) * kA, y, r.yT - d]); }
+      pa.push([r.B, y, r.yb]); v.linha(pa, '--ativo', true);
+      for (let i = 0; i < 8; i++) { const d = r.Ha * (i + 0.5) / 8, l = r.sigA(d, p.q) * kA; if (l > 0.03) v.seta([r.B + l, y, r.yT - d], [-1, 0, 0], l, '--ativo'); }
+      if (p.pOn && kP > 0) {
+        const pp = [[0, y, p.hf]];
+        for (let i = 0; i <= 16; i++) { const d = r.Ep.h * i / 16; pp.push([-r.sigP(d) * p.pRed * kP, y, p.hf - d]); }
+        pp.push([0, y, r.yb]); v.linha(pp, '--passivo', true);
+        for (let i = 0; i < 5; i++) { const d = r.Ep.h * (i + 0.5) / 5, l = r.sigP(d) * p.pRed * kP; if (l > 0.03) v.seta([-l, y, p.hf - d], [1, 0, 0], l, '--passivo'); }
+      }
+      if (Number.isFinite(r.sMax)) {
+        const ps = [[0, y, r.yb]];
+        for (let i = 0; i <= 20; i++) { const x = r.B * i / 20; ps.push([x, y, r.yb - r.sigma(x) * kS]); }
+        ps.push([r.B, y, r.yb]); v.linha(ps, '--sig', true);
+        for (let i = 0; i < 7; i++) { const x = r.B * (i + 0.5) / 7, l = r.sigma(x) * kS; if (l > 0.03) v.seta([x, y, r.yb - l - 0.01], [0, 0, 1], l, '--sig'); }
+      }
+    });
+    if (p.q > 0) {
+      const nxq = Math.max(2, Math.round((r.B + ext - r.xbt) / 0.45)), nyq = Math.max(2, Math.round(L / 0.9));
+      for (let i = 0; i < nxq; i++) for (let j = 0; j < nyq; j++) v.seta([r.xbt + (r.B + ext - r.xbt) * (i + 0.5) / nxq, Y0 + (Y1 - Y0) * (j + 0.5) / nyq, r.yT + 0.32], [0, 0, -1], 0.3, '--q');
+    }
+    legs.push(['--ativo', 'Empuxo ativo'], ['--passivo', 'Empuxo passivo'], ['--q', 'Sobrecarga'], ['--sig', 'Tensão no solo']);
+  }
+  v.corte(!!on.corte, { normal: [0, 1, 0], d: -(Y0 + Y1) / 2 });
+  el('v3leg').innerHTML = (esc ? Motor3D.legendaHTML(esc, unit, x => fmt(x, 1)) : '') +
+    `<div class="leg3">${legs.map(([c, t]) => `<span><i style="background:var(${c})"></i>${t}</span>`).join('')}<span>${n} ${n > 1 ? 'panos' : 'pano'} de ${fm(Lp)} m${r.cOn ? ' (vão entre contrafortes)' : ''}</span></div>`;
+  el('v3sel').innerHTML = v3info(last) + (esc ? ' Clique na parede para ler o esforço no ponto.' : '');
+  if (fit) v.ajustar(null, V3DIR[V3.view] || V3DIR.iso);
+}
+function v3pick(h) {
+  if (!last) return;
+  if (!h) { el('v3sel').innerHTML = v3info(last) + ' Clique na parede para ler o esforço no ponto.'; return; }
+  const z = h.ponto[2] - last.p.hs;
+  el('v3sel').innerHTML = `<b>${h.info.nome}: ${fmt(h.valor, 2)} ${h.info.unid}</b> a ${fmt(Math.max(0, z), 2)} m acima da sapata${last.r.cOn ? `, a ${fmt(((h.ponto[1] % last.p.s) + last.p.s) % last.p.s, 2)} m do eixo do contraforte` : ''}.`;
+}
+
+/* ---- detalhamento das armaduras ---- */
+const KGM = { 6.3: 0.245, 8: 0.395, 10: 0.617, 12.5: 0.963, 16: 1.578, 20: 2.466, 25: 3.853 };
+const plen = pts => pts.reduce((s, q, i) => i ? s + Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) : 0, 0);
+const cm5 = m => Math.ceil(m * 100 / 5 - 1e-9) * 5;
+function lbNec(phi, P, ratio, hook) {
+  // NBR 6118, 9.4.2.4 e 9.4.2.5: barra nervurada (η1 = 2,25), boa aderência, φ < 32 mm
+  const fbd = 2.25 * P.fctd, lb = Math.max(phi / 4 * P.fyd / fbd, 25 * phi) / 1000;
+  const lmin = Math.max(0.3 * lb, 10 * phi / 1000, 0.10);
+  return { lb, nec: Math.max((hook ? 0.7 : 1) * lb * Math.min(1, Math.max(0.05, ratio || 1)), lmin) };
+}
+function tieChoice(Areq) {
+  let best = null;
+  [8, 10, 12.5, 16].forEach(phi => CA.SPAC.forEach(s => { const A = 2 * CA.barA(phi) * 100 / s; if (A >= Areq - 1e-9 && (!best || A < best.A - 1e-9 || (Math.abs(A - best.A) < 1e-9 && s > best.s))) best = { phi, s, A }; }));
+  return best || { phi: 16, s: 10, A: 2 * CA.barA(16) * 10 };
+}
+function detalhar(o) {
+  const { p, r, D } = o, P = D.P, c = p.cob / 100, Lp = panoLen(p, r), B = r.B;
+  const R = k => D.rows.find(x => x.key === k);
+  const nAlong = (len, s) => Math.max(2, Math.floor(len / (s / 100) + 1e-9) + 1);
+  const topY = x => x <= r.xf ? (r.xf > 0 ? p.he + (p.hs - p.he) * x / r.xf : p.hs) : x >= r.xb ? p.hs + (p.he - p.hs) * (x - r.xb) / Math.max(1e-9, p.B3) : p.hs;
+  const pos = [], cutA = [], cutB = [];
+  const add = (b, cut) => { pos.push(b); b.N = pos.length; (cut || cutA).push(b); return b; };
+  const lineBar = (row, nome, pts, qtd, extra) => Object.assign({ tipo: 'linha', nome, key: row && row.key, phi: row.ch.phi, s: row.ch.s, qtd, pts, comp: cm5(plen(pts)) }, extra || {});
+  const dotBar = (row, nome, dots, qtd, comp, extra) => Object.assign({ tipo: 'pontos', nome, key: row && row.key, phi: row.ch.phi, s: row.ch.s, qtd, dots, comp: cm5(comp), pts: [[0, 0], [comp, 0]] }, extra || {});
+  const along = Lp - 2 * c;
+  const fOf = row => row.ch.phi / 1000;
+  // ---- muro: verticais
+  const vA = r.cOn ? R('pva') : R('mv'), vF = r.cOn ? R('pvf') : R('mf');
+  const yBotA = c + 0.025, yBotF = c + 0.035;
+  {
+    const f = fOf(vA), xb2 = r.xb - c - f / 2, xt = r.xbt - c - f / 2, an = lbNec(vA.ch.phi, P, vA.Ascalc / vA.ch.As, true);
+    const dir = p.B1 > 0.25 ? -1 : 1, avail = dir < 0 ? xb2 - c : B - c - xb2;
+    const leg = Math.min(avail, Math.max(an.nec - (p.hs - yBotA), 15 * f, 0.2));
+    add(lineBar(vA, r.cOn ? 'Parede: vertical, face do aterro' : 'Muro: vertical, face do aterro (principal)', [[xt, r.yT - c], [xb2, p.hs], [xb2, yBotA], [xb2 + dir * leg, yBotA]], nAlong(along, vA.ch.s), { lado: 'R', anc: an }));
+  }
+  {
+    const f = fOf(vF), x = r.xf + c + f / 2, leg = Math.min(B - c - x, Math.max(15 * f, 0.2));
+    add(lineBar(vF, r.cOn ? 'Parede: vertical, face da frente' : 'Muro: vertical, face da frente', [[x, r.yT - c], [x, yBotF], [x + leg, yBotF]], nAlong(along, vF.ch.s), { lado: 'L' }));
+  }
+  // ---- muro: horizontais (pontos junto às verticais)
+  const levels = s => { const out = []; const st = s / 100; for (let z = r.yT - c - 0.02; z > p.hs + 0.03; z -= st) out.push(z); return out; };
+  if (!r.cOn) {
+    const h = R('mh'), f = fOf(h), zs = levels(h.ch.s);
+    const dots = zs.map(z => [r.xf + c + fOf(vF) + f / 2, z]).concat(zs.map(z => [r.xBackAt(z) - c - fOf(vA) - f / 2, z]));
+    add(dotBar(h, 'Muro: horizontal (distribuição), duas faces', dots, dots.length, along, { lado: 'L', anchorIdx: Math.floor(zs.length / 2) }));
+  } else {
+    const ha = R('pha'), hf = R('phf');
+    const za = levels(ha.ch.s), zf = levels(hf.ch.s);
+    add(dotBar(ha, 'Parede: horizontal, face do aterro (contínua sobre os contrafortes)', za.map(z => [r.xBackAt(z) - c - fOf(vA) - fOf(ha) / 2, z]), za.length, Lp, { lado: 'R', porVao: true }));
+    add(dotBar(hf, 'Parede: horizontal, face da frente', zf.map(z => [r.xf + c + fOf(vF) + fOf(hf) / 2, z]), zf.length, Lp, { lado: 'L', porVao: true }));
+  }
+  // ---- sapata
+  const sd = R('sd'), pt = R('pt'), tl = R('tl'), tli = R('tli');
+  let bot = sd, botNome = 'Sapata: face inferior (distribuição)';
+  if (!r.cOn) { const cands = [pt, tli].filter(Boolean); if (cands.length) { bot = cands.reduce((a, b) => (b.ch.As > a.ch.As ? b : a)); botNome = 'Sapata: face inferior (ponta e talão)'; } }
+  else if (pt) { bot = pt; botNome = 'Sapata: face inferior, perpendicular ao muro'; }
+  else botNome = 'Sapata: face inferior, perpendicular ao muro (distribuição)';
+  const top = r.cOn ? sd : (tl || sd), topNome = r.cOn ? 'Sapata: face superior, perpendicular ao muro (distribuição)' : 'Sapata: face superior (talão)';
+  // linhas principais da sapata (sem contrafortes) ficam por fora; com contrafortes, as paralelas ao muro ficam por fora no talão
+  const tlaR = r.cOn ? R('tla') : null, tlvR = r.cOn ? R('tlv') : null;
+  const offB = r.cOn && tlvR ? fOf(tlvR) : 0, offT = r.cOn && tlaR ? fOf(tlaR) : 0;
+  const yb0 = c + offB + fOf(bot) / 2;
+  add(lineBar(bot, botNome, [[c, Math.max(yb0 + 0.05, p.he - c)], [c, yb0], [B - c, yb0], [B - c, Math.max(yb0 + 0.05, p.he - c)]], nAlong(along, bot.ch.s), { lado: 'R', seg: 1 }));
+  {
+    const ft = fOf(top), dy = c + offT + ft / 2, yLow = c + 0.04;
+    const pts = p.B1 > 0.01 ? [[c, yLow], [c, topY(0) - dy], [r.xf, p.hs - dy], [r.xb, p.hs - dy], [B - c, topY(B) - dy], [B - c, yLow]] : [[c, yLow], [c, p.hs - dy], [r.xb, p.hs - dy], [B - c, topY(B) - dy], [B - c, yLow]];
+    add(lineBar(top, topNome, pts, nAlong(along, top.ch.s), { lado: 'R', seg: pts.length - 3 }));
+  }
+  // distribuição / paralelas ao muro
+  const xsAlong = (x0, x1, s) => { const out = [], st = s / 100, n = Math.max(1, Math.round((x1 - x0) / st)); for (let i = 0; i <= n; i++) out.push(x0 + (x1 - x0) * i / n); return out; };
+  if (!r.cOn) {
+    const f = fOf(sd), xs = xsAlong(c + 0.03, B - c - 0.03, sd.ch.s);
+    const dots = xs.map(x => [x, yb0 + fOf(bot) / 2 + f / 2]).concat(xs.map(x => [x, topY(x) - c - fOf(top) - f / 2]));
+    add(dotBar(sd, 'Sapata: distribuição (paralela ao muro), duas faces', dots, dots.length, along, { lado: 'L', anchorIdx: 1 }));
+  } else {
+    const xh = xsAlong(r.xb + c, B - c - 0.02, tlaR.ch.s);
+    add(dotBar(tlaR, 'Talão: paralela ao muro, face superior', xh.map(x => [x, topY(x) - c - fOf(tlaR) / 2]), xh.length, Lp, { lado: 'R', porVao: true }));
+    const xv = xsAlong(r.xb + c, B - c - 0.02, tlvR.ch.s);
+    add(dotBar(tlvR, 'Talão: paralela ao muro, face inferior', xv.map(x => [x, c + fOf(tlvR) / 2]), xv.length, Lp, { lado: 'R', porVao: true }));
+    const xd = xsAlong(c + 0.03, Math.max(c + 0.06, r.xb - c), sd.ch.s);
+    add(dotBar(sd, 'Ponta e sob a parede: distribuição, duas faces', xd.map(x => [x, yb0 + fOf(bot) / 2 + fOf(sd) / 2]).concat(xd.map(x => [x, topY(x) - c - fOf(top) - fOf(sd) / 2])), 2 * xd.length, Lp, { lado: 'L', porVao: true }));
+  }
+  // ---- chaveta
+  if (r.dOn) {
+    const dt = R('dt'), f = fOf(dt), x0 = r.xd - p.bd / 2 + c + f / 2, x1 = Math.max(x0 + 0.04, r.xd + p.bd / 2 - c - f / 2), yb = -p.hd + c + f / 2;
+    const yt = Math.min(topY(r.xd), p.he, p.hs) - c - 0.05;
+    add(lineBar(dt, 'Chaveta: estribo em U ancorado na sapata', [[x0, yt], [x0, yb], [x1, yb], [x1, yt]], nAlong(along, dt.ch.s), { lado: r.xd < (r.xf + r.xb) / 2 ? 'L' : 'R', seg: 1 }));
+    const fl = 0.010;
+    add({ tipo: 'pontos', nome: 'Chaveta: longitudinal (construtiva)', phi: 10, s: null, qtd: 2, dots: [[x0 + f / 2 + fl / 2, yb + f / 2 + fl / 2], [x1 - f / 2 - fl / 2, yb + f / 2 + fl / 2]], comp: cm5(along), pts: [[0, 0], [along, 0]], lado: r.xd < (r.xf + r.xb) / 2 ? 'L' : 'R', anchorIdx: 0 });
+  }
+  // ---- contraforte (corte B–B)
+  let cont = null;
+  if (r.cOn) {
+    const k = D.rows.cont, top0 = [r.xBackAt(p.hs + p.hc), p.hs + p.hc], xe = Math.min(B, r.xb + p.bc), foot = [xe, topY(xe)];
+    const phiI = k.AsInc / CA.barA(16) <= 6 ? 16 : k.AsInc / CA.barA(20) <= 8 ? 20 : 25, nI = Math.max(2, Math.ceil(k.AsInc / CA.barA(phiI)));
+    const dx = top0[0] - foot[0], dy = top0[1] - foot[1], L0 = Math.hypot(dx, dy), ux = dx / L0, uy = dy / L0;
+    let nx = -uy, ny = ux; if (nx > 0) { nx = -nx; ny = -ny; }       // normal para dentro (para o lado da parede)
+    const fI = phiI / 1000, off = c + fI / 2;
+    const pTop = [top0[0] + nx * off - ux * c, top0[1] + ny * off - uy * c];
+    let xFoot = Math.min(B - c - fI / 2, foot[0] + nx * off), pFoot = [xFoot, foot[1] + ny * off];
+    const yLow = c + 0.06, an = lbNec(phiI, P, 1, true), legI = Math.max(0.25, an.nec - (pFoot[1] - yLow));
+    const ptsI = [pTop, pFoot, [xFoot, yLow], [Math.max(r.xb, xFoot - legI), yLow]];
+    cont = { phiI, nI };
+    add({ tipo: 'linha', nome: 'Contraforte: barras inclinadas (tirante), na face de trás', phi: phiI, s: null, qtd: nI, pts: ptsI, comp: cm5(plen(ptsI)), lado: 'R', porCont: true, seg: 0 }, cutB);
+    const hz = tieChoice(Math.max(k.tieH, k.Asw)), vt = tieChoice(Math.max(k.tieV || 0, k.AswMin));
+    const hyp = y => foot[0] + (top0[0] - foot[0]) * (y - foot[1]) / (top0[1] - foot[1]);   // x da face inclinada na cota y
+    const xIn = r.xf + c + 0.03, hLines = [], vLines = [];
+    for (let y = p.hs + hz.s / 100 / 2; y < top0[1] - c - 0.05; y += hz.s / 100) { const x2 = hyp(y) - c - fI - 0.01; if (x2 > xIn + 0.05) hLines.push([[xIn, y], [x2, y]]); }
+    for (let x = r.xb + vt.s / 100; x < xe - c - 0.05; x += vt.s / 100) { const yTop = foot[1] + (top0[1] - foot[1]) * (x - foot[0]) / (top0[0] - foot[0]) - c - fI - 0.01; if (yTop > p.hs + 0.05) vLines.push([[x, c + 0.06], [x, yTop]]); }
+    const legW = Math.max(0.05, p.ec - 2 * c);
+    const meanL = ls => ls.length ? ls.reduce((s, l) => s + plen(l), 0) / ls.length : 0;
+    if (hLines.length) add({ tipo: 'multi', nome: 'Contraforte: grampos horizontais (ligação com a parede e estribos)', phi: hz.phi, s: hz.s, qtd: hLines.length, lines: hLines, comp: cm5(2 * meanL(hLines) + legW), var: true, pts: [[0, 0], [meanL(hLines), 0], [meanL(hLines), legW], [0, legW]], lado: 'L', porCont: true }, cutB);
+    if (vLines.length) add({ tipo: 'multi', nome: 'Contraforte: grampos verticais (ligação com o talão)', phi: vt.phi, s: vt.s, qtd: vLines.length, lines: vLines, comp: cm5(2 * meanL(vLines) + legW), var: true, pts: [[0, 0], [0, meanL(vLines)], [legW, meanL(vLines)], [legW, 0]], lado: 'R', porCont: true }, cutB);
+    cont.hz = hz; cont.vt = vt;
+  }
+  // massas
+  pos.forEach(b => { b.tot = b.qtd * b.comp / 100; b.kg = b.tot * (KGM[b.phi] || 0); });
+  // concreto por pano
+  const secA = MC.poly(r.base).A + MC.poly(r.stem).A + (r.dente ? MC.poly(r.dente).A : 0);
+  const vol = secA * Lp + (r.cOn ? MC.poly(r.cont).A * p.ec : 0);
+  return { pos, cutA, cutB, cont, Lp, vol, c };
+}
+function drawDet(o, det, which, print) {
+  const C = k => print ? PRINT[k] : `var(--${k})`;
+  const { p, r } = o, B = r.B, bars = which === 'B' ? det.cutB : det.cutA;
+  const BAR = '#c0392b';
+  const xmin = Math.min(0, r.dOn ? r.xd - p.bd / 2 : 0), xmax = B, ymin = r.yb, ymax = r.yT;
+  const W = 900, side = 250, pad = 30, sc = Math.min((W - 2 * side) / (xmax - xmin), 620 / (ymax - ymin));
+  const Hd = (ymax - ymin) * sc + 2 * pad + 26, ox = W / 2 - (xmax + xmin) / 2 * sc;
+  const X = x => ox + x * sc, Y = y => pad + 22 + (ymax - y) * sc;
+  const pts = P => P.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(' ');
+  let s = `<svg viewBox="0 0 ${W} ${Hd.toFixed(0)}" role="img" aria-label="Detalhamento das armaduras, corte ${which}">`;
+  s += `<text x="${W / 2}" y="${pad}" font-size="14" font-weight="600" text-anchor="middle" fill="${C('ink')}">${which === 'B' ? 'Corte B–B · no contraforte' : r.cOn ? 'Corte A–A · entre contrafortes' : 'Corte A–A · seção típica do muro'}</text>`;
+  // terreno (linhas finas) e concreto
+  s += `<line x1="${X(B)}" y1="${Y(r.yT)}" x2="${X(B) + 40}" y2="${Y(r.yT)}" stroke="${C('soil-line')}" stroke-width="1.2"/>`;
+  if (p.hf > 0) s += `<line x1="${X(xmin) - 40}" y1="${Y(p.hf)}" x2="${X(r.xf)}" y2="${Y(p.hf)}" stroke="${C('soil-line')}" stroke-width="1.2"/>`;
+  const polys = [r.base, r.stem, r.dente].filter(Boolean);
+  if (which === 'B') polys.push(r.cont);
+  polys.forEach(P => { s += `<polygon points="${pts(P)}" fill="${C('concrete')}" fill-opacity=".55" stroke="${C('concrete-line')}" stroke-width="1.4"/>`; });
+  if (which !== 'B' && r.cOn) s += `<polygon points="${pts(r.cont)}" fill="none" stroke="${C('concrete-line')}" stroke-width="1" stroke-dasharray="5 4"/>`;
+  // barras
+  const anchors = [];
+  bars.forEach(b => {
+    let a;
+    if (b.tipo === 'linha') {
+      s += `<polyline points="${pts(b.pts)}" fill="none" stroke="${BAR}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
+      let k = b.seg != null ? b.seg : 0;
+      if (b.seg == null) { let best = -1; for (let i = 1; i < b.pts.length; i++) { const l = Math.hypot(b.pts[i][0] - b.pts[i - 1][0], b.pts[i][1] - b.pts[i - 1][1]); if (l > best) { best = l; k = i - 1; } } }
+      const q0 = b.pts[k], q1 = b.pts[k + 1], t = b.lado === 'L' ? 0.35 : 0.6;
+      a = [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t];
+    } else if (b.tipo === 'multi') {
+      b.lines.forEach(l => { s += `<polyline points="${pts(l)}" fill="none" stroke="${BAR}" stroke-width="1.7" stroke-linecap="round"/>`; });
+      const l = b.lines[Math.floor(b.lines.length / 2)]; a = [(l[0][0] + l[1][0]) / 2, (l[0][1] + l[1][1]) / 2];
+    } else {
+      b.dots.forEach(([x, y]) => { s += `<circle cx="${X(x).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="${Math.max(2.4, Math.min(4, b.phi / 1000 * sc * 0.6)).toFixed(1)}" fill="${BAR}"/>`; });
+      a = b.dots[b.anchorIdx != null ? Math.min(b.anchorIdx, b.dots.length - 1) : Math.floor(b.dots.length / 2)];
+    }
+    anchors.push({ b, ax: X(a[0]), ay: Y(a[1]) });
+  });
+  // rótulos em duas colunas, sem sobreposição
+  const label = b => `N${b.N} · ${b.tipo === 'linha' && !b.porCont || b.tipo === 'multi' ? '' : b.qtd + ' '}ø${phiTxt(b.phi)}${b.s ? ` c/${phiTxt(b.s)}` : ''} · C = ${b.var ? 'var. (méd. ' + b.comp + ')' : b.comp}`;
+  ['L', 'R'].forEach(sd => {
+    const list = anchors.filter(q => (q.b.lado || 'R') === sd).sort((a, b) => a.ay - b.ay);
+    let yPrev = -1e9; const gap = 17;
+    list.forEach(q => { q.ly = Math.max(q.ay, yPrev + gap); yPrev = q.ly; });
+    const over = list.length ? list[list.length - 1].ly - (Hd - 8) : 0;
+    if (over > 0) { let yNext = 1e9; for (let i = list.length - 1; i >= 0; i--) { list[i].ly = Math.min(list[i].ly - over, yNext - gap); yNext = list[i].ly; } }
+    const xl = sd === 'L' ? Math.min(X(xmin) - 46, ...list.map(() => X(xmin) - 46)) : X(B) + 46;
+    list.forEach(q => {
+      const tx = sd === 'L' ? xl : xl;
+      s += `<polyline points="${q.ax.toFixed(1)},${q.ay.toFixed(1)} ${(sd === 'L' ? tx + 6 : tx - 6).toFixed(1)},${q.ly.toFixed(1)} ${tx.toFixed(1)},${q.ly.toFixed(1)}" fill="none" stroke="${C('muted')}" stroke-width=".8"/>`;
+      s += `<circle cx="${q.ax.toFixed(1)}" cy="${q.ay.toFixed(1)}" r="1.8" fill="${C('ink')}"/>`;
+      s += `<text x="${(sd === 'L' ? tx - 4 : tx + 4).toFixed(1)}" y="${(q.ly + 4).toFixed(1)}" font-size="11.5" text-anchor="${sd === 'L' ? 'end' : 'start'}" fill="${C('ink')}" class="halo"><tspan font-weight="600">N${q.b.N}</tspan>${label(q.b).slice(String(q.b.N).length + 1)}</text>`;
+    });
+  });
+  // cotas principais
+  const dimV = (y1, y2, x, t) => `<line x1="${X(x)}" y1="${Y(y1)}" x2="${X(x)}" y2="${Y(y2)}" stroke="${C('muted')}" stroke-width=".8"/><line x1="${X(x) - 3}" y1="${Y(y1)}" x2="${X(x) + 3}" y2="${Y(y1)}" stroke="${C('muted')}"/><line x1="${X(x) - 3}" y1="${Y(y2)}" x2="${X(x) + 3}" y2="${Y(y2)}" stroke="${C('muted')}"/><text x="${X(x) - 5}" y="${Y((y1 + y2) / 2)}" font-size="10.5" fill="${C('muted')}" text-anchor="middle" transform="rotate(-90 ${X(x) - 5} ${Y((y1 + y2) / 2)})" class="halo">${t}</text>`;
+  s += `<text x="${X(B / 2)}" y="${(Y(r.yb) + 18).toFixed(1)}" font-size="10.5" text-anchor="middle" fill="${C('muted')}" class="halo">H = ${fm(p.H)} m · B = ${fm(B)} m · cobrimento ${fm(p.cob, 1)} cm</text>`;
+  s += '</svg>';
+  return { svg: s, W, H: Hd };
+}
+function shapeSvg(b) {
+  const P = b.tipo === 'pontos' ? [[0, 0], [1, 0]] : b.pts;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+  const w = 96, h = 30, sc = Math.min((w - 8) / Math.max(1e-6, x1 - x0), (h - 8) / Math.max(1e-6, y1 - y0), 400);
+  const ox = (w - (x1 - x0) * sc) / 2, oy = (h - (y1 - y0) * sc) / 2;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${P.map(([x, y]) => `${(ox + (x - x0) * sc).toFixed(1)},${(h - oy - (y - y0) * sc).toFixed(1)}`).join(' ')}" fill="none" stroke="#c0392b" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+const segTxt = b => {
+  if (b.tipo === 'pontos') return `${b.comp} (reta)`;
+  const ls = []; for (let i = 1; i < b.pts.length; i++) ls.push(Math.round(Math.hypot(b.pts[i][0] - b.pts[i - 1][0], b.pts[i][1] - b.pts[i - 1][1]) * 100));
+  return (b.var ? 'méd. ' : '') + ls.join(' + ');
+};
+function quadroBarras(det) {
+  const lin = det.pos.map(b => `<tr><td><b>N${b.N}</b></td><td class="l">${b.nome}</td><td class="num">${phiTxt(b.phi)}</td><td class="num">${b.s ? phiTxt(b.s) : '—'}</td><td class="num">${b.qtd}</td><td class="num">${b.comp}${b.var ? '*' : ''}</td><td class="num">${fmt(b.tot, 2)}</td><td class="shape">${shapeSvg(b)}</td><td class="num l" style="font-size:11.5px">${segTxt(b)}</td></tr>`).join('');
+  return `<table><thead><tr><th>Pos.</th><th class="l">Elemento</th><th>ø (mm)</th><th>c/ (cm)</th><th>Quant.</th><th>C unit. (cm)</th><th>C total (m)</th><th class="l">Forma</th><th class="l">Trechos (cm)</th></tr></thead><tbody>${lin}</tbody></table>`;
+}
+function resumoAco(det) {
+  const by = {}; det.pos.forEach(b => { by[b.phi] = (by[b.phi] || 0) + b.tot; });
+  const phis = Object.keys(by).map(Number).sort((a, b) => a - b);
+  let kg = 0;
+  const rows = phis.map(f => { const m = by[f] * (KGM[f] || 0); kg += m; return { f, L: by[f], m }; });
+  return { rows, kg, kg10: kg * 1.1, taxa: det.vol > 0 ? kg * 1.1 / det.vol : 0 };
+}
+function renderDet(o) {
+  const det = detalhar(o), { r, p } = o;
+  o.det = det;
+  let h = `<div class="figscroll detfig">${drawDet(o, det, 'A').svg}</div>`;
+  if (r.cOn) h += `<div class="figscroll detfig" style="margin-top:10px">${drawDet(o, det, 'B').svg}</div>`;
+  el('det').innerHTML = h;
+  el('det-cob').textContent = fmt(p.cob, 1);
+  const base = r.cOn ? `Quantidades por vão de ${fmt(p.s)} m entre contrafortes (barras da parede e da sapata) e por contraforte (barras do contraforte).` : `Quantidades por pano de ${fmt(p.Lp)} m entre juntas.`;
+  el('qbar').innerHTML = quadroBarras(det) + `<p class="note">${base} * Comprimento variável: o valor é a média dos grampos.</p>`;
+  const ra = resumoAco(det);
+  el('raco').innerHTML = `<table><thead><tr><th>ø (mm)</th><th>Comprimento (m)</th><th>kg/m</th><th>Massa (kg)</th></tr></thead><tbody>${ra.rows.map(x => `<tr><td class="num">${phiTxt(x.f)}</td><td class="num">${fmt(x.L)}</td><td class="num">${fmt(KGM[x.f], 3)}</td><td class="num">${fmt(x.m, 1)}</td></tr>`).join('')}
+    <tr class="tot"><td>Total</td><td></td><td></td><td class="num">${fmt(ra.kg, 1)}</td></tr><tr><td>Com 10% de perdas</td><td></td><td></td><td class="num"><b>${fmt(ra.kg10, 1)}</b></td></tr></tbody></table>
+    <p class="note">Concreto: ${fmt(det.vol, 3)} m³ por ${r.cOn ? 'vão (com um contraforte)' : 'pano'} · taxa de aço ≈ <b>${fmt(ra.taxa, 0)} kg/m³</b> · ${fmt(ra.kg10 / det.Lp, 1)} kg por metro de muro.</p>`;
+  const P = o.D.P, an = lbNec(10, P, 1, false);
+  el('det-hip').innerHTML = [
+    `Ancoragem (NBR 6118, 9.4): barras nervuradas, boa aderência, f<sub>bd</sub> = 2,25 · f<sub>ctd</sub> = ${fmt(2.25 * P.fctd, 2)} MPa; l<sub>b</sub> = (φ/4)(f<sub>yd</sub>/f<sub>bd</sub>) ≥ 25φ (ø10 → ${fmt(an.lb * 100, 0)} cm); com gancho, α = 0,7 e l<sub>b,nec</sub> ≥ l<sub>b,mín</sub>.`,
+    'Barras verticais da face do aterro descem até a armadura inferior da sapata e dobram em gancho de 90° (para a ponta, quando houver, ou para o talão), com o trecho horizontal que completa a ancoragem.',
+    'Sapata: barras inferiores e superiores de face a face, com ganchos nas pontas (para cima nas inferiores e para baixo nas superiores); distribuição nas duas faces.',
+    r.dOn ? `Chaveta (${POS_TXT[p.dPos] || ''}): estribos em U ancorados na sapata, com duas barras longitudinais construtivas no fundo.` : 'Sem chaveta.',
+    r.cOn ? `Contraforte: ${det.cont.nI} ø${phiTxt(det.cont.phiI)} inclinadas na face de trás (A<sub>s</sub> = ${fmt(o.D.rows.cont.AsInc)} cm²), ancoradas na sapata; grampos horizontais (maior entre o tirante da parede e os estribos) e verticais (maior entre o tirante do talão e o estribo mínimo).` : 'Sem contrafortes.',
+    'Barras longitudinais com o comprimento do pano; em panos maiores que 12 m ou em barras contínuas sobre contrafortes, prever emendas por traspasse (NBR 6118, 9.5.2) fora das regiões de maior esforço.',
+    'Representação: barras dobradas em vermelho; barras cortadas pelo plano como pontos. Detalhamento preliminar, a confirmar no projeto executivo (dobras, emendas, juntas, drenos e barbacãs).'
+  ].map(t => `<li>${t}</li>`).join('');
+  return det;
+}
+
 /* ---------- eventos ---------- */
 bind();
 el('tb-est').addEventListener('click', () => setTab('est'));
 el('tb-arm').addEventListener('click', () => setTab('arm'));
-try { const t = localStorage.getItem(TABKEY); if (t === 'arm') setTab('arm'); } catch (e) {}
+el('tb-det').addEventListener('click', () => setTab('det'));
+document.querySelectorAll('[data-fig]').forEach(b => b.addEventListener('click', () => setFig(b.dataset.fig)));
+document.addEventListener('click', e => { const b = e.target.closest('[data-v3view]'); if (b && V3.v) { V3.view = b.dataset.v3view; V3.v.ajustar(null, V3DIR[V3.view]); } });
+el('v3-in').addEventListener('click', () => { if (V3.v) V3.v.zoom(0.8); });
+el('v3-out').addEventListener('click', () => { if (V3.v) V3.v.zoom(1.25); });
+const setLayers = m => { document.querySelectorAll('[data-v3l]').forEach(c => { if (c.dataset.v3l !== 'corte') c.checked = m[c.dataset.v3l] != null ? m[c.dataset.v3l] : true; }); if (V3.v) v3build(true); };
+el('v3-only').addEventListener('click', () => setLayers({ solo: false, base: false, cargas: false, muro: true, cont: true }));
+el('v3-all').addEventListener('click', () => setLayers({}));
+document.querySelectorAll('[data-v3l]').forEach(c => c.addEventListener('change', () => { if (V3.v) v3build(false); }));
+el('v3-esf').addEventListener('change', () => { V3.esf = el('v3-esf').value; if (V3.v) v3build(false); });
+el('v3-np').addEventListener('change', () => { if (figMode === 'planta') drawFig(); if (V3.v) v3build(true); });
+try { const t = localStorage.getItem(TABKEY); setTab(t === 'arm' || t === 'det' ? t : 'est'); } catch (e) { setTab('est'); }
 el('reset').addEventListener('click', () => {
   state = Object.assign({}, DEFAULTS); armOv = {}; invalid.clear();
   try { localStorage.removeItem(OVKEY); } catch (e) {}
   document.querySelectorAll('.field.bad').forEach(f => f.classList.remove('bad'));
   bind(); render();
 });
+try { const f = localStorage.getItem(FIGKEY); if (f === 'planta' || f === '3d') figMode = f; } catch (e) {}
 el('arm').addEventListener('change', e => {
   const t = e.target; if (!t.dataset || !t.dataset.f) return;
   const row = t.closest('tr'), k = row.dataset.k;
@@ -1059,5 +1692,5 @@ el('memo').addEventListener('click', async () => {
   btn.disabled = false; btn.textContent = lab;
 });
 render();
-
+setFig(figMode);
 </script></body></html>
