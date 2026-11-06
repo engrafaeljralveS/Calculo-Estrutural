@@ -2781,11 +2781,125 @@ function printSvg(svg, fontScale = 1.3) {
   return { svg: s, W, H };
 }
 
+/* ---------- Mapas planificados das envoltórias ELU (memorial, item 2.3) ----------
+   Lajes de topo e de fundo (com a aba) em planta; parede longa (x = +B/2) e parede curta (y = +L/2) desdobradas lado a lado,
+   vistas por fora, contínuas no canto que dividem. Escala arco-íris em 12 faixas: vermelho é o maior esforço (na envoltória
+   mínima, o mais negativo). Desenho direto em canvas; devolve JPEG. Só caixa retangular (modelo de 1/4 espelhado). */
+const MAPA_D1 = { top: 0, bot: 1, wx: 0, wy: 1 };
+const MAPA_ARCO = ['#3949ab', '#1e88e5', '#29b6f6', '#26c6da', '#26a69a', '#66bb6a', '#9ccc65', '#d4e157', '#ffee58', '#ffca28', '#ffa726', '#fb8c00', '#f4511e', '#d32f2f'];
+function mapaRaw(fe, k, s, j, c) {
+  const A = fe.results[k].res[s], o = 8 * j, i1 = MAPA_D1[s], i2 = 1 - i1;
+  return { M1: A[o + i1], M2: A[o + i2], Q1: A[o + 3 + i1], Q2: A[o + 3 + i2], N1: A[o + 5 + i1], N2: A[o + 5 + i2] }[c];
+}
+function mapaFlip(s, c, ex, ey) {
+  const loc = { Q1: 3 + MAPA_D1[s], Q2: 4 - MAPA_D1[s] }[c];
+  if (loc == null) return false;
+  const fx = ex && (s === 'wx' ? false : (s === 'wy' ? FLIP.wy.h : FLIP[s].h).includes(loc));
+  const fy = ey && (s === 'wy' ? false : (s === 'wx' ? FLIP.wx.h : FLIP[s].v).includes(loc));
+  return fx !== fy;
+}
+// cor da faixa i (0 = menor) de n faixas, nas pontas exatas da paleta
+function mapaCorFaixa(i, n) {
+  const cs = MAPA_ARCO.map(h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)));
+  const t = (n > 1 ? i / (n - 1) : 0.5) * (cs.length - 1), a = Math.min(cs.length - 2, Math.floor(t)), f = t - a;
+  return cs[a].map((v, k) => Math.round(v + (cs[a + 1][k] - v) * f));
+}
+// fe: resultado do motor (já unido); m: Calc.compute; c: M1|M2|N1|N2|Q1|Q2; mode: max|min
+function mapaPlan(fe, m, c, mode, unit) {
+  const p = m.p, G = fe.geo, Hc = p.H + (p.es + p.ei) / 2, Bc = p.B + p.ep, Lc = p.L + p.ep, GAP = 0.55;
+  const MIR = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
+  const keep = { top: () => true, bot: () => true, wx: q => q[0] > 0, wy: q => q[1] > 0 };
+  const ext = {};
+  Object.keys(fe.surfNodes).forEach(s => { let a = 0, b = 0; fe.surfNodes[s].forEach(i => { a = Math.max(a, Math.abs(fe.nodes[i][0])); b = Math.max(b, Math.abs(fe.nodes[i][1])); }); ext[s] = [a, b]; });
+  const wTop = 2 * ext.top[0], hTop = 2 * ext.top[1], wBot = 2 * ext.bot[0], hBot = 2 * ext.bot[1];
+  const row1W = wTop + GAP + wBot, row1H = Math.max(hTop, hBot), row2W = Lc + Bc, row2H = Hc;
+  const W = Math.max(row1W, row2W), H = row1H + GAP * 1.3 + row2H;
+  const x1 = (W - row1W) / 2, x2 = (W - row2W) / 2, yRow1 = row2H + GAP * 1.3;
+  const place = {
+    top: q => [x1 + q[0] + ext.top[0], yRow1 + (row1H - hTop) / 2 + q[1] + ext.top[1]],
+    bot: q => [x1 + wTop + GAP + q[0] + ext.bot[0], yRow1 + (row1H - hBot) / 2 + q[1] + ext.bot[1]],
+    wx: q => [x2 + q[1] + Lc / 2, q[2]],
+    wy: q => [x2 + Lc + (Bc / 2 - q[0]), q[2]]
+  };
+  const boxes = { top: [x1, yRow1 + (row1H - hTop) / 2, wTop, hTop], bot: [x1 + wTop + GAP, yRow1 + (row1H - hBot) / 2, wBot, hBot], wx: [x2, 0, Lc, row2H], wy: [x2 + Lc, 0, Bc, row2H] };
+  const polys = [];
+  let lo = Infinity, hi = -Infinity, best = null, worst = null;
+  Object.keys(fe.surfNodes).forEach(s => {
+    const list = fe.surfNodes[s], loc = new Map(list.map((i, j) => [i, j]));
+    const env = list.map((_, j) => { let mx = -Infinity, mn = Infinity; fe.eluIdx.forEach(k => { if (s === 'top' && fe.tags[k].st === 'constr') return; const v = mapaRaw(fe, k, s, j, c); if (v > mx) mx = v; if (v < mn) mn = v; }); return [mx, mn]; });
+    const els = fe.elems.filter(e => e.s === s);
+    MIR.forEach(([sx, sy]) => {
+      const fl = mapaFlip(s, c, sx < 0, sy < 0);
+      const val = j => { const [mx, mn] = env[j]; return mode === 'max' ? (fl ? -mn : mx) : (fl ? -mx : mn); };
+      const pt = i => { const q = fe.nodes[i]; return [sx * q[0], sy * q[1], q[2]]; };
+      list.forEach((i, j) => {
+        const q = pt(i); if (!keep[s](q) || !inDesign(s, q, G, p, Hc)) return;
+        const v = val(j); if (v < lo) lo = v; if (v > hi) hi = v;
+        if (!best || v > best.v) best = { v, q, s }; if (!worst || v < worst.v) worst = { v, q, s };
+      });
+      els.forEach(e => {
+        const P = e.n.map(pt), V = e.n.map(i => val(loc.get(i)));
+        const cen = P.reduce((a, b) => a.map((v, k) => v + b[k] / 4), [0, 0, 0]);
+        if (!keep[s](cen)) return;
+        const N = 3, bil = (u, w) => { const k = [(1 - u) * (1 - w), u * (1 - w), u * w, (1 - u) * w]; return [[0, 1, 2].map(d => k[0] * P[0][d] + k[1] * P[1][d] + k[2] * P[2][d] + k[3] * P[3][d]), k[0] * V[0] + k[1] * V[1] + k[2] * V[2] + k[3] * V[3]]; };
+        for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) {
+          const cc = [[a / N, b / N], [(a + 1) / N, b / N], [(a + 1) / N, (b + 1) / N], [a / N, (b + 1) / N]].map(([u, w]) => bil(u, w));
+          polys.push([cc.map(x => place[s](x[0])), bil((a + 0.5) / N, (b + 0.5) / N)[1]]);
+        }
+      });
+    });
+  });
+  if (!Number.isFinite(lo)) { lo = 0; hi = 1; }
+  // escala: na envoltória mínima, invertida (o mais negativo fica vermelho)
+  const sg = mode === 'min' ? -1 : 1, clo = sg > 0 ? lo : -hi, chi = sg > 0 ? hi : -lo, span = Math.max(chi - clo, 1e-9), NF = 12;
+  const banda = v => Math.min(NF - 1, Math.max(0, Math.floor((sg * v - clo) / span * NF)));
+  const cores = Array.from({ length: NF }, (_, i) => mapaCorFaixa(i, NF)), css = c3 => `rgb(${c3[0]},${c3[1]},${c3[2]})`;
+  // desenho
+  const SW = 900, SH = 860, legW = 165, padL = 20, padB = 52, S = 1.5;
+  const sc = Math.min((SW - legW - padL - 20) / W, (SH - 50 - padB) / (H + 0.6));
+  const ox = padL + ((SW - legW - padL - 20) - W * sc) / 2, oy = SH - padB - 0.15 * sc;
+  const X = a => ox + a * sc, Y = b => oy - b * sc;
+  const cv = document.createElement('canvas'); cv.width = SW * S; cv.height = SH * S;
+  const g = cv.getContext('2d'); g.scale(S, S);
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, SW, SH);
+  g.lineJoin = 'round';
+  polys.forEach(([P, v]) => {
+    const col = css(cores[banda(v)]);
+    g.beginPath(); P.forEach(([a, b], k) => k ? g.lineTo(X(a), Y(b)) : g.moveTo(X(a), Y(b))); g.closePath();
+    g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 0.5; g.fill(); g.stroke();
+  });
+  const LAB = { top: 'Laje de topo (planta)', bot: 'Laje de fundo e aba (planta)', wx: 'Parede longa (x = +B/2)', wy: 'Parede curta (y = +L/2)' };
+  g.strokeStyle = '#1f2b37'; g.fillStyle = '#1f2b37'; g.lineWidth = 1.6; g.textAlign = 'center';
+  Object.entries(boxes).forEach(([s, [a, b, w, h]]) => {
+    g.strokeRect(X(a), Y(b + h), w * sc, h * sc);
+    g.font = '600 22px Arial, sans-serif';
+    g.fillText(LAB[s], X(a + w / 2), s === 'wx' || s === 'wy' ? Y(b) + 30 : Y(b + h) - 10);
+  });
+  const cx = X(boxes.wy[0]); g.lineWidth = 2.2; g.beginPath(); g.moveTo(cx, Y(Hc) - 10); g.lineTo(cx, Y(0) + 4); g.stroke();
+  g.font = '20px Arial, sans-serif'; g.fillText('canto', cx, Y(Hc) - 16);
+  g.textAlign = 'left'; g.fillStyle = '#5e6b78'; g.font = '18px Arial, sans-serif';
+  g.fillText('x (B) →   y (L) ↑', X(boxes.top[0]), Y(boxes.top[1]) + 24);
+  const e = mode === 'max' ? best : worst;
+  if (e) { const [a, b] = place[e.s](e.q); g.strokeStyle = '#111'; g.lineWidth = 3.2; g.beginPath(); g.arc(X(a), Y(b), 10, 0, 2 * Math.PI); g.stroke(); g.fillStyle = '#111'; g.beginPath(); g.arc(X(a), Y(b), 3, 0, 2 * Math.PI); g.fill(); }
+  // legenda em faixas, maior esforço em cima
+  const bh = 44, lx = SW - legW + 10, ly = (SH - NF * bh) / 2 + 10;
+  const nf = v => fmt(v, Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2);
+  g.fillStyle = '#1f2b37'; g.font = '600 22px Arial, sans-serif'; g.fillText(unit, lx, ly - 18);
+  for (let i = 0; i < NF; i++) { g.fillStyle = css(cores[NF - 1 - i]); g.fillRect(lx, ly + i * bh, 24, bh); }
+  g.strokeStyle = '#5e6b78'; g.lineWidth = 1; g.strokeRect(lx, ly, 24, NF * bh);
+  g.fillStyle = '#1f2b37'; g.font = '20px Consolas, "IBM Plex Mono", monospace';
+  for (let i = 0; i <= NF; i++) g.fillText(nf(sg * (chi - span * i / NF)), lx + 32, ly + i * bh + 6);
+  const NAME = { top: 'laje de topo', bot: 'laje de fundo', wx: 'parede longa', wy: 'parede curta' };
+  return new Promise((res, rej) => cv.toBlob(b => b ? b.arrayBuffer().then(a => res({ jpg: new Uint8Array(a), W: SW, H: SH,
+    ext: e ? { v: e.v, s: NAME[e.s], x: e.q[0], y: e.q[1], z: m.z.base + p.ei / 2 + e.q[2] } : null })) : rej(new Error('jpg')), 'image/jpeg', 0.88));
+}
+
 async function buildMemorialFull(D) {
   const { m, fe, A, aux, sel, chk, RF, asMaxOk, reinf, sh } = D;
   const p = m.p, z = m.z, P = A.P;
   const imgs = [];
-  const addImg = async (o, scale = 2.2) => { const png = await svgToPng(o.svg, o.W, o.H, scale); imgs.push({ png, W: o.W, H: o.H }); return imgs.length; };
+  const addImg = async (o, scale = 2.2) => { const png = await svgToPng(o.svg, o.W, o.H, scale); imgs.push({ png, W: o.W, H: o.H, ext: 'png' }); return imgs.length; };
+  const addJpg = o => { imgs.push({ png: o.jpg, W: o.W, H: o.H, ext: 'jpeg' }); return imgs.length; };
   const C = { ink: '1b2830', muted: '566872', accent: '1d5f8a', line: 'c5cfd3', head: 'e9eef0', ok: '1b7a4b', okbg: 'dcefe4', bad: 'b0372b', badbg: 'f6dfdb' };
   const SZ = 16;   // 8 pt nas tabelas
   // texto com subscrito: "A_s,ef" -> A + subscrito "s,ef"
@@ -2810,7 +2924,7 @@ async function buildMemorialFull(D) {
   const num = (v, d = 2) => ({ t: fmt(v, d), al: 'right' });
   const imgRun = (idx, cx) => {
     const im = imgs[idx - 1], cy = Math.round(cx * im.H / im.W);
-    return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idx}" name="Figura ${idx}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idx}" name="fig${idx}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+    return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idx}" name="Figura ${idx}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idx}" name="fig${idx}.${im.ext || 'png'}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
   };
   const figure = (idx, caption, frac = 1) => wPar(imgRun(idx, Math.round(W0 * 635 * frac)), { al: 'center', keep: true }) + wPar(R(caption, { sz: 16, i: true, color: C.muted }), { al: 'center', after: 120 });
   const figPair = (a, b, ca, cb) => {
@@ -2910,7 +3024,24 @@ async function buildMemorialFull(D) {
     body.push(figPair(sIdx[i], sIdx[i + 1], `Figura ${fig} · ${cap(strips[i])}`, `Figura ${fig + 1} · ${cap(strips[i + 1])}`));
     fig += 2;
   }
-  body.push(H2('2.3 Esforços de dimensionamento'));
+  body.push(H2('2.3 Mapas das envoltórias ELU (vista planificada)'));
+  if (circ) body.push(txt('Na caixa circular, os esforços são constantes ao redor do eixo (modelo axissimétrico): a distribuição ao longo do meridiano está nos diagramas do item 2.2.', { color: C.muted }));
+  else {
+    body.push(txt(`Cada par de figuras mostra um esforço: à esquerda a envoltória máxima (o maior valor em cada ponto entre as ${fe.eluIdx.length} combinações ELU) e à direita a mínima (o menor valor). Em cima, a laje de topo e a laje de fundo com a aba, em planta (x paralelo a B para a direita, y paralelo a L para cima). Embaixo, a parede longa (x = +B/2) e a parede curta (y = +L/2) desdobradas lado a lado e vistas por fora, contínuas no canto que as duas dividem; pela dupla simetria da caixa, os outros três cantos são iguais a este. Todas as peças estão na mesma escala.`, { color: C.muted }));
+    body.push(txt('Direção 1: barras horizontais nas paredes e paralelas a B nas lajes. Direção 2: barras verticais nas paredes e paralelas a L nas lajes. M > 0 traciona a face externa; N > 0 é tração. Cores em 12 faixas, com escala própria em cada figura: vermelho é o maior esforço (na envoltória mínima, o mais negativo). O círculo marca o extremo fora dos nós parede-laje.', { color: C.muted }));
+    const MAPAS = [['M1', 'Momento fletor Mx (direção 1)', 'kN·m/m'], ['M2', 'Momento fletor My (direção 2)', 'kN·m/m'], ['N1', 'Esforço normal Nx (direção 1)', 'kN/m'],
+      ['N2', 'Esforço normal Ny (direção 2)', 'kN/m'], ['Q1', 'Esforço cortante Vx (direção 1)', 'kN/m'], ['Q2', 'Esforço cortante Vy (direção 2)', 'kN/m']];
+    const sgn = v => (v > 0 ? '+' : '') + fmt(v, 2);
+    for (const [c, title, unit] of MAPAS) {
+      const a = await mapaPlan(fe, m, c, 'max', unit), b = await mapaPlan(fe, m, c, 'min', unit);
+      const ia = addJpg(a), ib = addJpg(b);
+      const cap = (o, k, n) => `Figura ${n} · ${title.split(' (')[0]}, envoltória ${k}` + (o.ext ? `: ${sgn(o.ext.v)} ${unit} na ${o.ext.s} (x = ${fmt(o.ext.x, 2)}, y = ${fmt(o.ext.y, 2)}, cota ${fz(o.ext.z)} m)` : '');
+      body.push(wPar(R(title, { b: true, sz: 17, color: C.ink }), { before: 80, after: 20, keep: true }));
+      body.push(figPair(ia, ib, cap(a, 'máxima', fig), cap(b, 'mínima', fig + 1)));
+      fig += 2;
+    }
+  }
+  body.push(H2('2.4 Esforços de dimensionamento'));
   const envRows = [];
   A.groups.forEach(g => {
     envRows.push({ span: `${g.name} · h = ${fmt(g.h * 100, 0)} cm` });
@@ -2922,7 +3053,7 @@ async function buildMemorialFull(D) {
   body.push(table([1500, 2406, 1200, 1200, 1300, 1300, 1300], ['Armadura', 'Face tracionada', 'M_d (kN·m/m)', 'N_d (kN/m)', 'M_{d,máx}', 'M_ser', 'V_Sd (kN/m)'], envRows));
   body.push(txt('Envoltória das combinações ELU (caixa vazia' + (aux.hag > 0 ? ', caixa cheia, teste de estanqueidade' : '') + ' e etapa construtiva) nas regiões entre as faces dos apoios. M_d e N_d são os da seção que exige mais armadura (N_d + = tração); M_ser vem da combinação frequente com a caixa vazia. Na laje de fundo, a região inclui a aba.' + (circ ? ' Na parede circular, a armadura horizontal (anelar) resiste à tração N_θ da água interna.' : ''), { color: C.muted, sz: 16 }));
 
-  body.push(H2('2.4 Tensão no solo'));
+  body.push(H2('2.5 Tensão no solo'));
   {
     const s = A.soil, K = Arm.KGF, r = (l, v, b) => [b ? { t: l, b: true } : l, num(v, 1), { t: fmt(v / K, 2), al: 'right', b: !!b }];
     const rs = (s.list || []).map(x => r('Máxima, ' + x.lab, x.p));
@@ -2987,15 +3118,15 @@ async function buildMemorialFull(D) {
   const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body.join('')}${sect}</w:body></w:document>`;
   const footer = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:color w:val="566872"/><w:sz w:val="15"/></w:rPr><w:t xml:space="preserve">Memória de cálculo · caixa enterrada · página </w:t></w:r><w:r><w:rPr><w:color w:val="566872"/><w:sz w:val="15"/></w:rPr><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:rPr><w:color w:val="566872"/><w:sz w:val="15"/></w:rPr><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:rPr><w:color w:val="566872"/><w:sz w:val="15"/></w:rPr><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:color w:val="566872"/><w:sz w:val="15"/></w:rPr><w:t>1</w:t></w:r><w:r><w:rPr><w:color w:val="566872"/><w:sz w:val="15"/></w:rPr><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>`;
   const NS = 'http://schemas.openxmlformats.org/';
-  const rels = imgs.map((_, i) => `<Relationship Id="rIdImg${i + 1}" Type="${NS}officeDocument/2006/relationships/image" Target="media/fig${i + 1}.png"/>`).join('');
+  const rels = imgs.map((_, i) => `<Relationship Id="rIdImg${i + 1}" Type="${NS}officeDocument/2006/relationships/image" Target="media/fig${i + 1}.${imgs[i].ext || 'png'}"/>`).join('');
   const files = [
-    { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>` },
+    { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>` },
     { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${NS}officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>` },
     { name: 'word/_rels/document.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rIdSt" Type="${NS}officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdFt" Type="${NS}officeDocument/2006/relationships/footer" Target="footer1.xml"/>${rels}</Relationships>` },
     { name: 'word/styles.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:before="0" w:after="0" w:line="252" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>` },
     { name: 'word/footer1.xml', data: footer },
     { name: 'word/document.xml', data: doc }
-  ].concat(imgs.map((im, i) => ({ name: `word/media/fig${i + 1}.png`, data: im.png })));
+  ].concat(imgs.map((im, i) => ({ name: `word/media/fig${i + 1}.${im.ext || 'png'}`, data: im.png })));
   return zipStore(files);
 }
 
