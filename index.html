@@ -154,6 +154,27 @@ iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(
   mb.addEventListener('click', function(){ var o=document.body.classList.toggle('open'); mb.setAttribute('aria-expanded', String(o)); });
   function setTop(){ document.documentElement.style.setProperty('--toph', document.getElementById('top').getBoundingClientRect().bottom+'px'); }
   setTop(); window.addEventListener('resize', setTop);
+
+  // Downloads dos programas: cada programa roda num quadro e pede o arquivo por mensagem;
+  // a página principal salva com o recurso de download do Claude (quando existe).
+  window.addEventListener('message', async function (ev) {
+    var d = ev.data; if (!d || d.tipo !== 'suite-claude' || !ev.source) return;
+    var ok = Object.keys(frames).some(function (k) { return frames[k].contentWindow === ev.source; });
+    if (!ok) return;
+    var reply = function (x) { try { ev.source.postMessage(Object.assign({ tipo: 'suite-claude-r', id: d.id }, x), '*'); } catch (e) {} };
+    try {
+      if (d.cap !== 'downloads') return reply({ nulo: true });
+      var ns = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      if (!ns) return reply({ nulo: true });
+      if (d.op === 'probe') return reply({ ok: true });
+      if (d.op === 'save') {
+        var a = d.args || {}, r = await ns.save({ filename: String(a.filename || 'arquivo'), data: a.data });
+        var safe = null; try { safe = JSON.parse(JSON.stringify(r == null ? null : r)); } catch (e) {}
+        return reply({ ok: true, r: safe });
+      }
+      reply({ nulo: true });
+    } catch (e) { reply({ erro: { code: e && e.code, message: String(e && e.message || e) } }); }
+  });
   show(location.hash.slice(1));
 })();
 </script>
