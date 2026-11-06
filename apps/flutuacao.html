@@ -3691,7 +3691,7 @@ window.V3 = (function () {
   }
   function arrow(o, dir, len, color) {
     if (!(len > 1e-4)) return;
-    const hl = Math.min(len * 0.45, 0.16), hw = hl * 0.6;
+    const hl = Math.min(len * 0.4, 0.2), hw = hl * 0.65;
     const a = new THREE.ArrowHelper(dir.clone().normalize(), o, len, new THREE.Color(color).getHex(), hl, hw);
     root.add(a);
   }
@@ -3727,14 +3727,14 @@ window.V3 = (function () {
     const mk = (opts) => new THREE.MeshLambertMaterial(Object.assign({ side: THREE.DoubleSide, clippingPlanes: clip }, opts));
     const conc = mk({ color: C.conc });
     const concE = new THREE.LineBasicMaterial({ color: C.concLine, clippingPlanes: clip });
-    const soil = mk({ color: C.soil, transparent: true, opacity: 0.32, depthWrite: false });
+    const soil = mk({ color: C.soil, transparent: true, opacity: 0.24, depthWrite: false });
     const soilE = new THREE.LineBasicMaterial({ color: C.soilLine, transparent: true, opacity: 0.45, clippingPlanes: clip });
     const waterM = mk({ color: C.water, transparent: true, opacity: 0.22, depthWrite: false });
 
     const Bx = m.Bext, Lx = m.Lext, Bi = m.Binf, Li = m.Linf, B = p.B, L = circ ? p.B : p.L;
     const yBase = z.base, yBT = z.botTop, yTB = z.topBot, yTT = z.topTop;
     const yTerr = Math.max(0, yTT);
-    const M = Math.max(1.0, 0.45 * Math.max(Bi, Li));
+    const M = Math.max(0.6, 0.28 * Math.max(Bi, Li));
     const Wsoil = Bi + 2 * M, Lsoil = circ ? Wsoil : Li + 2 * M;
     const legend = [];
 
@@ -3788,7 +3788,7 @@ window.V3 = (function () {
     const hag = p.agua ? Math.min(p.hag, p.H) : 0, pInt = oper && hag > 0 ? p.gw * hag : 0;
     const pMax = Math.max(sub, lat(yBase), lat(yBT), p.q, pStop, pInt, 1);
     const size = Math.max(Bi, Li, m.Htot);
-    const kL = (0.32 * size) / pMax;
+    const kL = (0.42 * size) / pMax;
     const lenOf = pr => pr * kL;
     const nG = circ ? 6 : 5;
 
@@ -3854,7 +3854,7 @@ window.V3 = (function () {
     // enquadramento: só na primeira vez, em "Ajustar vista" ou quando a caixa muda muito de tamanho
     const sizeNow = Math.max(Wsoil, m.Htot);
     if (!fitted || Math.abs(sizeNow - lastSize) / Math.max(lastSize, 1e-6) > 0.35) {
-      const cy = (yBase + yTerr) / 2, dist = 1.45 * Math.max(Wsoil, Lsoil, m.Htot + 1) / Math.tan(camera.fov * Math.PI / 360) / 1.4;
+      const cy = (yBase + yTerr) / 2, dist = 0.95 * Math.max(Wsoil, Lsoil, m.Htot + 1) / Math.tan(camera.fov * Math.PI / 360);
       controls.target.set(0, cy, 0);
       camera.position.set(dist * 0.62, cy + dist * 0.5, dist * 0.78);
       controls.update(); fitted = true; lastSize = sizeNow;
