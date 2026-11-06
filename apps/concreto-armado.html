@@ -522,8 +522,11 @@ var Motor = (function () {
     r.sigS = sigS; r.epsS = epsS;
     r.exagerada = dupla && As > 0 && (Asc / As) > 0.27;
     r.razaoAsc = dupla && As > 0 ? Asc / As : 0;
-    r.epsTracao = 3.5 * (d - x) / x;
-    r.dominio = r.epsTracao >= 10 ? 2 : (r.epsTracao >= m.eyd ? 3 : 4);
+    // deformações no ELU (NBR 6118): εcu = 3,5‰ (fck ≤ 50 MPa) e alongamento do aço limitado a 10‰.
+    // Se 3,5·(d − x)/x passar de 10‰, a seção está no domínio 2: o aço fica em 10‰ e o concreto não chega a 3,5‰.
+    var epsLivre = x > 0 ? 3.5 * (d - x) / x : Infinity;
+    if (epsLivre >= 10) { r.dominio = 2; r.epsTracao = 10; r.epsConc = d - x > 0 ? 10 * x / (d - x) : 0; }
+    else { r.dominio = epsLivre >= m.eyd ? 3 : 4; r.epsTracao = epsLivre; r.epsConc = 3.5; }
     r.Mrd = null;
     return r;
   }
@@ -1270,7 +1273,7 @@ if (typeof module !== 'undefined') module.exports = Motor;
       kpi('As,mín', f(r.Asmin, 2), unitA, 'ρmín = ' + f(r.Asmin / (g.bw * g.h) * 100, 3) + ' %') +
       kpi('As′ compressão', f(r.Asc, 2), unitA, r.dupla ? 'armadura dupla' : 'não necessária') +
       kpi('x / d', f(r.kx, 3), '', 'x = ' + f(r.x, 2) + ' cm · limite 0,45') +
-      kpi('Md', f(toM(r.Md), 1), uM(), 'domínio ' + r.dominio) + '</div>';
+      kpi('Md', f(toM(r.Md), 1), uM(), 'domínio ' + r.dominio + ' · εs = ' + f(r.epsTracao, 2) + '‰ · εc = ' + f(r.epsConc, 2) + '‰') + '</div>';
   }
   function memFlex(titulo, r) {
     return [[titulo],
@@ -1278,7 +1281,9 @@ if (typeof module !== 'undefined') module.exports = Motor;
       ['d usado', f(r.d !== undefined ? r.d : NaN, 1), 'cm'],
       ['fcd', f(r.mat.fcd * 10, 2), 'MPa'], ['fyd', f(r.mat.fyd * 10, 1), 'MPa'], ['εyd', f(r.mat.eyd, 3), '‰'], ['fctk,sup', f(r.mat.fctkSup * 10, 2), 'MPa'],
       ['d′ (CG da armadura comprimida)', f(r.dl, 1), 'cm'], ['KMD', f(r.KMD, 4), ''], ['Md,lim', f(toM(r.Mlim), 2), uM()], ['ΔMd,lim = Md − Md,lim', f(toM(r.dM), 2), uM()],
-      ['KX', f(r.kx, 4), ''], ['x', f(r.x, 3), 'cm'], ['εs', f(r.epsTracao, 2), '‰'],
+      ['KX', f(r.kx, 4), ''], ['x', f(r.x, 3), 'cm'], ['Domínio de deformação', String(r.dominio), ''],
+      ['εc (concreto, fibra mais comprimida)', f(r.epsConc, 2), r.dominio === 2 ? '‰ · < εcu = 3,5‰' : '‰ · = εcu'],
+      ['εs (aço tracionado)', f(r.epsTracao, 2), r.dominio === 2 ? '‰ · limitado a 10‰' : (r.dominio === 3 ? '‰ · εyd ≤ εs < 10‰' : '‰ · < εyd')],
       ['Rcd1', f(toF(r.Rcd1), 1), uF()], ['Rcd2', f(toF(r.Rcd2), 1), uF()], ['Rscd (compressão, aço)', f(toF(r.Cs), 1), uF()], ['Rstd (tração)', f(toF(r.Rtd), 1), uF()],
       ['As', f(r.As, 3), 'cm²'], ['As,mín', f(r.Asmin, 3), 'cm²'], ['As′', f(r.Asc, 3), 'cm²']];
   }
@@ -1858,6 +1863,7 @@ if (typeof module !== 'undefined') module.exports = Motor;
       b += D.p('Hipóteses: diagrama retangular de tensões com 0,85·fcd e λ = 0,8, limite x/d ≤ 0,45, γc = 1,4 e γs = 1,15' + (tf ? ', seção T' : '') + '.');
       if (fx.pos) { fx.pos.d = g.d; b += D.h2('Momento positivo (Mk⁺, tração embaixo)') + D.p(fx.pos.nomeCaso + (fx.pos.dupla ? ' (armadura dupla)' : ''), { i: true }) + D.tabelaMem(memFlex('Parâmetros e resultados', fx.pos).slice(1)); }
       if (fx.neg) { fx.neg.d = fx.dSup; b += D.h2('Momento negativo (Mk⁻, tração em cima)') + D.p(fx.neg.nomeCaso + (fx.neg.dupla ? ' (armadura dupla)' : ''), { i: true }) + D.tabelaMem(memFlex('Parâmetros e resultados', fx.neg).slice(1)); }
+      if (fx.pos || fx.neg) b += D.p('Deformações no ELU (NBR 6118): encurtamento último do concreto εcu = 3,5‰ (fck ≤ 50 MPa) e alongamento máximo do aço de 10‰. No domínio 2 o aço fica em 10‰ e o concreto não atinge 3,5‰ (εc = 10·x/(d − x)); nos domínios 3 e 4 o concreto está em 3,5‰ e εs = 3,5·(d − x)/x. Em todos os casos usa-se o diagrama retangular simplificado (0,85·fcd sobre 0,8·x).', { i: true });
       var I = fx.inf, S = fx.sup, ad = [];
       b += D.h2('Armadura adotada');
       b += fig('flex', lj ? 'Corte da laje (faixa de 1 m)' + (I.face ? ': armadura inferior Φ' + phiTxt(I.face.phi) + ' c/ ' + I.face.s + ' cm' : '') + (S.face ? '; superior Φ' + phiTxt(S.face.phi) + ' c/ ' + S.face.s + ' cm' : '') + '.'
