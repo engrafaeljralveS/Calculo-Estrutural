@@ -300,13 +300,44 @@ td .pill { font-size: 11.5px; padding: 2px 8px; }
           <div class="seg" role="group" aria-label="Etapa exibida no desenho">
             <button type="button" id="st-oper" aria-pressed="true">Operação</button>
             <button type="button" id="st-constr" aria-pressed="false">Construtiva</button>
+            <button type="button" id="st-3d" aria-pressed="false">3D</button>
           </div>
         </div>
-        <figure style="margin:0">
+        <figure style="margin:0" id="fig2d">
           <div class="figscroll" id="fig"></div>
           <figcaption id="figcap"></figcaption>
         </figure>
-        <ul class="legend">
+        <div id="v3" class="v3" hidden>
+          <div class="v3bar">
+            <label class="v3sel">Etapa
+              <select id="v3-etapa"><option value="oper">Operação (caixa completa)</option><option value="constr">Construtiva (escavação aberta)</option></select>
+            </label>
+            <div class="v3zoom">
+              <button class="btn" type="button" id="v3-in" aria-label="Aproximar" title="Aproximar">+</button>
+              <button class="btn" type="button" id="v3-out" aria-label="Afastar" title="Afastar">−</button>
+              <button class="btn" type="button" id="v3-fit">Ajustar vista</button>
+            </div>
+          </div>
+          <div class="v3opts">
+            <fieldset><legend>Mostrar</legend>
+              <label><input type="checkbox" id="v3-solo" checked> Solo</label>
+              <label><input type="checkbox" id="v3-agua" checked> Nível d'água</label>
+              <label><input type="checkbox" id="v3-corte"> Cortar ao meio</label>
+            </fieldset>
+            <fieldset><legend>Carregamentos</legend>
+              <label class="v3all"><input type="checkbox" id="v3-all" checked> Todos</label>
+              <label><input type="checkbox" id="v3-sub" checked> Subpressão</label>
+              <label><input type="checkbox" id="v3-emp" checked> Empuxo</label>
+              <label><input type="checkbox" id="v3-sobre" checked> Sobrecarga</label>
+              <label><input type="checkbox" id="v3-stop" checked> Solo sobre a laje</label>
+              <label><input type="checkbox" id="v3-int" checked> Água interna</label>
+            </fieldset>
+          </div>
+          <div class="v3box" id="v3-box"><p class="v3msg" id="v3-msg">Carregando a vista 3D…</p></div>
+          <ul class="legend" id="v3-leg"></ul>
+          <p class="v3hint">Arraste para girar · roda do mouse, pinça ou + e − para o zoom · botão direito ou dois dedos para mover. Setas em escala com a pressão de cada carregamento (valores característicos).</p>
+        </div>
+        <ul class="legend" id="leg2d">
           <li><span class="sw" style="background:var(--concrete)"></span>Concreto</li>
           <li><span class="sw" style="background:var(--soil)"></span>Solo</li>
           <li><span class="sw" style="background:var(--water);opacity:.55"></span>Solo abaixo do nível d'água</li>
@@ -3520,10 +3551,14 @@ if (typeof document !== 'undefined') {
     stage = s;
     el('st-oper').setAttribute('aria-pressed', String(s === 'oper'));
     el('st-constr').setAttribute('aria-pressed', String(s === 'constr'));
+    el('st-3d').setAttribute('aria-pressed', String(s === '3d'));
+    el('fig2d').hidden = el('leg2d').hidden = s === '3d';
+    el('v3').hidden = s !== '3d';
     render();
   };
   el('st-oper').addEventListener('click', () => setStage('oper'));
   el('st-constr').addEventListener('click', () => setStage('constr'));
+  el('st-3d').addEventListener('click', () => setStage('3d'));
 
   // campos conforme a forma (retangular/circular) e a opção de água interna
   function syncForma() {
@@ -3541,8 +3576,9 @@ if (typeof document !== 'undefined') {
       stageCard('Etapa construtiva', m.subC.rebaixo ? `Escavação aberta, só paredes e laje inferior; lençol rebaixado a ${fz(m.subC.zw)} m` : 'Escavação aberta: só paredes e laje inferior', m.constr, m) +
       stageCard('Etapa de operação', 'Caixa completa, com solo sobre a laje de topo', m.oper, m);
     el('calc').innerHTML = stageCalc('Etapa construtiva', m.constr, m) + stageCalc('Etapa de operação', m.oper, m);
-    el('fig').innerHTML = drawSection(m, stage === 'oper');
-    el('figcap').textContent = stage === 'oper' ? `Seção transversal ${m.circ ? 'pelo diâmetro' : 'pela largura B'}, em escala, na etapa de operação. O diagrama de empuxo é esquemático.${m.p.agua ? ' A água interna entra só nos esforços.' : ''}` : (m.circ ? 'Seção transversal pelo diâmetro' : 'Seção transversal pela largura B') + ', em escala, na etapa construtiva: escavação aberta, sem solo encostado nas paredes (folga ilustrativa), com água até o nível do lençol.';
+    if (stage === '3d') { if (window.V3) window.V3.show(m); }
+    else el('fig').innerHTML = drawSection(m, stage === 'oper');
+    if (stage !== '3d') el('figcap').textContent = stage === 'oper' ? `Seção transversal ${m.circ ? 'pelo diâmetro' : 'pela largura B'}, em escala, na etapa de operação. O diagrama de empuxo é esquemático.${m.p.agua ? ' A água interna entra só nos esforços.' : ''}` : (m.circ ? 'Seção transversal pelo diâmetro' : 'Seção transversal pela largura B') + ', em escala, na etapa construtiva: escavação aberta, sem solo encostado nas paredes (folga ilustrativa), com água até o nível do lençol.';
     el('weights').innerHTML = weightsTable(m);
     el('summary').innerHTML = summaryHtml(m);
     renderFE(m);
@@ -3554,4 +3590,289 @@ if (typeof document !== 'undefined') {
 }
 </script>
 
+<!--v3d--><style>
+.v3{display:grid;gap:10px}
+.v3bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.v3sel{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.v3sel select{font:500 13px var(--f-body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:5px 6px}
+.v3zoom{display:flex;gap:6px}
+.v3zoom .btn{min-width:38px;padding:5px 10px}
+.v3opts{display:flex;flex-wrap:wrap;gap:6px 26px}
+.v3opts fieldset{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;min-width:0}
+.v3opts legend{float:left;margin-right:4px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.v3opts label{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;white-space:nowrap}
+.v3opts input{accent-color:var(--accent);margin:0}
+.v3opts .v3all{font-weight:600}
+.v3box{position:relative;height:min(64vh,540px);min-height:320px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg);touch-action:none}
+.v3box canvas{display:block}
+.v3msg{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:16px;text-align:center;color:var(--muted);font-size:13px}
+.v3hint{margin:0;font-size:12px;color:var(--muted)}
+#v3-leg .sw{border:0;border-radius:2px}
+</style>
+<script>
+/* Vista 3D da caixa: concreto, solo, nível d'água e carregamentos característicos, a partir do mesmo modelo (Calc.compute).
+   Eixos da cena: x ao longo de B, z ao longo de L, y vertical (y = cota; terreno em y = 0). Unidades em m e kPa. */
+window.V3 = (function () {
+  const $ = id => document.getElementById(id);
+  const css = (n, d) => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim() || d;
+  const f1 = v => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  let ready = null, failed = false, R = null, scene, camera, controls, root = null, lastM = null, fitted = false, lastSize = 0;
+  const C = {};
+
+  function load(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('falha ao carregar ' + src)); document.head.appendChild(s); }); }
+  function ensure() {
+    if (!ready) ready = (window.THREE ? Promise.resolve() : load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'))
+      .then(() => (window.THREE && THREE.OrbitControls) ? null : load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'));
+    return ready;
+  }
+  function colors() {
+    Object.assign(C, {
+      bg: css('--bg', '#f4f6f8'), conc: css('--concrete', '#cfd6dc'), concLine: css('--concrete-line', '#6b7884'),
+      soil: css('--soil', '#e6d5b1'), soilLine: css('--soil-dot', '#8c6c3c'), water: css('--water', '#3d8ccb'),
+      emp: css('--pos', '#c0612a'), sobre: '#7a4fb0', stop: css('--soil-dot', '#8c6c3c'), ink: css('--ink', '#1f2b37')
+    });
+  }
+
+  function init() {
+    const box = $('v3-box');
+    try { R = new THREE.WebGLRenderer({ antialias: true }); }
+    catch (e) { failed = true; $('v3-msg').textContent = 'Este navegador não conseguiu abrir a vista 3D (WebGL indisponível).'; return; }
+    R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    R.localClippingEnabled = true;
+    box.appendChild(R.domElement);
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(38, 1, 0.02, 1000);
+    controls = new THREE.OrbitControls(camera, R.domElement);
+    controls.enableDamping = false; controls.screenSpacePanning = true;
+    controls.addEventListener('change', draw);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8a96a3, 0.85));
+    const d1 = new THREE.DirectionalLight(0xffffff, 0.55); d1.position.set(6, 12, 8); scene.add(d1);
+    const d2 = new THREE.DirectionalLight(0xffffff, 0.25); d2.position.set(-8, 4, -6); scene.add(d2);
+    new ResizeObserver(resize).observe(box);
+    wireUI();
+  }
+  function resize() {
+    if (!R) return;
+    const box = $('v3-box'), w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h) return;
+    R.setSize(w, h, false); R.domElement.style.width = '100%'; R.domElement.style.height = '100%';
+    camera.aspect = w / h; camera.updateProjectionMatrix(); draw();
+  }
+  function draw() { if (R && scene) R.render(scene, camera); }
+
+  function wireUI() {
+    const loads = ['v3-sub', 'v3-emp', 'v3-sobre', 'v3-stop', 'v3-int'];
+    ['v3-solo', 'v3-agua', 'v3-corte', 'v3-etapa', ...loads].forEach(id => $(id).addEventListener('change', () => { if (loads.includes(id)) $('v3-all').checked = loads.every(k => $(k).checked); build(); }));
+    $('v3-all').addEventListener('change', e => { loads.forEach(k => { $(k).checked = e.target.checked; }); build(); });
+    const zoom = f => { const t = controls.target; camera.position.sub(t).multiplyScalar(f).add(t); controls.update(); };
+    $('v3-in').addEventListener('click', () => zoom(0.8));
+    $('v3-out').addEventListener('click', () => zoom(1.25));
+    $('v3-fit').addEventListener('click', () => { fitted = false; build(); });
+  }
+
+  /* ---------- geometria ---------- */
+  function outline(w, l, circ, asPath) {
+    const s = asPath ? new THREE.Path() : new THREE.Shape();
+    if (circ) s.absarc(0, 0, w / 2, 0, Math.PI * 2, false);
+    else { s.moveTo(-w / 2, -l / 2); s.lineTo(w / 2, -l / 2); s.lineTo(w / 2, l / 2); s.lineTo(-w / 2, l / 2); s.lineTo(-w / 2, -l / 2); }
+    return s;
+  }
+  // prisma vertical entre as cotas y0 e y1, contorno externo (w×l) com furos [[w,l,circ], ...]
+  function solid(w, l, circ, holes, y0, y1, mat, edges) {
+    if (!(y1 > y0 + 1e-6) || !(w > 0)) return null;
+    const sh = outline(w, l, circ);
+    holes.forEach(([hw, hl, hc]) => { if (hw > 0 && (hc || hl > 0)) sh.holes.push(outline(hw, hl, hc, true)); });
+    const g = new THREE.ExtrudeGeometry(sh, { depth: y1 - y0, bevelEnabled: false, curveSegments: 64 });
+    g.rotateX(-Math.PI / 2); g.translate(0, y0, 0);
+    const mesh = new THREE.Mesh(g, mat);
+    root.add(mesh);
+    if (edges) root.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), edges));
+    return mesh;
+  }
+  function arrow(o, dir, len, color) {
+    if (!(len > 1e-4)) return;
+    const hl = Math.min(len * 0.45, 0.16), hw = hl * 0.6;
+    const a = new THREE.ArrowHelper(dir.clone().normalize(), o, len, new THREE.Color(color).getHex(), hl, hw);
+    root.add(a);
+  }
+  // pontos de uma grade sobre a planta (retangular ou circular), sem a região "fora"
+  function grid(w, l, circ, n, skip) {
+    const pts = [], nx = n, nz = circ ? n : Math.max(2, Math.round(n * l / w));
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+      const x = -w / 2 + w * (i + 0.5) / nx, z = -l / 2 + l * (j + 0.5) / nz;
+      if (circ && Math.hypot(x, z) > w / 2 * 0.97) continue;
+      if (skip && skip(x, z)) continue;
+      pts.push([x, z]);
+    }
+    return pts;
+  }
+
+  function dispose() {
+    if (!root) return;
+    root.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(mm => mm.dispose()); });
+    scene.remove(root); root = null;
+  }
+
+  function build() {
+    if (!R || !lastM) return;
+    colors();
+    dispose();
+    root = new THREE.Group(); scene.add(root);
+    scene.background = new THREE.Color(C.bg);
+    const m = lastM, p = m.p, z = m.z, circ = m.circ;
+    const oper = $('v3-etapa').value === 'oper';
+    const corte = $('v3-corte').checked;
+    const clip = corte ? [new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)] : [];
+    const show = id => $(id).checked;
+    const mk = (opts) => new THREE.MeshLambertMaterial(Object.assign({ side: THREE.DoubleSide, clippingPlanes: clip }, opts));
+    const conc = mk({ color: C.conc });
+    const concE = new THREE.LineBasicMaterial({ color: C.concLine, clippingPlanes: clip });
+    const soil = mk({ color: C.soil, transparent: true, opacity: 0.32, depthWrite: false });
+    const soilE = new THREE.LineBasicMaterial({ color: C.soilLine, transparent: true, opacity: 0.45, clippingPlanes: clip });
+    const waterM = mk({ color: C.water, transparent: true, opacity: 0.22, depthWrite: false });
+
+    const Bx = m.Bext, Lx = m.Lext, Bi = m.Binf, Li = m.Linf, B = p.B, L = circ ? p.B : p.L;
+    const yBase = z.base, yBT = z.botTop, yTB = z.topBot, yTT = z.topTop;
+    const yTerr = Math.max(0, yTT);
+    const M = Math.max(1.0, 0.45 * Math.max(Bi, Li));
+    const Wsoil = Bi + 2 * M, Lsoil = circ ? Wsoil : Li + 2 * M;
+    const legend = [];
+
+    /* concreto */
+    solid(Bi, Li, circ, [], yBase, yBT, conc, concE);
+    solid(Bx, Lx, circ, [[B, L, circ]], yBT, yTB, conc, concE);
+    const boE = m.vol.boE, loE = circ ? m.vol.boE : m.vol.loE, hasOpen = m.vol.openArea > 0;
+    if (oper) {
+      solid(Bx, Lx, circ, hasOpen ? [[boE, loE, circ]] : [], yTB, yTT, conc, concE);
+      if (m.vol.chimH > 0) solid(boE + 2 * p.ep, (circ ? boE : loE) + 2 * p.ep, circ, [[boE, loE, circ]], yTT, 0, conc, concE);
+    }
+
+    /* solo */
+    if (show('v3-solo')) {
+      const yUnder = yBase - Math.max(0.4, 0.25 * m.Htot);
+      solid(Wsoil, Lsoil, circ, [], yUnder, yBase, soil, soilE);
+      if (oper) {
+        solid(Wsoil, Lsoil, circ, [[Bi, Li, circ]], yBase, yBT, soil, soilE);
+        solid(Wsoil, Lsoil, circ, [[Bx, Lx, circ]], yBT, 0, soil, soilE);
+        if (yTT < 0) {
+          const hole = m.vol.chimH > 0 ? [boE + 2 * p.ep, (circ ? boE : loE) + 2 * p.ep, circ] : (hasOpen ? [boE, loE, circ] : null);
+          solid(Bx, Lx, circ, hole ? [hole] : [], yTT, 0, soil, soilE);
+        }
+      } else {
+        const ex = 0.5, We = Bi + 2 * ex, Le = (circ ? Bi : Li) + 2 * ex;
+        solid(Wsoil + 2 * ex, (circ ? Wsoil : Lsoil) + 2 * ex, circ, [[We, Le, circ]], yBase, 0, soil, soilE);
+      }
+    }
+    // contorno do terreno (z = 0) e do lençol
+    const ring = (w, l, y, color, op) => { const pts = outline(w, l, circ).getPoints(64).map(v => new THREE.Vector3(v.x, y, -v.y)); root.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: op < 1, opacity: op, clippingPlanes: clip }))); };
+    ring(Wsoil, Lsoil, 0, C.soilLine, 0.9);
+
+    /* nível d'água */
+    const zwE = oper ? m.sub.zw : m.subC.zw;
+    if (show('v3-agua') && zwE < yTerr + 1e-6 && zwE > yBase - 3) {
+      const plane = solid(Wsoil, Lsoil, circ, [[zwE < yBT ? Bi : Bx, zwE < yBT ? Li : Lx, circ]], zwE - 0.004, zwE + 0.004, waterM, null);
+      if (plane) plane.renderOrder = 2;
+      ring(Wsoil, Lsoil, zwE, C.water, 0.8);
+      legend.push([C.water, `Nível d'água na cota ${f1(zwE)} m${!oper && m.subC.rebaixo ? ' (rebaixado)' : ''}`, 0.5]);
+    }
+
+    /* carregamentos: escala única de comprimento por kPa */
+    const Ka = p.k0 ? 1 - Math.sin(p.phi * Math.PI / 180) : Math.pow(Math.tan((45 - p.phi / 2) * Math.PI / 180), 2);
+    const dw = p.zw < 0 ? -p.zw : 0, gp = Math.max(0, p.gsat - p.gw);
+    const sv = d => (d <= dw ? p.gd * d : p.gd * dw + gp * (d - dw));
+    const latOper = y => { const d = Math.max(0, -y); return Math.max(0, Ka * sv(d) - (p.k0 ? 0 : 2 * p.c * Math.sqrt(Ka))) + p.gw * Math.max(0, d - dw) + Ka * p.q; };
+    const latConstr = y => p.gw * Math.max(0, m.subC.zw - y);
+    const lat = oper ? latOper : latConstr;
+    const sub = (oper ? m.sub : m.subC).u;
+    const pStop = oper && yTT < 0 && m.vol.soilArea > 0 ? m.soloTopo.W / m.vol.soilArea : 0;
+    const hag = p.agua ? Math.min(p.hag, p.H) : 0, pInt = oper && hag > 0 ? p.gw * hag : 0;
+    const pMax = Math.max(sub, lat(yBase), lat(yBT), p.q, pStop, pInt, 1);
+    const size = Math.max(Bi, Li, m.Htot);
+    const kL = (0.32 * size) / pMax;
+    const lenOf = pr => pr * kL;
+    const nG = circ ? 6 : 5;
+
+    if (show('v3-sub') && sub > 0) {
+      grid(Bi, Li, circ, nG).forEach(([x, zz]) => { const len = lenOf(sub); arrow(new THREE.Vector3(x, yBase - len, -zz), new THREE.Vector3(0, 1, 0), len, C.water); });
+      legend.push([C.water, `Subpressão sob a laje de fundo: ${f1(sub)} kPa (uniforme)`, 1]);
+    }
+    if (show('v3-emp')) {
+      const ys = []; const yTopW = oper ? yTT : yTB, n = 6;
+      for (let i = 0; i < n; i++) ys.push(yBase + (yTopW - yBase) * (i + 0.5) / n);
+      const pBase = lat(yBase);
+      if (pBase > 0) {
+        const faceAt = y => (y < yBT ? [Bi, Li] : [Bx, Lx]);
+        if (circ) {
+          for (let k = 0; k < 12; k++) { const t = k / 12 * Math.PI * 2, dir = new THREE.Vector3(-Math.cos(t), 0, Math.sin(t));
+            ys.forEach(y => { const r = faceAt(y)[0] / 2, len = lenOf(lat(y)); if (len > 0) arrow(new THREE.Vector3(Math.cos(t) * (r + len), y, -Math.sin(t) * (r + len)), dir, len, C.emp); }); }
+        } else {
+          const along = [-1 / 3, 0, 1 / 3];
+          ys.forEach(y => { const [w, l] = faceAt(y), len = lenOf(lat(y)); if (!(len > 0)) return;
+            along.forEach(a => {
+              arrow(new THREE.Vector3(w / 2 + len, y, -a * l), new THREE.Vector3(-1, 0, 0), len, C.emp);
+              arrow(new THREE.Vector3(-w / 2 - len, y, -a * l), new THREE.Vector3(1, 0, 0), len, C.emp);
+              arrow(new THREE.Vector3(a * w, y, -(l / 2 + len)), new THREE.Vector3(0, 0, 1), len, C.emp);
+              arrow(new THREE.Vector3(a * w, y, l / 2 + len), new THREE.Vector3(0, 0, -1), len, C.emp);
+            }); });
+        }
+        legend.push([C.emp, oper ? `Empuxo lateral (solo ${p.k0 ? 'K₀' : 'Kₐ'} = ${Ka.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} + água + K·q): ${f1(lat(yTT))} kPa no topo a ${f1(pBase)} kPa na base` : `Pressão da água na escavação alagada: até ${f1(pBase)} kPa na base`, 1]);
+      }
+    }
+    if (show('v3-sobre') && oper && p.q > 0) {
+      const len = lenOf(p.q);
+      const skip = m.vol.chimH > 0 || yTT >= 0 ? null : null;
+      grid(Wsoil, Lsoil, circ, circ ? 8 : 7, skip).forEach(([x, zz]) => arrow(new THREE.Vector3(x, yTerr + len, -zz), new THREE.Vector3(0, -1, 0), len, C.sobre));
+      legend.push([C.sobre, `Sobrecarga no terreno e sobre a laje de topo: q = ${f1(p.q)} kPa`, 1]);
+    }
+    if (show('v3-stop') && pStop > 0) {
+      const inHole = (x, zz) => { if (!hasOpen) return false; const hw = (m.vol.chimH > 0 ? boE + 2 * p.ep : boE) / 2, hl = ((circ ? boE : loE) + (m.vol.chimH > 0 ? 2 * p.ep : 0)) / 2; return circ ? Math.hypot(x, zz) < hw : (Math.abs(x) < hw && Math.abs(zz) < hl); };
+      const len = lenOf(pStop);
+      grid(Bx, Lx, circ, nG, inHole).forEach(([x, zz]) => arrow(new THREE.Vector3(x, yTT + len, -zz), new THREE.Vector3(0, -1, 0), len, C.stop));
+      legend.push([C.stop, `Peso do solo sobre a laje de topo: ${f1(pStop)} kPa`, 1]);
+    }
+    if (show('v3-int') && pInt > 0) {
+      const wInt = mk({ color: C.water, transparent: true, opacity: 0.18, depthWrite: false });
+      solid(B * 0.998, L * 0.998, circ, [], yBT + 0.003, yBT + hag, wInt, null);
+      const n = 4, yTopA = yBT + hag;
+      for (let i = 0; i < n; i++) {
+        const y = yBT + hag * (i + 0.5) / n, len = lenOf(p.gw * (yTopA - y));
+        if (circ) for (let k = 0; k < 8; k++) { const t = k / 8 * Math.PI * 2; arrow(new THREE.Vector3(Math.cos(t) * (B / 2 - len), y, -Math.sin(t) * (B / 2 - len)), new THREE.Vector3(Math.cos(t), 0, -Math.sin(t)), len, C.water); }
+        else [-1 / 4, 1 / 4].forEach(a => {
+          arrow(new THREE.Vector3(B / 2 - len, y, -a * L), new THREE.Vector3(1, 0, 0), len, C.water);
+          arrow(new THREE.Vector3(-B / 2 + len, y, -a * L), new THREE.Vector3(-1, 0, 0), len, C.water);
+          arrow(new THREE.Vector3(a * B, y, -(L / 2 - len)), new THREE.Vector3(0, 0, -1), len, C.water);
+          arrow(new THREE.Vector3(a * B, y, L / 2 - len), new THREE.Vector3(0, 0, 1), len, C.water);
+        });
+      }
+      legend.push([C.water, `Água interna (h = ${f1(hag)} m): até ${f1(pInt)} kPa no fundo`, 0.55]);
+    }
+    if (!oper) legend.unshift([C.conc, 'Etapa construtiva: sem laje de topo e sem solo encostado nas paredes', 1]);
+    root.traverse(o => { if (o.material && !o.material.clippingPlanes && clip.length) o.material.clippingPlanes = clip; });
+
+    $('v3-leg').innerHTML = legend.map(([c, t, op]) => `<li><span class="sw" style="background:${c};opacity:${op}"></span>${t}</li>`).join('');
+
+    // enquadramento: só na primeira vez, em "Ajustar vista" ou quando a caixa muda muito de tamanho
+    const sizeNow = Math.max(Wsoil, m.Htot);
+    if (!fitted || Math.abs(sizeNow - lastSize) / Math.max(lastSize, 1e-6) > 0.35) {
+      const cy = (yBase + yTerr) / 2, dist = 1.45 * Math.max(Wsoil, Lsoil, m.Htot + 1) / Math.tan(camera.fov * Math.PI / 360) / 1.4;
+      controls.target.set(0, cy, 0);
+      camera.position.set(dist * 0.62, cy + dist * 0.5, dist * 0.78);
+      controls.update(); fitted = true; lastSize = sizeNow;
+    }
+    draw();
+  }
+
+  function show(m) {
+    lastM = m;
+    if (failed) return;
+    ensure().then(() => {
+      if (!R) init();
+      if (failed) return;
+      const msg = $('v3-msg'); if (msg) msg.remove();
+      resize(); build();
+    }).catch(() => { failed = true; $('v3-msg').textContent = 'Não foi possível carregar a vista 3D. Verifique a conexão e reabra o programa.'; });
+  }
+  return { show };
+})();
+</script><!--/v3d-->
 <!--tema-suite--><style>html:root:not(#tema-suite),html:root:not(#tema-suite)[data-theme]{--bg:#f4f6f8;--surface:#ffffff;--field:#ffffff;--ink:#1f2b37;--muted:#5e6b78;--line:#d9e0e7;--accent:#2b6cb0;--accent-ink:#ffffff;--concrete:#cfd6dc;--concrete-line:#6b7884;--soil:#e6d5b1;--soil-dot:#8c6c3c;--water:#3d8ccb;--ok:#2e7d50;--ok-bg:#e6f4ec;--bad:#b83a2e;--bad-bg:#fbe8e5;--warn:#8c5d08;--warn-bg:#fbf1dc;--pos:#c0612a;--neg:#2b6cb0;color-scheme:light}</style><!--/tema-suite--></body></html>
