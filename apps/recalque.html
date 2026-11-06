@@ -1,0 +1,912 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><script>(function(){try{if(!window.claude&&window.parent!==window){window.claude={use:function(n){try{var p=window.parent.claude;return p&&p.use?p.use(n):Promise.resolve(null)}catch(e){return Promise.resolve(null)}}}}}catch(e){}})();</script>
+<title>Verificação de Recalque</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: two-column engineering worksheet — inputs on the left, sticky result sheet with soil profile on the right; panorama below. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --sunk:#f6f8fa; --fg:#18212b; --muted:#5a6673; --line:#d5dbe2;
+  --accent:#1c5a8c; --accent-fg:#ffffff; --accent-soft:#e3edf6;
+  --good:#2a7a4b; --warn:#9c6108; --bad:#b0281f; --good-soft:#e2f2e8; --warn-soft:#fbefd9; --bad-soft:#fbe3e1;
+  --clay:#c29457; --silt:#a3ad80; --sand:#e3cd8e; --water:#2f7fc4; --concrete:#8e98a3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151b; --surface:#17202a; --sunk:#131a22; --fg:#e2e8ee; --muted:#95a2af; --line:#2b3642;
+  --accent:#6eb0e6; --accent-fg:#0b1620; --accent-soft:#1b2e40;
+  --good:#6cc790; --warn:#e3a849; --bad:#f07a70; --good-soft:#163024; --warn-soft:#33270f; --bad-soft:#3a1916;
+  --clay:#9b7642; --silt:#78825c; --sand:#aa955f; --water:#5aa6e2; --concrete:#6d7782; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151b; --surface:#17202a; --sunk:#131a22; --fg:#e2e8ee; --muted:#95a2af; --line:#2b3642;
+  --accent:#6eb0e6; --accent-fg:#0b1620; --accent-soft:#1b2e40;
+  --good:#6cc790; --warn:#e3a849; --bad:#f07a70; --good-soft:#163024; --warn-soft:#33270f; --bad-soft:#3a1916;
+  --clay:#9b7642; --silt:#78825c; --sand:#aa955f; --water:#5aa6e2; --concrete:#6d7782; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;border-bottom:2px solid var(--fg);padding-bottom:12px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.01em;margin:0;text-wrap:balance}
+.ver{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--accent);background:var(--accent-soft);border-radius:3px;padding:2px 7px;vertical-align:middle;letter-spacing:0}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+.ref{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h2{font-family:var(--f-display);font-weight:600;font-size:17px;margin:0;display:flex;align-items:baseline;gap:10px}
+.card h2 .tag{font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:6px 28px}
+.fr{display:grid;grid-template-columns:minmax(0,1fr) 108px 74px;align-items:center;gap:8px;min-height:32px}
+.fr>label,.fr>.fl{font-size:13.5px;font-weight:500;color:var(--fg);line-height:1.25}
+.fr>.u{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.fr>select.u{font-size:13px;padding:5px 4px;color:var(--fg)}
+.fr>.wide{grid-column:2 / 4}
+.seg.wide{display:flex}
+.seg.wide label{flex:1;text-align:center}
+input[type=text],select{font:inherit;font-size:14px;color:var(--fg);background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:5px 8px;width:100%;min-width:0}
+input.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,button:focus-visible,.seg label:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--sunk)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:5px 11px;font-size:13.5px;cursor:pointer;color:var(--muted);border-right:1px solid var(--line)}
+.seg label:last-child{border-right:0}
+.seg input:checked+span{color:var(--accent-fg)}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-fg)}
+button{font:inherit;font-size:14px;font-weight:500;border-radius:4px;padding:7px 13px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+button:disabled{opacity:.55;cursor:not-allowed}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:4px 8px}
+button.ghost:hover{color:var(--bad)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.note{font-size:13px;color:var(--muted)}
+.status{font-size:13px;padding:8px 10px;border-radius:4px;background:var(--sunk);border:1px solid var(--line)}
+.status.ok{background:var(--good-soft);border-color:transparent;color:var(--good)}
+.status.err{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:left;padding:8px;background:var(--sunk);border-bottom:1px solid var(--line)}
+td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td input,td select{padding:5px 7px;font-size:14px}
+td.sw{width:10px;padding:0}
+td.sw i{display:block;width:6px;height:28px;border-radius:2px;margin-left:6px}
+.c-z{width:90px}.c-n{width:76px}
+td.addcell{padding:6px;border-top:1px solid var(--line)}
+button.addrow{width:100%;border:1px dashed var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;padding:8px}
+button.addrow span{font-family:var(--f-mono);font-size:17px;line-height:1;margin-right:4px}
+.rowbtns{display:flex;gap:2px;justify-content:flex-end;white-space:nowrap}
+button.ins{border:1px solid var(--line);background:var(--sunk);color:var(--accent);font-family:var(--f-mono);font-size:16px;line-height:1;width:30px;height:30px;padding:0}
+button.ins:hover{border-color:var(--accent)}
+details summary{cursor:pointer;font-weight:500;font-size:14px}
+details[open] summary{margin-bottom:12px}
+/* results */
+.sheet{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+@media (max-width:900px){.sheet{position:static}}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.big .k{border:1px solid var(--line);border-radius:4px;padding:12px;background:var(--sunk);display:flex;flex-direction:column;gap:2px}
+.big .lab{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.big .val{font-family:var(--f-mono);font-size:30px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.15}
+.big .val small{font-size:14px;color:var(--muted);margin-left:3px}
+.big .how{font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:999px;width:fit-content}
+.chip.ok{background:var(--good-soft);color:var(--good)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.info{background:var(--accent-soft);color:var(--accent)}
+.memo{width:100%;min-width:0;font-size:13.5px}
+.memo td{padding:4px 0;border-bottom:1px dashed var(--line)}
+.memo td:last-child{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:10px}
+.memo tr:last-child td{border-bottom:0}
+.profile svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+/* panorama */
+.pano{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.item{border:1px solid var(--line);border-left-width:4px;border-radius:4px;padding:10px 12px;background:var(--sunk);display:flex;flex-direction:column;gap:3px;min-width:0}
+.item.ok{border-left-color:var(--good)} .item.warn{border-left-color:var(--warn)} .item.bad{border-left-color:var(--bad)} .item.info{border-left-color:var(--accent)}
+.item b{font-size:14px}
+.item p{margin:0;font-size:13.5px;color:var(--muted)}
+.ai{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.ai-out{max-width:72ch;font-size:14.5px}
+.ai-out h3{font-family:var(--f-display);font-size:15px;margin:14px 0 4px}
+.ai-out p{margin:0 0 8px}
+.ai-out ul{margin:0 0 8px;padding-left:20px}
+.foot{font-size:12px;color:var(--muted);max-width:90ch}
+/* memorial */
+.memdoc{max-width:800px;border:1px solid var(--line);border-radius:4px;background:var(--surface);padding:22px clamp(14px,3vw,30px);font-size:13.5px;line-height:1.5;display:flex;flex-direction:column;gap:6px;min-width:0}
+.memdoc .mt{font-family:var(--f-display);font-size:20px;font-weight:700;margin:0;border-bottom:2px solid var(--fg);padding-bottom:6px}
+.memdoc .mmeta{font-size:12px;color:var(--muted);margin:0 0 6px}
+.memdoc h3{font-family:var(--f-display);font-size:14px;font-weight:600;color:var(--accent);margin:12px 0 2px}
+.memdoc .mbox{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0}
+.memdoc .mbox div{background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:8px 12px;display:flex;flex-direction:column}
+.memdoc .mbox span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.memdoc .mbox b{font-family:var(--f-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
+.memdoc .kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 16px}
+.memdoc .kv>span:nth-child(even){font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.memdoc .kv>span{border-bottom:1px dashed var(--line);padding:2px 0}
+.memdoc .eq{font-family:var(--f-mono);font-size:13px;border-left:2px solid var(--line);padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:2px;overflow-x:auto}
+.memdoc .eq b{font-weight:600}
+.memdoc p{margin:0;color:var(--muted);font-size:12.5px}
+.memdoc ul{margin:0;padding-left:18px;font-size:12.5px}
+.memdoc .ck{font-weight:600}
+.memdoc .ck.ok{color:var(--good)} .memdoc .ck.bad{color:var(--bad)}
+.memdoc sub{font-size:.72em}
+@media (max-width:520px){.memdoc .mbox{grid-template-columns:1fr}}
+.refgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px 32px}
+.refgrid>div{min-width:0}
+.refs h3{font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.refs ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:7px;font-size:13px;line-height:1.45}
+.refs li{overflow-wrap:anywhere}
+.refs a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Verificação de Recalque <span class="ver">V1.2</span></h1>
+      <p class="sub">Fundações rasas retangulares e circulares a partir de sondagem SPT</p>
+    </div>
+    <div class="ref" id="refline">Furo SP.ADU-1010</div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card" aria-labelledby="h-fund">
+        <h2 id="h-fund">Fundação <span class="tag">geometria e carga</span></h2>
+        <div class="fields">
+          <div class="fr"><span class="fl" id="lForma">Forma da base</span>
+            <span class="seg wide" role="radiogroup" aria-labelledby="lForma">
+              <label><input type="radio" name="forma" id="fRet" value="ret" checked>Retangular</label>
+              <label><input type="radio" name="forma" id="fCir" value="cir">Circular</label>
+            </span></div>
+          <div class="fr"><span class="fl" id="lCond">Comportamento da base</span>
+            <span class="seg wide" role="radiogroup" aria-labelledby="lCond">
+              <label><input type="radio" name="cond" id="cRig" value="rig" checked>Rígida</label>
+              <label><input type="radio" name="cond" id="cFlx" value="flx">Flexível</label>
+            </span></div>
+          <div class="fr" id="wB"><label for="iB">Largura B (menor lado)</label><input type="text" inputmode="decimal" class="num" id="iB"><span class="u">m</span></div>
+          <div class="fr" id="wL"><label for="iL">Comprimento L</label><input type="text" inputmode="decimal" class="num" id="iL"><span class="u">m</span></div>
+          <div class="fr" id="wD" hidden><label for="iD">Diâmetro D</label><input type="text" inputmode="decimal" class="num" id="iD"><span class="u">m</span></div>
+          <div class="fr"><label for="iDf">Profundidade de assentamento</label><input type="text" inputmode="decimal" class="num" id="iDf"><span class="u">m</span></div>
+          <div class="fr"><label for="iQ">Tensão aplicada no solo</label><input type="text" inputmode="decimal" class="num" id="iQ">
+            <select id="iQu" class="u" aria-label="Unidade da tensão"><option value="kgf">kgf/cm²</option><option value="kpa">kPa</option><option value="tf">tf/m²</option></select></div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="h-spt">
+        <h2 id="h-spt">Sondagem SPT <span class="tag">perfil do terreno</span></h2>
+        <div class="fields">
+          <div class="fr"><label for="iFuro">Identificação do furo</label><input type="text" id="iFuro" class="wide"></div>
+          <div class="fr"><label for="iNA">Nível d'água</label><input type="text" inputmode="decimal" class="num" id="iNA" placeholder="não encontrado"><span class="u">m</span></div>
+          <div class="fr"><label for="iFim">Fim da sondagem</label><input type="text" inputmode="decimal" class="num" id="iFim"><span class="u">m</span></div>
+        </div>
+        <div class="toolbar">
+          <span class="filebtn"><button type="button" class="primary" id="btnImg" disabled>Ler laudo por imagem</button><input type="file" id="fileImg" accept="image/png,image/jpeg,image/webp" aria-label="Escolher imagem do laudo SPT" disabled></span>
+          <button type="button" id="btnSort">Ordenar por profundidade</button>
+        </div>
+        <div class="status" id="imgStatus">Conectando ao Claude para leitura de imagem…</div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th></th><th class="c-z">Prof. (m)</th><th class="c-n">N<sub>SPT</sub></th><th>Tipo de solo</th><th>Consistência / compacidade</th><th></th></tr></thead>
+            <tbody id="tb"></tbody>
+            <tfoot><tr><td colspan="6" class="addcell"><button type="button" class="addrow" id="btnAdd" aria-label="Adicionar profundidade ao final"><span aria-hidden="true">+</span> Adicionar profundidade</button></td></tr></tfoot>
+          </table>
+        </div>
+        <p class="note">Cada leitura representa a camada entre os pontos médios das leituras vizinhas. N<sub>SPT</sub> = golpes nos 30 cm finais. Use 1 quando a penetração passar de 30 cm com 1 ou 2 golpes.</p>
+        <details>
+          <summary>Ensaio de adensamento e critério de projeto (opcional)</summary>
+          <div class="fields">
+            <div class="fr"><label for="iCc">Índice de compressão Cc</label><input type="text" inputmode="decimal" class="num" id="iCc" placeholder="sem ensaio"><span class="u">—</span></div>
+            <div class="fr"><label for="iE0">Índice de vazios e₀</label><input type="text" inputmode="decimal" class="num" id="iE0" placeholder="sem ensaio"><span class="u">—</span></div>
+            <div class="fr"><label for="iAdm">Recalque admissível</label><input type="text" inputmode="decimal" class="num" id="iAdm"><span class="u">mm</span></div>
+          </div>
+          <p class="note">Cc e e₀ se aplicam às argilas abaixo do nível d'água. Com eles, o recalque no infinito passa a ser o imediato mais o adensamento primário (argila normalmente adensada). Sem eles, usa-se a solução elástica drenada.</p>
+        </details>
+      </section>
+    </div>
+
+    <aside class="col sheet">
+      <section class="card" aria-labelledby="h-res">
+        <h2 id="h-res">Resultados <span class="tag">centro da base</span></h2>
+        <div class="big">
+          <div class="k"><span class="lab">Imediato</span><span class="val" id="rI">—</span><span class="how" id="rIh">elástico não drenado</span></div>
+          <div class="k"><span class="lab">No infinito</span><span class="val" id="rF">—</span><span class="how" id="rFh">elástico drenado</span></div>
+        </div>
+        <div class="toolbar" id="chips"></div>
+        <table class="memo"><tbody id="memo"></tbody></table>
+        <div class="toolbar"><button type="button" class="primary" id="btnMemo">Gerar memória de cálculo</button></div>
+      </section>
+      <section class="card profile" aria-labelledby="h-perf">
+        <h2 id="h-perf">Perfil <span class="tag">corte esquemático</span></h2>
+        <div id="svgbox"></div>
+        <div class="legend">
+          <span><i style="background:var(--clay)"></i>Argila</span><span><i style="background:var(--silt)"></i>Silte</span><span><i style="background:var(--sand)"></i>Areia</span><span><i style="background:var(--water)"></i>Nível d'água</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card" id="memCard" aria-labelledby="h-mem" hidden>
+    <h2 id="h-mem">Memória de cálculo <span class="tag">recalques</span></h2>
+    <div class="fields">
+      <div class="fr"><label for="iObra">Obra (opcional)</label><input type="text" id="iObra" class="wide" placeholder="aparece no cabeçalho"></div>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="primary" id="btnPdf" hidden>Baixar PDF</button>
+      <button type="button" id="btnCopy">Copiar texto</button>
+      <button type="button" class="ghost" id="btnMemClose">Fechar</button>
+      <span class="note" id="memMsg" role="status"></span>
+    </div>
+    <article class="memdoc" id="memDoc"></article>
+  </section>
+
+  <section class="card" aria-labelledby="h-pano">
+    <h2 id="h-pano">Panorama das condições <span class="tag">leitura do SPT</span></h2>
+    <div class="pano" id="pano"></div>
+    <div class="ai">
+      <div class="toolbar">
+        <button type="button" class="primary" id="btnPano" disabled>Gerar panorama detalhado com Claude</button>
+        <button type="button" id="btnStop" hidden>Parar</button>
+      </div>
+      <div class="ai-out" id="aiOut"></div>
+    </div>
+  </section>
+
+  <p class="foot">Métodos: recalque imediato pela teoria da elasticidade, ρ = q·B·(1−ν²)·I/E, com I de Perloff e módulo equivalente ponderado pelo acréscimo de tensão (Boussinesq) até a profundidade de influência. E = α·K·N (Teixeira &amp; Godoy, 1996). Peso específico por consistência (Godoy, 1972). Consistência pela NBR 6484. Recalque no infinito: elástico drenado com E′ = 2(1+ν′)E/3 nas argilas e ν′ = 0,3, ou imediato + adensamento quando Cc e e₀ são informados. Capacidade de carga expedita: c = 10·N kPa e Skempton para argilas; σ ≈ 20·N kPa para areias. São estimativas por correlação; não substituem ensaios nem a análise do projetista.</p>
+
+  <section class="card refs" aria-labelledby="h-refs">
+    <h2 id="h-refs">Referências bibliográficas</h2>
+    <div class="refgrid">
+      <div>
+        <h3>Normas e obras de referência dos métodos</h3>
+        <ol>
+          <li>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <em>NBR 6122: Projeto e execução de fundações</em>. Rio de Janeiro: ABNT, 2019.</li>
+          <li>ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. <em>NBR 6484: Solo – Sondagem de simples reconhecimento com SPT – Método de ensaio</em>. Rio de Janeiro: ABNT, 2020.</li>
+          <li>BJERRUM, L. Allowable settlement of structures. In: <em>European Conference on Soil Mechanics and Foundation Engineering</em>, 3., Wiesbaden, 1963.</li>
+          <li>CINTRA, J. C. A.; AOKI, N.; ALBIERO, J. H. <em>Fundações diretas: projeto geotécnico</em>. São Paulo: Oficina de Textos, 2011.</li>
+          <li>GODOY, N. S. <em>Estimativa da capacidade de carga de estacas a partir de resultados de penetrômetro estático</em>. Palestra. São Carlos: EESC-USP, 1972. (Tabela de peso específico por consistência, citada por Cintra, Aoki e Albiero.)</li>
+          <li>NEWMARK, N. M. <em>Simplified computation of vertical pressures in elastic foundations</em>. Urbana: University of Illinois, Engineering Experiment Station, Circular 24, 1935.</li>
+          <li>PERLOFF, W. H. Pressure distribution and settlement. In: WINTERKORN, H. F.; FANG, H. Y. (ed.). <em>Foundation Engineering Handbook</em>. New York: Van Nostrand Reinhold, 1975.</li>
+          <li>POULOS, H. G.; DAVIS, E. H. <em>Elastic solutions for soil and rock mechanics</em>. New York: John Wiley &amp; Sons, 1974.</li>
+          <li>SKEMPTON, A. W. The bearing capacity of clays. In: <em>Building Research Congress</em>. London, 1951.</li>
+          <li>TEIXEIRA, A. H.; GODOY, N. S. Análise, projeto e execução de fundações rasas. In: HACHICH, W. <em>et al.</em> (ed.). <em>Fundações: teoria e prática</em>. 2. ed. São Paulo: Pini, 1998. (Correlações E = α·K·N e c = 10·N.)</li>
+          <li>VELLOSO, D. A.; LOPES, F. R. <em>Fundações</em>. v. 1. São Paulo: Oficina de Textos, 2011.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Fontes consultadas na web</h3>
+        <ol>
+          <li>UNIVERSIDADE DE SÃO PAULO. <em>Lista de exercícios 7: recalques</em> (coeficientes de forma para área circular e retangular). Disponível em: <a href="https://edisciplinas.usp.br/pluginfile.php/5536707/mod_resource/content/17/Lista%20exercicios%207.pdf" target="_blank" rel="noopener">edisciplinas.usp.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>UNIVERSIDADE DE SÃO PAULO. <em>Geomecânica e a teoria da elasticidade</em> (placa rígida circular e retangular). Disponível em: <a href="https://edisciplinas.usp.br/pluginfile.php/2580335/mod_resource/content/5/col06.pdf" target="_blank" rel="noopener">edisciplinas.usp.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>UNIVERSIDADE DE SÃO PAULO. <em>PEF3405 Engenharia Geotécnica e de Fundações – Coleção 1: fundações diretas, provas de carga e segurança contra ELS</em>. Disponível em: <a href="https://edisciplinas.usp.br/pluginfile.php/5907448/mod_resource/content/10/col01.pdf" target="_blank" rel="noopener">edisciplinas.usp.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>UNIVERSIDADE DE SÃO PAULO. <em>Resolução de exercício: recalque de sapata por teoria da elasticidade e prova de carga</em>. Disponível em: <a href="https://edisciplinas.usp.br/mod/resource/view.php?id=4676149" target="_blank" rel="noopener">edisciplinas.usp.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>UNIVERSIDADE DE SÃO PAULO. <em>Aula 7: adensamento</em> (recalque diferencial, distorção angular e limites de Bjerrum). Disponível em: <a href="https://edisciplinas.usp.br/pluginfile.php/5536706/mod_resource/content/18/Aula%207%20Adensamento%20%28maior%29.pdf" target="_blank" rel="noopener">edisciplinas.usp.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>RENCK NETO, J. C.; LINHARES, R. M.; HARTMANN, D. A. <em>Influência combinada da largura e da distância entre eixos na sobreposição do bulbo de tensões de duas sapatas corridas</em>. Unipampa, 2025. Disponível em: <a href="https://www.conferencebr.com/anais/604/paperfile/604-1050812_09_09_2025_08-31-46_1208.PDF" target="_blank" rel="noopener">conferencebr.com</a>. Acesso em: 21 out. 2026.</li>
+          <li>GEOSUL 2019. <em>Material suplementar</em> (peso específico natural de solos argilosos por N<sub>SPT</sub>, Godoy 1972). Disponível em: <a href="https://conferencias.ufsc.br/index.php/geosul2019/2019geosul/paper/downloadSuppFile/228/252" target="_blank" rel="noopener">conferencias.ufsc.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>PONTIFÍCIA UNIVERSIDADE CATÓLICA DE GOIÁS. <em>Monitoramento de recalque em fundações: estudo de caso de uma fundação em tubulão</em>. Disponível em: <a href="https://repositorio.pucgoias.edu.br/jspui/bitstream/123456789/462/1/Monitoramento%20de%20recaqlue%20em%20funda%c3%a7%c3%b5es_Estudo%20de%20caso%20de%20uma%20funda%c3%a7%c3%a3o%20em%20tubul%c3%a3o.pdf" target="_blank" rel="noopener">repositorio.pucgoias.edu.br</a>. Acesso em: 21 out. 2026.</li>
+          <li>REVISTA GEOTECNIA. n. 154, mar. 2022, p. 7-23 (distorção angular e deslocamentos de fundações). Disponível em: <a href="https://impactum-journals.uc.pt/geotecnia/article/download/11179/8207" target="_blank" rel="noopener">impactum-journals.uc.pt</a>. Acesso em: 21 out. 2026.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+"use strict";
+const GW = 10; // kN/m³
+const TYPES = [
+  {n:"Areia com pedregulhos", g:"gr", a:3, K:1.10, s:"sand"},
+  {n:"Areia", g:"gr", a:3, K:0.90, s:"sand"},
+  {n:"Areia siltosa", g:"gr", a:3, K:0.70, s:"sand"},
+  {n:"Areia argilosa", g:"gr", a:3, K:0.55, s:"sand"},
+  {n:"Silte arenoso", g:"gr", a:5, K:0.45, s:"silt"},
+  {n:"Silte", g:"gr", a:5, K:0.35, s:"silt"},
+  {n:"Silte argiloso", g:"co", a:5, K:0.25, s:"silt"},
+  {n:"Argila arenosa", g:"co", a:7, K:0.30, s:"clay"},
+  {n:"Argila siltosa", g:"co", a:7, K:0.20, s:"clay"},
+  {n:"Argila", g:"co", a:7, K:0.20, s:"clay"}
+];
+const CONS_CO = ["Muito mole","Mole","Média","Rija","Dura"];
+const CONS_GR = ["Fofa","Pouco compacta","Medianamente compacta","Compacta","Muito compacta"];
+const GAM_CO = {"Muito mole":[13,13],"Mole":[15,15],"Média":[17,17],"Rija":[19,19],"Dura":[21,21]};
+const GAM_GR = {"Fofa":[18,19],"Pouco compacta":[18,19],"Medianamente compacta":[19,20],"Compacta":[20,21],"Muito compacta":[20,21]};
+const tByName = n => TYPES.find(t=>t.n===n) || TYPES[TYPES.length-1];
+
+const DEFAULT = {forma:"ret", cond:"rig", B:"2", L:"2", D:"2", Df:"2", q:"0.5", qu:"kgf",
+  furo:"SP.ADU-1010", na:"1.12", fim:"4.45", Cc:"", e0:"", adm:"25",
+  rows:[{z:"1",N:"1",tipo:"Argila arenosa",cons:"auto"},{z:"2",N:"1",tipo:"Argila arenosa",cons:"auto"},
+        {z:"3",N:"1",tipo:"Argila arenosa",cons:"auto"},{z:"4",N:"1",tipo:"Argila arenosa",cons:"auto"}]};
+let st;
+try{ st = JSON.parse(localStorage.getItem("recalque-spt-v1")) || null; }catch(e){ st = null; }
+if(!st || !Array.isArray(st.rows)) st = JSON.parse(JSON.stringify(DEFAULT));
+function save(){ try{ localStorage.setItem("recalque-spt-v1", JSON.stringify(st)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const num = v => { if(v===null||v===undefined) return NaN; const s=String(v).trim().replace(",","."); return s===""?NaN:Number(s); };
+const fmt = (x,d=1) => (isFinite(x)? x.toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}) : "—");
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function consAuto(t,N){
+  if(!isFinite(N)) return "—";
+  if(t.g==="co") return N<=2?"Muito mole":N<=5?"Mole":N<=10?"Média":N<=19?"Rija":"Dura";
+  return N<=4?"Fofa":N<=8?"Pouco compacta":N<=18?"Medianamente compacta":N<=40?"Compacta":"Muito compacta";
+}
+function consOf(r){
+  const t=tByName(r.tipo), N=num(r.N), list=t.g==="co"?CONS_CO:CONS_GR;
+  return (r.cons && r.cons!=="auto" && list.includes(r.cons)) ? r.cons : consAuto(t,N);
+}
+
+/* ---------- table ---------- */
+function consOptions(r){
+  const t=tByName(r.tipo), list=t.g==="co"?CONS_CO:CONS_GR, auto=consAuto(t,num(r.N));
+  let h=`<option value="auto"${(!r.cons||r.cons==="auto"||!list.includes(r.cons))?" selected":""}>Auto: ${esc(auto)}</option>`;
+  for(const c of list) h+=`<option${r.cons===c?" selected":""}>${esc(c)}</option>`;
+  return h;
+}
+function renderTable(){
+  const tb=$("tb"); tb.innerHTML="";
+  st.rows.forEach((r,i)=>{
+    const t=tByName(r.tipo), tr=document.createElement("tr");
+    tr.innerHTML=`<td class="sw"><i style="background:var(--${t.s})"></i></td>
+      <td><input type="text" inputmode="decimal" class="num" id="z${i}" value="${esc(r.z)}" aria-label="Profundidade da leitura ${i+1}"></td>
+      <td><input type="text" inputmode="decimal" class="num" id="n${i}" value="${esc(r.N)}" aria-label="N SPT da leitura ${i+1}"></td>
+      <td><select id="t${i}" aria-label="Tipo de solo da leitura ${i+1}">${TYPES.map(x=>`<option${x.n===r.tipo?" selected":""}>${esc(x.n)}</option>`).join("")}</select></td>
+      <td><select id="c${i}" aria-label="Consistência da leitura ${i+1}">${consOptions(r)}</select></td>
+      <td><span class="rowbtns"><button type="button" class="ins" id="p${i}" title="Inserir profundidade abaixo" aria-label="Inserir profundidade abaixo da leitura ${i+1}">+</button><button type="button" class="ghost" id="x${i}" aria-label="Remover leitura ${i+1}">Remover</button></span></td>`;
+    tb.appendChild(tr);
+    $("z"+i).addEventListener("input",e=>{r.z=e.target.value;update();});
+    $("n"+i).addEventListener("input",e=>{r.N=e.target.value;$("c"+i).innerHTML=consOptions(r);update();});
+    $("t"+i).addEventListener("change",e=>{r.tipo=e.target.value;r.cons="auto";renderTable();update();});
+    $("c"+i).addEventListener("change",e=>{r.cons=e.target.value;update();});
+    $("x"+i).addEventListener("click",()=>{st.rows.splice(i,1);renderTable();update();});
+    $("p"+i).addEventListener("click",()=>addRow(i));
+  });
+}
+function addRow(after){
+  if(after===undefined||after>=st.rows.length) after=st.rows.length-1;
+  const r=st.rows[after], next=st.rows[after+1];
+  const zr=r?num(r.z):NaN, zn=next?num(next.z):NaN;
+  let z;
+  if(!r) z=1;
+  else if(isFinite(zn)&&isFinite(zr)) z=(zr+1<zn)?zr+1:Math.round((zr+zn)/2*100)/100;
+  else z=(isFinite(zr)?zr:0)+1;
+  const fim=num(st.fim);
+  st.rows.splice(after+1,0,{z:String(z),N:"",tipo:r?r.tipo:"Argila",cons:"auto"});
+  if(isFinite(fim)&&z>fim){ st.fim=String(z+0.45); $("iFim").value=st.fim; }
+  renderTable(); update();
+  const el=$("n"+(after+1)); if(el){ el.focus(); el.scrollIntoView({block:"nearest"}); }
+}
+
+/* ---------- geotechnics ---------- */
+function buildLayers(){
+  const rows=st.rows.map(r=>({z:num(r.z),N:num(r.N),tipo:r.tipo,cons:consOf(r)})).filter(r=>isFinite(r.z)&&r.z>0&&isFinite(r.N)&&r.N>=0).sort((a,b)=>a.z-b.z);
+  const fim=num(st.fim);
+  return rows.map((r,i)=>{
+    const top=i===0?0:(rows[i-1].z+r.z)/2;
+    let bot=i===rows.length-1 ? (isFinite(fim)&&fim>r.z?fim:r.z+0.45) : (r.z+rows[i+1].z)/2;
+    const t=tByName(r.tipo);
+    const gt=t.g==="co"?(GAM_CO[r.cons]||[15,15]):(GAM_GR[r.cons]||[18,19]);
+    const Nc=Math.max(r.N,1);
+    return {...r,top,bot,t,gNat:gt[0],gSat:gt[1],E:t.a*t.K*Nc*1000,Nc};
+  });
+}
+function layerAt(L,z){ for(const l of L) if(z>=l.top && z<l.bot) return l; return null; }
+function sigmaV(L,z,na){
+  let s=0;
+  for(const l of L){
+    const a=l.top,b=Math.min(l.bot,z); if(b<=a) continue;
+    if(isFinite(na)){
+      const above=Math.max(0,Math.min(b,na)-a), below=Math.max(0,b-Math.max(a,na));
+      s+=above*l.gNat+below*l.gSat;
+    } else s+=(b-a)*l.gNat;
+  }
+  if(L.length && z>L[L.length-1].bot){ const l=L[L.length-1]; s+=(z-l.bot)*(isFinite(na)&&z>na?l.gSat:l.gNat); }
+  return s;
+}
+const pore=(z,na)=>isFinite(na)?GW*Math.max(0,z-na):0;
+function corner(b,l,z){
+  const m=b/z,n=l/z,m2=m*m,n2=n*n,s=Math.sqrt(m2+n2+1);
+  const t1=(2*m*n*s/(m2+n2+m2*n2+1))*((m2+n2+2)/(m2+n2+1));
+  const t2=Math.atan2(2*m*n*s, m2+n2+1-m2*n2);
+  return (t1+t2)/(4*Math.PI);
+}
+function dSig(q,g,z){
+  z=Math.max(z,1e-4);
+  if(g.forma==="cir"){ const R=g.D/2; return q*(1-Math.pow(1/(1+(R/z)*(R/z)),1.5)); }
+  return q*4*corner(g.B/2,g.L/2,z);
+}
+function interp(x,xs,ys){
+  if(x<=xs[0]) return ys[0]; if(x>=xs[xs.length-1]) return ys[ys.length-1];
+  for(let i=1;i<xs.length;i++) if(x<=xs[i]){ const f=(x-xs[i-1])/(xs[i]-xs[i-1]); return ys[i-1]+f*(ys[i]-ys[i-1]); }
+}
+function shapeI(g){
+  if(g.forma==="cir") return {rig:0.79,centro:1.00,borda:0.64};
+  const r=g.L/g.B, X=[1,2,5,10];
+  return {rig:interp(r,X,[0.82,1.17,1.66,2.00]),centro:interp(r,X,[1.12,1.52,2.10,2.54]),borda:interp(r,X,[0.56,0.75,1.05,1.27])};
+}
+
+function compute(){
+  const forma=st.forma, cond=st.cond;
+  let B=num(st.B), L=num(st.L), D=num(st.D);
+  const Df=num(st.Df), na=num(st.na), fim=num(st.fim);
+  const qRaw=num(st.q), qf={kgf:98.0665,kpa:1,tf:9.80665}[st.qu]||1, q=qRaw*qf;
+  const errs=[];
+  if(forma==="ret"){ if(!(B>0)) errs.push("Informe a largura B."); if(!(L>0)) errs.push("Informe o comprimento L."); if(B>0&&L>0&&L<B){const t=B;B=L;L=t;} }
+  else if(!(D>0)) errs.push("Informe o diâmetro D.");
+  if(!(Df>=0)) errs.push("Informe a profundidade de assentamento.");
+  if(!(q>0)) errs.push("Informe a tensão aplicada.");
+  const Ls=buildLayers();
+  if(!Ls.length) errs.push("Inclua ao menos uma leitura SPT.");
+  if(errs.length) return {errs};
+  const g={forma,B,L,D}, Bs=forma==="cir"?D:B, area=forma==="cir"?Math.PI*D*D/4:B*L;
+  const zEnd=Ls[Ls.length-1].bot;
+  if(zEnd<=Df) return {errs:["A sondagem não alcança a cota de assentamento. Inclua leituras abaixo da base."],Ls};
+  const s0Df=sigmaV(Ls,Df,na), qliq=Math.max(0,q-s0Df);
+  // influence depth: Δσ = 10% q_liq
+  let Hinf=0; { const qq=1; for(let z=0.02;z<30*Bs;z+=0.02){ if(dSig(qq,g,z)<0.10){Hinf=z;break;} } }
+  const dz=0.05; let W=0,WoE=0,WoEd=0,Wnu=0,Wnud=0,Wnu2=0,rhoA=0;
+  const Cc=num(st.Cc), e0=num(st.e0), lab=isFinite(Cc)&&Cc>0&&isFinite(e0)&&e0>0;
+  const zLim=Math.min(zEnd,Df+Hinf); let used=0;
+  for(let s=Df+dz/2; s<zLim; s+=dz){
+    const l=layerAt(Ls,s); if(!l) break;
+    const ds=dSig(qliq>0?qliq:1,g,s-Df), w=ds*dz; used=s+dz/2-Df;
+    const sat=!isFinite(na)||s>=na;
+    const nu=l.t.g==="co"?(sat?0.5:0.4):(l.t.s==="silt"?0.35:0.3);
+    const Ed=l.t.g==="co"?2*(1+0.3)/3*l.E:l.E;
+    W+=w; WoE+=w/l.E; WoEd+=w/Ed; Wnu+=w*(1-nu*nu); Wnud+=w*(1-0.09);
+    if(lab && l.t.g==="co" && sat && qliq>0){
+      const so=Math.max(1,sigmaV(Ls,s,na)-pore(s,na));
+      rhoA+=Cc*dz/(1+e0)*Math.log10((so+dSig(qliq,g,s-Df))/so);
+    }
+  }
+  const Eeq=W/WoE, Edeq=W/WoEd, f1=Wnu/W, f1d=Wnud/W;
+  const I=shapeI(g), Iuse=cond==="rig"?I.rig:I.centro;
+  const rhoI=qliq*Bs*f1*Iuse/Eeq, rhoIb=cond==="rig"?rhoI:qliq*Bs*f1*I.borda/Eeq;
+  const rhoD=qliq*Bs*f1d*Iuse/Edeq, rhoDb=cond==="rig"?rhoD:qliq*Bs*f1d*I.borda/Edeq;
+  const rhoF=lab?rhoI+rhoA:rhoD;
+  const base=layerAt(Ls,Df+0.01)||Ls[Ls.length-1];
+  return {g,Bs,area,q,qRaw,qliq,s0Df,Df,na,fim,Ls,zEnd,Hinf,used,Eeq,Edeq,nuEq:Math.sqrt(1-f1),I,Iuse,cond,
+    rhoI,rhoIb,rhoD,rhoDb,rhoA,lab,rhoF,base,adm:num(st.adm)};
+}
+
+/* ---------- panorama rules ---------- */
+function panorama(R){
+  const P=[], Ls=R.Ls, na=R.na, Df=R.Df, b=R.base;
+  // profile
+  const groups={}; for(const l of Ls){ const k=l.t.n+" "+l.cons.toLowerCase(); groups[k]=(groups[k]||0)+(l.bot-l.top); }
+  const Ns=Ls.map(l=>l.N), nmin=Math.min(...Ns), nmax=Math.max(...Ns);
+  P.push({lv:"info",t:"Perfil",p:`${Ls.length} leituras até ${fmt(R.zEnd,2)} m. ${Object.entries(groups).map(([k,v])=>`${k} (${fmt(v,2)} m)`).join("; ")}. N<sub>SPT</sub> entre ${fmt(nmin,0)} e ${fmt(nmax,0)}.`});
+  // bearing layer
+  const soft=b.t.g==="co"&&b.N<=5, loose=b.t.g==="gr"&&b.N<=4;
+  P.push({lv:soft||loose?"bad":(b.N<=8?"warn":"ok"),t:"Camada de apoio",p:`A base a ${fmt(Df,2)} m apoia em ${b.t.n.toLowerCase()} ${b.cons.toLowerCase()} (N = ${fmt(b.N,0)}). ${soft?"Solo de baixíssima resistência e alta compressibilidade.":loose?"Areia fofa, sujeita a recalques e perda de suporte.":b.N<=8?"Resistência baixa a moderada.":"Resistência adequada para fundação direta."}`});
+  // water
+  if(isFinite(na)){
+    if(na<Df){ const u=GW*(Df-na), up=u*R.area;
+      P.push({lv:"warn",t:"Nível d'água acima da base",p:`NA a ${fmt(na,2)} m, ${fmt(Df-na,2)} m acima da base. Escavação exige rebaixamento ou esgotamento. Subpressão na base de ${fmt(u,1)} kPa (empuxo de ${fmt(up,0)} kN). Com a estrutura vazia, o peso próprio deve superar esse empuxo com folga (FS ≥ 1,1).`});
+    } else P.push({lv:"ok",t:"Nível d'água",p:`NA a ${fmt(na,2)} m, abaixo da base. Sem subpressão; atenção a oscilação sazonal.`});
+  } else P.push({lv:"info",t:"Nível d'água",p:"Não informado ou não encontrado na sondagem."});
+  // excavation relief
+  P.push({lv:R.qliq<=0?"ok":"info",t:"Alívio de escavação",p:R.qliq<=0?`O peso do solo removido (${fmt(R.s0Df,1)} kPa) supera a tensão aplicada (${fmt(R.q,1)} kPa): fundação compensada, recalque desprezível.`:`O solo escavado alivia ${fmt(R.s0Df,1)} kPa. A tensão líquida que gera recalque é ${fmt(R.qliq,1)} kPa (${fmt(100*R.qliq/R.q,0)}% da aplicada).`});
+  // depth of investigation
+  const need=Df+R.Hinf;
+  P.push({lv:R.zEnd<need-0.05?"bad":"ok",t:"Profundidade da sondagem",p:R.zEnd<need-0.05?`O bulbo de tensões (Δσ > 10% de q) vai até ${fmt(need,2)} m, mas a sondagem termina a ${fmt(R.zEnd,2)} m. O trecho de ${fmt(need-R.zEnd,2)} m sem dados pode ter solo mais compressível; os recalques podem estar subestimados. Recomenda-se prolongar o furo.`:`A sondagem cobre todo o bulbo de tensões (até ${fmt(need,2)} m).`});
+  // soft clay in zone
+  const zone=Ls.filter(l=>l.bot>Df&&l.top<need), softZ=zone.filter(l=>l.t.g==="co"&&l.N<=5);
+  if(softZ.length) P.push({lv:"bad",t:"Argila mole no bulbo",p:`Há ${softZ.map(l=>`${l.t.n.toLowerCase()} ${l.cons.toLowerCase()}`).filter((v,i,a)=>a.indexOf(v)===i).join(", ")} na zona de influência. O recalque por adensamento tende a dominar e evolui ao longo de meses ou anos. ${R.lab?"Cc e e₀ informados foram usados.":"Sem ensaio de adensamento, o valor no infinito é só indicativo: recomenda-se coleta Shelby e ensaio oedométrico."}`});
+  // bearing capacity
+  if(b.t.g==="co"){
+    const c=10*b.N, BL=R.g.forma==="cir"?1:R.g.B/R.g.L, Nc=5*(1+0.2*BL)*Math.min(1+0.2*Df/R.Bs,1.5);
+    const sr=c*Nc+R.s0Df, FS=sr/R.q;
+    P.push({lv:FS>=3?"ok":FS>=2?"warn":"bad",t:"Capacidade de carga (expedita)",p:`c ≈ 10·N = ${fmt(c,0)} kPa; Skempton: σ<sub>rup</sub> ≈ ${fmt(sr,0)} kPa. Fator de segurança ≈ ${fmt(FS,1)} para a tensão aplicada de ${fmt(R.q,1)} kPa. ${FS>=3?"Atende FS ≥ 3.":"Abaixo de FS = 3: rever a tensão aplicada, ampliar a base, substituir o solo de apoio ou adotar fundação profunda."}`});
+  } else {
+    const sa=20*b.N; P.push({lv:sa>=R.q?"ok":"bad",t:"Capacidade de carga (expedita)",p:`σ<sub>adm</sub> ≈ N/50 MPa = ${fmt(sa,0)} kPa (correlação válida para 5 ≤ N ≤ 20) contra ${fmt(R.q,1)} kPa aplicados.`});
+  }
+  // settlement vs criterion
+  if(isFinite(R.adm)&&R.adm>0){ const mm=R.rhoF*1000;
+    P.push({lv:mm<=R.adm?"ok":"bad",t:"Recalque × critério",p:`No infinito: ${fmt(mm,1)} mm para um admissível de ${fmt(R.adm,0)} mm.${R.cond==="flx"?` Base flexível: diferença centro–borda de ${fmt((R.rhoF-R.rhoF*R.I.borda/R.I.centro)*1000,1)} mm.`:""}`});
+  }
+  return P;
+}
+
+/* ---------- render ---------- */
+function update(){
+  save();
+  const R=compute();
+  const chips=$("chips"), memo=$("memo");
+  $("refline").textContent=(st.furo?"Furo "+st.furo:"Sem identificação do furo");
+  $("btnMemo").disabled=!!R.errs;
+  if(R.errs){
+    $("rI").textContent="—"; $("rF").textContent="—";
+    if(!$("memCard").hidden) $("memDoc").innerHTML='<p>Complete os dados da fundação e da sondagem para gerar a memória de cálculo.</p>';
+    chips.innerHTML=R.errs.map(e=>`<span class="chip bad">${esc(e)}</span>`).join("");
+    memo.innerHTML=""; $("pano").innerHTML=""; drawProfile(R.Ls||buildLayers(),null); lastR=null; return;
+  }
+  lastR=R;
+  $("rI").innerHTML=`${fmt(R.rhoI*1000,1)}<small>mm</small>`;
+  $("rF").innerHTML=`${fmt(R.rhoF*1000,1)}<small>mm</small>`;
+  $("rIh").textContent=R.cond==="rig"?"elástico não drenado, base rígida":"elástico não drenado, centro";
+  $("rFh").textContent=R.lab?"imediato + adensamento (Cc, e₀)":"elástico drenado (sem ensaio)";
+  let ch="";
+  if(isFinite(R.adm)&&R.adm>0) ch+=R.rhoF*1000<=R.adm?`<span class="chip ok">Dentro do admissível (${fmt(R.adm,0)} mm)</span>`:`<span class="chip bad">Acima do admissível (${fmt(R.adm,0)} mm)</span>`;
+  if(R.zEnd<R.Df+R.Hinf-0.05) ch+=`<span class="chip warn">Sondagem curta para o bulbo</span>`;
+  if(!R.lab && R.Ls.some(l=>l.t.g==="co"&&l.N<=5&&l.bot>R.Df)) ch+=`<span class="chip warn">Adensamento sem ensaio</span>`;
+  chips.innerHTML=ch;
+  const rows=[
+    ["Tensão aplicada q",`${fmt(R.q,1)} kPa`],
+    ["Alívio do solo escavado",`${fmt(R.s0Df,1)} kPa`],
+    ["Tensão líquida q<sub>liq</sub>",`${fmt(R.qliq,1)} kPa`],
+    [R.g.forma==="cir"?"Diâmetro D":"B × L",R.g.forma==="cir"?`${fmt(R.g.D,2)} m`:`${fmt(R.g.B,2)} × ${fmt(R.g.L,2)} m`],
+    ["Força total no solo",`${fmt(R.q*R.area,0)} kN`],
+    [`Fator de forma I (${R.cond==="rig"?"rígida":"flexível, centro"})`,fmt(R.Iuse,2)],
+    ["E equivalente (não drenado)",`${fmt(R.Eeq/1000,2)} MPa`],
+    ["E′ equivalente (drenado)",`${fmt(R.Edeq/1000,2)} MPa`],
+    ["ν equivalente (não drenado)",fmt(R.nuEq,2)],
+    ["Profundidade de influência abaixo da base",`${fmt(R.Hinf,2)} m`],
+    ["Trecho com dados de sondagem",`${fmt(R.used,2)} m`]
+  ];
+  if(R.cond==="flx") rows.push(["Recalque imediato na borda",`${fmt(R.rhoIb*1000,1)} mm`]);
+  if(R.lab) rows.push(["Parcela de adensamento",`${fmt(R.rhoA*1000,1)} mm`],["Elástico drenado (comparação)",`${fmt(R.rhoD*1000,1)} mm`]);
+  memo.innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+  $("pano").innerHTML=panorama(R).map(i=>`<div class="item ${i.lv}"><b>${esc(i.t)}</b><p>${i.p}</p></div>`).join("");
+  drawProfile(R.Ls,R);
+  if(!$("memCard").hidden) renderMemo();
+}
+
+function drawProfile(Ls,R){
+  const box=$("svgbox"); if(!Ls||!Ls.length){box.innerHTML='<p class="note">Sem leituras.</p>';return;}
+  const W=360,H=420,padT=16,padB=22,x0=46,x1=W-12;
+  const zMax=Math.max(Ls[Ls.length-1].bot,R?R.Df+R.Hinf:0)*1.04+0.2;
+  const y=z=>padT+(H-padT-padB)*z/zMax;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Perfil esquemático do solo com a base e o nível d'água">`;
+  s+=`<rect x="${x0}" y="${y(0)}" width="${x1-x0}" height="${y(Ls[Ls.length-1].bot)-y(0)}" fill="var(--sunk)"/>`;
+  for(const l of Ls){
+    s+=`<rect x="${x0}" y="${y(l.top)}" width="${x1-x0}" height="${Math.max(0.5,y(l.bot)-y(l.top))}" fill="var(--${l.t.s})" opacity="0.85"/>`;
+    s+=`<line x1="${x0}" x2="${x1}" y1="${y(l.bot)}" y2="${y(l.bot)}" stroke="var(--surface)" stroke-width="1"/>`;
+    s+=`<text x="${x1-6}" y="${y(l.z)+4}" text-anchor="end" font-family="var(--f-mono)" font-size="11" fill="var(--fg)">N=${fmt(l.N,0)}</text>`;
+  }
+  if(R && Ls[Ls.length-1].bot<zMax-0.2){
+    const yb=y(Ls[Ls.length-1].bot);
+    s+=`<rect x="${x0}" y="${yb}" width="${x1-x0}" height="${y(zMax)-yb}" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+    s+=`<text x="${(x0+x1)/2}" y="${(yb+y(zMax))/2+4}" text-anchor="middle" font-size="11" fill="var(--muted)">sem dados</text>`;
+  }
+  // depth ticks
+  const step=zMax>12?2:zMax>6?1:0.5;
+  for(let z=0;z<=zMax;z+=step){ s+=`<line x1="${x0-4}" x2="${x0}" y1="${y(z)}" y2="${y(z)}" stroke="var(--muted)"/><text x="${x0-7}" y="${y(z)+4}" text-anchor="end" font-family="var(--f-mono)" font-size="10.5" fill="var(--muted)">${fmt(z,step<1?1:0)}</text>`; }
+  s+=`<line x1="${x0}" x2="${x0}" y1="${y(0)}" y2="${y(zMax)}" stroke="var(--muted)"/>`;
+  s+=`<text x="10" y="${y(0)+4}" font-size="10.5" fill="var(--muted)" font-family="var(--f-mono)">m</text>`;
+  if(R){
+    const cx=x0+(x1-x0)*0.42, half=Math.min((x1-x0)*0.3, (x1-x0)*0.3*R.Bs/Math.max(R.Bs,3)+18);
+    // excavation and box
+    s+=`<rect x="${cx-half-6}" y="${y(0)}" width="${2*half+12}" height="${y(R.Df)-y(0)}" fill="var(--surface)" stroke="var(--muted)" stroke-dasharray="4 3"/>`;
+    s+=`<rect x="${cx-half}" y="${y(R.Df)-9}" width="${2*half}" height="9" fill="var(--concrete)"/>`;
+    s+=`<text x="${cx}" y="${y(R.Df)-14}" text-anchor="middle" font-size="11" fill="var(--fg)" font-weight="600">base a ${fmt(R.Df,2)} m</text>`;
+    // bulb
+    const yb=y(R.Df+R.Hinf), yt=y(R.Df);
+    s+=`<path d="M ${cx-half} ${yt} C ${cx-half*1.5} ${yt+(yb-yt)*0.45}, ${cx-half*0.6} ${yb}, ${cx} ${yb} C ${cx+half*0.6} ${yb}, ${cx+half*1.5} ${yt+(yb-yt)*0.45}, ${cx+half} ${yt}" fill="none" stroke="var(--fg)" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+    s+=`<text x="${cx}" y="${yb+13}" text-anchor="middle" font-size="10.5" fill="var(--fg)">Δσ = 10% q · ${fmt(R.Df+R.Hinf,2)} m</text>`;
+    if(isFinite(R.na)){ const yw=y(R.na);
+      s+=`<line x1="${x0}" x2="${x1}" y1="${yw}" y2="${yw}" stroke="var(--water)" stroke-width="2"/>`;
+      s+=`<path d="M ${x1-54} ${yw-9} l 6 9 l 6 -9 z" fill="var(--water)"/><text x="${x1-40}" y="${yw-3}" font-size="11" fill="var(--water)" font-weight="600">NA ${fmt(R.na,2)}</text>`; }
+  }
+  s+="</svg>"; box.innerHTML=s;
+}
+
+/* MEMO-START */
+/* ---------- memória de cálculo ---------- */
+function appVersion(){ const v=document.querySelector(".ver"); return v?v.textContent.trim():""; }
+function memoMeta(){
+  const d=new Date();
+  return {obra:String(st.obra||"").trim(), furo:String(st.furo||"").trim(),
+    data:d.toLocaleDateString("pt-BR"), versao:"Verificação de Recalque "+appVersion()};
+}
+function memoModel(R){
+  const uq={kgf:"kgf/cm²",kpa:"kPa",tf:"tf/m²"}[st.qu]||"kPa";
+  const ret=R.g.forma!=="cir", bl=ret?"B":"D";
+  const oneNu=1-R.nuEq*R.nuEq;
+  const M=[];
+  M.push({box:[["Recalque imediato",fmt(R.rhoI*1000,1)+" mm"],["Recalque no infinito",fmt(R.rhoF*1000,1)+" mm"]]});
+  M.push({h:"1. Fundação"});
+  M.push({kv:[
+    ["Forma e comportamento",(ret?"Retangular":"Circular")+", base "+(R.cond==="rig"?"rígida":"flexível")],
+    [ret?"Dimensões B × L":"Diâmetro D", ret?`${fmt(R.g.B,2)} × ${fmt(R.g.L,2)} m`:`${fmt(R.g.D,2)} m`],
+    ["Área da base",`${fmt(R.area,2)} m²`],
+    ["Profundidade de assentamento D_{f}",`${fmt(R.Df,2)} m`],
+    ["Tensão aplicada q", st.qu==="kpa"?`${fmt(R.q,1)} kPa`:`${fmt(R.qRaw,2)} ${uq} = ${fmt(R.q,1)} kPa`],
+    ["Força total no solo",`${fmt(R.q*R.area,0)} kN`]]});
+  M.push({h:"2. Tensão líquida"});
+  M.push({eq:["q_{liq} = q − σ_{v0}(D_{f})",`q_{liq} = ${fmt(R.q,1)} − ${fmt(R.s0Df,1)}`],res:`q_{liq} = ${fmt(R.qliq,1)} kPa`});
+  M.push({p:"σ_{v0}: tensão vertical total do solo removido até a cota da base, com γ estimado pela consistência (Godoy, 1972)."});
+  M.push({h:"3. Parâmetros de deformabilidade"});
+  M.push({kv:[
+    ["Módulo de cada camada","E = α · K · N_{SPT}"],
+    ["Profundidade de influência (Δσ = 10% q_{liq})",`${fmt(R.Hinf,2)} m abaixo da base`],
+    ["Trecho da influência com dados de sondagem",`${fmt(R.used,2)} m`],
+    ["E equivalente não drenado (ponderado por Δσ)",`${fmt(R.Eeq/1000,2)} MPa`],
+    ["ν equivalente não drenado",fmt(R.nuEq,2)],
+    ["E′ equivalente drenado",`${fmt(R.Edeq/1000,2)} MPa`],
+    ["ν′ drenado","0,30"],
+    [`Fator de forma I (${R.cond==="rig"?"base rígida":"base flexível, centro"}${ret?", L/B = "+fmt(R.g.L/R.g.B,2):""})`,fmt(R.Iuse,2)]]});
+  M.push({h:"4. Recalque imediato"});
+  M.push({eq:[`ρ_{i} = q_{liq} · ${bl} · (1 − ν²) · I / E`,
+    `ρ_{i} = ${fmt(R.qliq,1)} × ${fmt(R.Bs,2)} × ${fmt(oneNu,3)} × ${fmt(R.Iuse,2)} / ${fmt(R.Eeq,0)}`],
+    res:`ρ_{i} = ${fmt(R.rhoI,4)} m = ${fmt(R.rhoI*1000,1)} mm`});
+  if(R.cond==="flx") M.push({p:`Base flexível: na borda, I = ${fmt(R.I.borda,2)} e ρ_{i} = ${fmt(R.rhoIb*1000,1)} mm.`});
+  M.push({h:"5. Recalque no infinito"});
+  if(R.lab){
+    M.push({eq:["ρ_{∞} = ρ_{i} + ρ_{a}","ρ_{a} = Σ C_{c} · Δz / (1 + e_{0}) · log[(σ′_{v0} + Δσ) / σ′_{v0}]",
+      `C_{c} = ${fmt(num(st.Cc),3)}; e_{0} = ${fmt(num(st.e0),3)} → ρ_{a} = ${fmt(R.rhoA*1000,1)} mm`,
+      `ρ_{∞} = ${fmt(R.rhoI*1000,1)} + ${fmt(R.rhoA*1000,1)}`],res:`ρ_{∞} = ${fmt(R.rhoF*1000,1)} mm`});
+    M.push({p:"Adensamento primário de argila normalmente adensada, somado nas camadas argilosas abaixo do nível d'água dentro da zona de influência."});
+  } else {
+    M.push({eq:[`ρ_{∞} = q_{liq} · ${bl} · (1 − ν′²) · I / E′`,
+      `ρ_{∞} = ${fmt(R.qliq,1)} × ${fmt(R.Bs,2)} × ${fmt(0.91,3)} × ${fmt(R.Iuse,2)} / ${fmt(R.Edeq,0)}`],
+      res:`ρ_{∞} = ${fmt(R.rhoF,4)} m = ${fmt(R.rhoF*1000,1)} mm`});
+    M.push({p:"Solução elástica drenada, com E′ = 2(1 + ν′)E/3 nas argilas. Sem ensaio de adensamento (C_{c}, e_{0}), o valor é indicativo."});
+  }
+  if(isFinite(R.adm)&&R.adm>0){
+    const ok=R.rhoF*1000<=R.adm;
+    M.push({h:"6. Verificação"});
+    M.push({ck:{ok,t:`ρ_{∞} = ${fmt(R.rhoF*1000,1)} mm ${ok?"≤":">"} ρ_{adm} = ${fmt(R.adm,0)} mm: ${ok?"ATENDE":"NÃO ATENDE"}`}});
+  }
+  const obs=[];
+  if(R.qliq<=0) obs.push("Tensão líquida nula: o peso do solo escavado compensa a carga aplicada.");
+  if(R.zEnd<R.Df+R.Hinf-0.05) obs.push(`A sondagem termina a ${fmt(R.zEnd,2)} m, antes do fim da zona de influência (${fmt(R.Df+R.Hinf,2)} m). Os recalques podem estar subestimados.`);
+  if(!R.lab && R.Ls.some(l=>l.t.g==="co"&&l.N<=5&&l.bot>R.Df)) obs.push("Há argila mole ou muito mole na zona de influência. Recomenda-se ensaio de adensamento para confirmar o recalque no infinito.");
+  obs.push("Parâmetros obtidos por correlação com o SPT. Os dados da sondagem constam do boletim anexo.");
+  M.push({h:(isFinite(R.adm)&&R.adm>0?"7":"6")+". Observações"});
+  M.push({ul:obs});
+  M.push({h:(isFinite(R.adm)&&R.adm>0?"8":"7")+". Referências"});
+  M.push({ul:["ABNT NBR 6122:2019 – Projeto e execução de fundações.",
+    "Teixeira, A. H.; Godoy, N. S. (1998). Análise, projeto e execução de fundações rasas. In: Fundações: teoria e prática.",
+    "Perloff, W. H. (1975). Pressure distribution and settlement. Foundation Engineering Handbook.",
+    "Poulos, H. G.; Davis, E. H. (1974). Elastic solutions for soil and rock mechanics."]});
+  return M;
+}
+const richHTML=s=>esc(s).replace(/_\{([^}]*)\}/g,"<sub>$1</sub>");
+const plain=s=>String(s).replace(/_\{([^}]*)\}/g,"$1");
+function memoHeaderLines(meta){
+  const a=[]; if(meta.obra) a.push("Obra: "+meta.obra);
+  if(meta.furo) a.push("Sondagem de referência: "+meta.furo+" (boletim anexo)");
+  a.push("Data: "+meta.data); return a;
+}
+function memoToHTML(M,meta){
+  let h=`<h1 class="mt">Memória de Cálculo – Recalques</h1><p class="mmeta">${memoHeaderLines(meta).map(esc).join(" · ")}</p>`;
+  for(const b of M){
+    if(b.box) h+=`<div class="mbox">${b.box.map(([l,v])=>`<div><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join("")}</div>`;
+    else if(b.h) h+=`<h3>${richHTML(b.h)}</h3>`;
+    else if(b.kv) h+=`<div class="kv">${b.kv.map(([l,v])=>`<span>${richHTML(l)}</span><span>${richHTML(v)}</span>`).join("")}</div>`;
+    else if(b.eq) h+=`<div class="eq">${b.eq.map(l=>`<span>${richHTML(l)}</span>`).join("")}${b.res?`<b>${richHTML(b.res)}</b>`:""}</div>`;
+    else if(b.p) h+=`<p>${richHTML(b.p)}</p>`;
+    else if(b.ul) h+=`<ul>${b.ul.map(x=>`<li>${richHTML(x)}</li>`).join("")}</ul>`;
+    else if(b.ck) h+=`<p class="ck ${b.ck.ok?"ok":"bad"}">${richHTML(b.ck.t)}</p>`;
+  }
+  return h+`<p>${esc(meta.versao)}</p>`;
+}
+function memoToText(M,meta){
+  const L=["MEMÓRIA DE CÁLCULO – RECALQUES",...memoHeaderLines(meta),""];
+  for(const b of M){
+    if(b.box) L.push(b.box.map(([l,v])=>l+": "+v).join("   |   "));
+    else if(b.h) L.push("",plain(b.h).toUpperCase());
+    else if(b.kv) b.kv.forEach(([l,v])=>L.push(plain(l)+": "+plain(v)));
+    else if(b.eq){ b.eq.forEach(l=>L.push("  "+plain(l))); if(b.res) L.push("  "+plain(b.res)); }
+    else if(b.p) L.push(plain(b.p));
+    else if(b.ul) b.ul.forEach(x=>L.push("- "+plain(x)));
+    else if(b.ck) L.push(plain(b.ck.t));
+  }
+  L.push("",meta.versao); return L.join("\n");
+}
+/* PDF (jsPDF, fontes padrão; letras gregas pela fonte Symbol) */
+const SYM={"ρ":"r","ν":"n","σ":"s","Δ":"D","α":"a","γ":"g","β":"b","Σ":"S","≈":"»","′":"¢","≤":"£","≥":"³","×":"´","∞":"¥","→":"®"};
+function pdfRuns(str){
+  const out=[];
+  const push=(t,sub)=>{ for(const ch of t){ const sy=SYM[ch]; const font=sy?"symbol":"helvetica"; const c=sy||(ch==="−"?"-":ch);
+    const last=out[out.length-1]; if(last&&last.font===font&&last.sub===sub) last.t+=c; else out.push({t:c,font,sub}); } };
+  const re=/_\{([^}]*)\}/g; let m,pos=0;
+  while((m=re.exec(str))){ push(str.slice(pos,m.index),false); push(m[1],true); pos=re.lastIndex; }
+  push(str.slice(pos),false); return out;
+}
+function pdfText(doc,str,x,y,maxW,size,o){
+  o=o||{}; const style=o.bold?"bold":"normal";
+  const setF=r=>{ doc.setFont(r.font,r.font==="symbol"?"normal":style); doc.setFontSize(r.sub?size*0.72:size); };
+  const words=[[]];
+  for(const r of pdfRuns(str)){ r.t.split(" ").forEach((p,i)=>{ if(i>0) words.push([]); if(p) words[words.length-1].push({...r,t:p}); }); }
+  const ww=w=>w.reduce((a,r)=>{ setF(r); return a+doc.getTextWidth(r.t); },0);
+  doc.setFont("helvetica",style); doc.setFontSize(size); const sp=doc.getTextWidth(" ");
+  const lines=[[]]; let lw=0;
+  for(const w of words){ if(!w.length) continue; const wl=ww(w); const cur=lines[lines.length-1];
+    if(cur.length && lw+sp+wl>maxW){ lines.push([w]); lw=wl; } else { if(cur.length) lw+=sp; cur.push(w); lw+=wl; } }
+  const lh=size*0.3528*1.38;
+  for(const L of lines){
+    let cx=x; if(o.align==="right"){ const tot=L.reduce((a,w)=>a+ww(w),0)+sp*(L.length-1); cx=x+maxW-tot; }
+    L.forEach((w,i)=>{ if(i>0) cx+=sp; for(const r of w){ setF(r); doc.text(r.t,cx,r.sub?y+size*0.3528*0.3:y); cx+=doc.getTextWidth(r.t); } });
+    y+=lh;
+  }
+  return y;
+}
+function buildPDF(jsPDF,M,meta){
+  const doc=new jsPDF({unit:"mm",format:"a4"});
+  const X=18, W=210-2*X, BOT=297-18; let y=20;
+  const ink=()=>doc.setTextColor(24,33,43), grey=()=>doc.setTextColor(90,102,115);
+  const need=h=>{ if(y+h>BOT){ doc.addPage(); y=20; } };
+  ink(); y=pdfText(doc,"Memória de Cálculo – Recalques",X,y+4,W,16,{bold:true});
+  doc.setDrawColor(24,33,43); doc.setLineWidth(0.5); doc.line(X,y-2.5,X+W,y-2.5); y+=1.5;
+  grey(); y=pdfText(doc,memoHeaderLines(meta).join("   ·   "),X,y,W,8.5); y+=1;
+  for(const b of M){
+    if(b.box){ need(18); const cw=(W-4)/2;
+      b.box.forEach(([l,v],i)=>{ const bx=X+i*(cw+4); doc.setFillColor(240,243,247); doc.setDrawColor(213,219,226); doc.setLineWidth(0.2); doc.roundedRect(bx,y,cw,15,1,1,"FD");
+        grey(); pdfText(doc,l.toUpperCase(),bx+4,y+5,cw-8,7.5); ink(); pdfText(doc,v,bx+4,y+11.8,cw-8,14,{bold:true}); });
+      y+=19; }
+    else if(b.h){ need(10); y+=2; doc.setTextColor(28,90,140); y=pdfText(doc,b.h,X,y+1,W,10.5,{bold:true}); y+=0.5; }
+    else if(b.kv){ for(const [l,v] of b.kv){ need(6); ink(); const y1=pdfText(doc,l,X,y,W*0.62,9); const y2=pdfText(doc,v,X+W*0.62,y,W*0.38,9,{align:"right"});
+        const ny=Math.max(y1,y2); doc.setDrawColor(225,229,234); doc.setLineWidth(0.15); doc.line(X,ny-3.1,X+W,ny-3.1); y=ny+0.6; } }
+    else if(b.eq){ const n=b.eq.length+(b.res?1:0); need(n*5+2); const y0=y-3.2; ink();
+      for(const l of b.eq) y=pdfText(doc,l,X+5,y,W-5,9.5);
+      if(b.res) y=pdfText(doc,b.res,X+5,y,W-5,9.5,{bold:true});
+      doc.setDrawColor(190,198,207); doc.setLineWidth(0.6); doc.line(X+1.5,y0,X+1.5,y-3.6); y+=1; }
+    else if(b.p){ need(6); grey(); y=pdfText(doc,b.p,X,y,W,8.5); y+=0.5; }
+    else if(b.ul){ for(const t of b.ul){ need(6); grey(); doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.text("•",X+1,y); y=pdfText(doc,t,X+5,y,W-5,8.5); } y+=0.5; }
+    else if(b.ck){ need(7); if(b.ck.ok) doc.setTextColor(42,122,75); else doc.setTextColor(176,40,31); y=pdfText(doc,b.ck.t,X,y,W,10,{bold:true}); }
+  }
+  const n=doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){ doc.setPage(i); doc.setDrawColor(213,219,226); doc.setLineWidth(0.2); doc.line(X,297-13,X+W,297-13);
+    doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(90,102,115);
+    doc.text(meta.versao+" · estimativas por correlação; não substituem ensaios nem a análise do projetista.",X,297-9);
+    doc.text(`Página ${i} de ${n}`,X+W,297-9,{align:"right"}); }
+  return doc;
+}
+/* MEMO-END */
+let downloads=null;
+function renderMemo(){
+  if(!lastR){ $("memDoc").innerHTML='<p>Complete os dados da fundação e da sondagem para gerar a memória de cálculo.</p>'; return; }
+  $("memDoc").innerHTML=memoToHTML(memoModel(lastR),memoMeta());
+}
+function memoFileName(){
+  const base=("Memoria_Calculo_Recalques_"+(st.furo||st.obra||"")).normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9._-]+/g,"_").replace(/_+$/,"");
+  return base+".pdf";
+}
+function bindMemo(){
+  $("btnMemo").addEventListener("click",()=>{ $("memCard").hidden=false; $("memMsg").textContent=""; renderMemo(); $("memCard").scrollIntoView({behavior:"smooth",block:"start"}); });
+  $("btnMemClose").addEventListener("click",()=>{ $("memCard").hidden=true; $("btnMemo").focus(); });
+  $("btnCopy").addEventListener("click",()=>{
+    if(!lastR) return; const txt=memoToText(memoModel(lastR),memoMeta()), msg=$("memMsg");
+    const fallback=()=>{ const r=document.createRange(); r.selectNodeContents($("memDoc")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); msg.textContent="Texto selecionado. Use Ctrl+C para copiar."; };
+    try{ navigator.clipboard.writeText(txt).then(()=>{ msg.textContent="Texto copiado."; },fallback); }catch(e){ fallback(); }
+  });
+  $("btnPdf").addEventListener("click",async()=>{
+    if(!lastR||!downloads||!window.jspdf) return; const msg=$("memMsg"), btn=$("btnPdf");
+    btn.disabled=true; msg.textContent="Gerando PDF…";
+    try{
+      const doc=buildPDF(window.jspdf.jsPDF,memoModel(lastR),memoMeta());
+      await downloads.save({filename:memoFileName(),data:doc.output("blob")});
+      msg.textContent="PDF salvo.";
+    }catch(e){ const c=e&&e.code; msg.textContent=c==="declined"?"Download cancelado.":c==="rate_limited"?"Já há um download aguardando confirmação.":"Não foi possível baixar o PDF nesta visualização. Use Copiar texto.";
+      if(c==="unavailable"||c==="not_granted"||c==="capability_disabled"||c==="capability_removed") btn.hidden=true; }
+    finally{ btn.disabled=false; }
+  });
+}
+async function initDownloads(){
+  try{ downloads=window.claude?await window.claude.use("downloads"):null; }catch(e){ downloads=null; }
+  $("btnPdf").hidden=!(downloads&&window.jspdf&&window.jspdf.jsPDF);
+}
+
+/* ---------- inputs ---------- */
+function bindInputs(){
+  const map={iB:"B",iL:"L",iD:"D",iDf:"Df",iQ:"q",iFuro:"furo",iNA:"na",iFim:"fim",iCc:"Cc",iE0:"e0",iAdm:"adm",iObra:"obra"};
+  for(const [id,k] of Object.entries(map)){ $(id).value=st[k]??""; $(id).addEventListener("input",e=>{st[k]=e.target.value;update();}); }
+  $("iQu").value=st.qu; $("iQu").addEventListener("change",e=>{st.qu=e.target.value;update();});
+  (st.forma==="cir"?$("fCir"):$("fRet")).checked=true; (st.cond==="flx"?$("cFlx"):$("cRig")).checked=true;
+  const formaUI=()=>{ const c=st.forma==="cir"; $("wB").hidden=c; $("wL").hidden=c; $("wD").hidden=!c; };
+  formaUI();
+  document.querySelectorAll('input[name=forma]').forEach(r=>r.addEventListener("change",e=>{st.forma=e.target.value;formaUI();update();}));
+  document.querySelectorAll('input[name=cond]').forEach(r=>r.addEventListener("change",e=>{st.cond=e.target.value;update();}));
+  $("btnAdd").addEventListener("click",()=>addRow(st.rows.length-1));
+  $("btnSort").addEventListener("click",()=>{ st.rows.sort((a,b)=>(num(a.z)||0)-(num(b.z)||0)); renderTable(); update(); });
+}
+
+/* ---------- Claude ---------- */
+let sample=null, lastR=null, ctl=null;
+function errCopy(e){
+  const c=e&&e.code;
+  return c==="not_granted"?"O uso do Claude não foi permitido nesta página.":
+    c==="rate_limited"?"Limite de uso atingido. Tente de novo em alguns minutos.":
+    c==="image_rejected"?"A imagem não foi aceita. Use PNG, JPEG ou WebP com menos de 20 MB.":
+    c==="images_unavailable"?"Esta visualização não permite enviar imagens.":
+    c==="invalid_json"?"Não foi possível interpretar a leitura do laudo. Tente uma imagem mais nítida ou recortada na tabela.":
+    c==="session_expired"?"Sua sessão expirou. Entre novamente no Claude.":
+    c==="refused"?"O Claude não processou esta solicitação.":
+    "Falha temporária na comunicação. Tente de novo.";
+}
+function normTipo(s){
+  s=String(s||"").toLowerCase();
+  const exact=TYPES.find(t=>t.n.toLowerCase()===s); if(exact) return exact.n;
+  const has=w=>s.includes(w);
+  if(has("pedregul")) return "Areia com pedregulhos";
+  if(s.startsWith("argila")||(!has("areia")&&!has("silte")&&has("argil"))) return has("aren")?"Argila arenosa":has("silt")?"Argila siltosa":"Argila";
+  if(s.startsWith("silte")) return has("aren")?"Silte arenoso":has("argil")?"Silte argiloso":"Silte";
+  if(has("areia")) return has("silt")?"Areia siltosa":has("argil")?"Areia argilosa":"Areia";
+  if(has("silte")) return "Silte";
+  return "Argila";
+}
+async function readImage(file){
+  const stEl=$("imgStatus"); stEl.className="status"; stEl.textContent="Lendo o laudo… pode levar até um minuto.";
+  $("btnImg").disabled=true; $("fileImg").disabled=true;
+  const prompt=`A imagem é um boletim de sondagem à percussão (SPT, NBR 6484). Extraia os dados e responda APENAS com um objeto JSON neste formato:
+{"furo":"SP-01","nivel_agua_m":1.12,"fim_sondagem_m":4.45,"leituras":[{"prof_m":1.0,"n_spt":1,"tipo":"Argila arenosa","consistencia":"Muito mole"}],"observacoes":"texto curto"}
+Regras:
+- Uma entrada em "leituras" por profundidade de ensaio SPT (normalmente a cada metro).
+- n_spt = número de golpes para os 30 cm finais (coluna "final"/"FIN", ou soma do 2º e 3º trechos de 15 cm). Se a anotação for golpes/penetração com penetração acima de 30 cm (ex.: 1/45), use o número de golpes (ex.: 1). Se o amostrador afundou sem golpes (peso próprio), use 0.
+- "tipo" deve ser exatamente um destes: ${TYPES.map(t=>t.n).join(", ")}. Escolha o mais próximo da descrição do material na profundidade da leitura (ignore cores; aterro: use o material do aterro).
+- "consistencia": use a do boletim se houver (argilas: Muito mole, Mole, Média, Rija, Dura; areias: Fofa, Pouco compacta, Medianamente compacta, Compacta, Muito compacta); senão null.
+- nivel_agua_m = null se não houver nível d'água. Números com ponto decimal. Não invente leituras ilegíveis; mencione-as em "observacoes".`;
+  try{
+    const d=await sample.json(prompt,{images:[file]});
+    const L=Array.isArray(d&&d.leituras)?d.leituras:[];
+    const rows=L.map(r=>({z:String(num(r.prof_m)),N:String(num(r.n_spt)),tipo:normTipo(r.tipo),cons:"auto"})).filter(r=>isFinite(num(r.z))&&isFinite(num(r.N)));
+    rows.forEach((r,i)=>{ const c=L[i]&&L[i].consistencia; const t=tByName(r.tipo); const list=t.g==="co"?CONS_CO:CONS_GR; const m=list.find(x=>x.toLowerCase()===String(c||"").toLowerCase()); if(m) r.cons=m; });
+    if(!rows.length) throw {code:"invalid_json"};
+    st.rows=rows.sort((a,b)=>num(a.z)-num(b.z));
+    if(d.furo) st.furo=String(d.furo);
+    st.na=(d.nivel_agua_m===null||d.nivel_agua_m===undefined||!isFinite(num(d.nivel_agua_m)))?"":String(num(d.nivel_agua_m));
+    if(isFinite(num(d.fim_sondagem_m))) st.fim=String(num(d.fim_sondagem_m));
+    $("iFuro").value=st.furo; $("iNA").value=st.na; $("iFim").value=st.fim;
+    renderTable(); update();
+    stEl.className="status ok";
+    stEl.textContent=`Laudo lido: ${rows.length} leituras${st.furo?" do furo "+st.furo:""}. Confira cada valor com o boletim antes de usar.${d.observacoes?" Observações: "+d.observacoes:""}`;
+  }catch(e){ stEl.className="status err"; stEl.textContent=errCopy(e); if(e&&e.code==="not_granted"){ $("btnImg").hidden=true; } }
+  finally{ $("btnImg").disabled=false; $("fileImg").disabled=false; $("fileImg").value=""; }
+}
+function md(t){
+  const lines=esc(t).split("\n"); let h="",inUl=false;
+  const inline=s=>s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
+  for(const raw of lines){ const l=raw.trim();
+    if(/^[-*] /.test(l)){ if(!inUl){h+="<ul>";inUl=true;} h+=`<li>${inline(l.slice(2))}</li>`; continue; }
+    if(inUl){h+="</ul>";inUl=false;}
+    if(/^#{1,4} /.test(l)) h+=`<h3>${inline(l.replace(/^#+ /,""))}</h3>`; else if(l) h+=`<p>${inline(l)}</p>`;
+  }
+  if(inUl) h+="</ul>"; return h;
+}
+async function genPano(){
+  if(!lastR) return;
+  const R=lastR, out=$("aiOut");
+  const data={fundacao:{forma:R.g.forma==="cir"?"circular":"retangular",B_m:R.g.B,L_m:R.g.L,D_m:R.g.D,comportamento:R.cond==="rig"?"rígida":"flexível",profundidade_assentamento_m:R.Df,tensao_aplicada_kPa:+R.q.toFixed(1),tensao_liquida_kPa:+R.qliq.toFixed(1)},
+    sondagem:{furo:st.furo,nivel_agua_m:isFinite(R.na)?R.na:null,fim_m:R.zEnd,leituras:R.Ls.map(l=>({prof_m:l.z,N:l.N,tipo:l.t.n,consistencia:l.cons,camada_m:[+l.top.toFixed(2),+l.bot.toFixed(2)]}))},
+    resultados:{recalque_imediato_mm:+(R.rhoI*1000).toFixed(1),recalque_infinito_mm:+(R.rhoF*1000).toFixed(1),metodo_infinito:R.lab?"imediato + adensamento (Cc, e0 de ensaio)":"elástico drenado por correlação",E_eq_MPa:+(R.Eeq/1000).toFixed(2),prof_influencia_abaixo_base_m:+R.Hinf.toFixed(2),admissivel_mm:R.adm},
+    verificacoes:panorama(R).map(i=>({nivel:i.lv,tema:i.t,texto:i.p.replace(/<[^>]+>/g,"")}))};
+  const prompt=`Você é um engenheiro geotécnico. Com base SOMENTE nos dados abaixo (sondagem SPT, fundação rasa e resultados de recalque já calculados), escreva em português um panorama técnico das condições do terreno para essa fundação, com 200 a 320 palavras.
+Organize com estes títulos, cada um iniciado por "### ": Perfil e condição do solo; Nível d'água; Recalques e confiabilidade; Capacidade de suporte; Recomendações.
+Use frases curtas e listas com "- " quando ajudar. Não invente números que não estejam nos dados; cite os valores relevantes. Aponte as limitações das correlações com SPT e o que deve ser investigado.
+
+Dados (JSON):
+${JSON.stringify(data)}`;
+  ctl=new AbortController(); $("btnPano").disabled=true; $("btnStop").hidden=false;
+  out.innerHTML='<p class="note">Pensando…</p>';
+  try{ await sample(prompt,{signal:ctl.signal,onText:({text})=>{out.innerHTML=md(text);}}); }
+  catch(e){ if(e&&e.code==="cancelled"){ if(!e.text) out.innerHTML=""; } else { out.innerHTML=(e&&e.text?md(e.text):"")+`<p class="status err">${esc(errCopy(e))}</p>`; if(e&&e.code==="not_granted") $("btnPano").hidden=true; } }
+  finally{ $("btnPano").disabled=false; $("btnStop").hidden=true; }
+}
+async function initClaude(){
+  try{ sample = window.claude ? await window.claude.use("sample") : null; }catch(e){ sample=null; }
+  const stEl=$("imgStatus");
+  if(!sample){ stEl.textContent="A leitura automática do laudo e o panorama detalhado funcionam quando a página é aberta no Claude. Preencha a tabela manualmente."; $("btnImg").hidden=true; $("fileImg").hidden=true; $("btnPano").hidden=true; return; }
+  let lim=null; try{ lim=await sample.limits(); }catch(e){}
+  if(lim&&lim.images){ $("btnImg").disabled=false; $("fileImg").disabled=false; if(lim.images.mediaTypes) $("fileImg").accept=lim.images.mediaTypes.join(",");
+    stEl.textContent="Envie uma foto ou print do boletim SPT para preencher a tabela automaticamente."; }
+  else { $("btnImg").hidden=true; $("fileImg").hidden=true; stEl.textContent="Envio de imagens indisponível nesta visualização. Preencha a tabela manualmente."; }
+  $("btnPano").disabled=false;
+}
+$("fileImg").addEventListener("change",e=>{ const f=e.target.files&&e.target.files[0]; if(f&&sample) readImage(f); });
+$("btnPano").addEventListener("click",genPano);
+$("btnStop").addEventListener("click",()=>ctl&&ctl.abort());
+
+bindInputs(); bindMemo(); renderTable(); update(); initClaude(); initDownloads();
+})();
+</script>
+
+<!--tema-suite--><style>html:root:not(#tema-suite),html:root:not(#tema-suite)[data-theme]{--bg:#f4f6f8;--surface:#ffffff;--sunk:#f8fafb;--fg:#1f2b37;--muted:#5e6b78;--line:#d9e0e7;--accent:#2b6cb0;--accent-fg:#ffffff;--accent-soft:#e7f0f9;--good:#2e7d50;--warn:#8c5d08;--bad:#b83a2e;--good-soft:#e6f4ec;--warn-soft:#fbf1dc;--bad-soft:#fbe8e5;--water:#3d8ccb;color-scheme:light}</style><!--/tema-suite--></body></html>

@@ -1,0 +1,2305 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><script>(function(){try{if(!window.claude&&window.parent!==window){window.claude={use:function(n){try{var p=window.parent.claude;return p&&p.use?p.use(n):Promise.resolve(null)}catch(e){return Promise.resolve(null)}}}}}catch(e){}})();</script>
+<title>Calculadora de Concreto Armado</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: barra de dados fixa à esquerda, módulos (Resumo, Flexão, Cisalhamento, Torção) à direita; empilha no celular. */
+:root{
+  --bg:#0e1710;
+  --panel:#15221a;
+  --panel-2:#1b2c21;
+  --ink:#e6eee4;
+  --muted:#97ab9c;
+  --line:#2c4333;
+  --accent:#b2cd7c;
+  --accent-ink:#0d1710;
+  --accent-soft:#26391f;
+  --rebar:#f0906f;
+  --ok:#74d69c;
+  --warn:#e6b455;
+  --bad:#f48e84;
+  --conc:#2b3d30;
+  --conc-hi:#4d7152;
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --f-body:'Source Sans 3',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 40px}
+.app{max-width:1240px;margin-inline:auto}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Cabeçalho */
+.top{background:var(--bg);padding-block:12px 0;border-bottom:1px solid var(--line)}
+@media (min-width:961px){.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5}}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 20px;padding-bottom:10px}
+.brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1;letter-spacing:.02em;margin:0;text-transform:uppercase}
+.brand span{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;padding:5px 11px;font-family:var(--f-mono);font-size:12px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin}
+.tabs button{flex:0 0 auto;border:0;background:transparent;font-family:var(--f-display);font-weight:600;font-size:19px;letter-spacing:.06em;text-transform:uppercase;padding:8px 16px 7px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button .st{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:7px;background:var(--line);vertical-align:1px}
+.tabs button .st.ok{background:var(--ok)}.tabs button .st.warn{background:var(--warn)}.tabs button .st.bad{background:var(--bad)}
+
+/* Estrutura */
+.layout{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:20px;align-items:start;padding-top:18px}
+@media (max-width:960px){.layout{grid-template-columns:minmax(0,1fr)}}
+.side{display:flex;flex-direction:column;gap:12px}
+@media (min-width:961px){.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 112px);max-height:calc(100vh - 128px);overflow-y:auto;padding-right:4px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.card.flat{background:transparent;border-style:dashed}
+h2{font-family:var(--f-display);font-weight:600;font-size:19px;letter-spacing:.07em;text-transform:uppercase;margin:0 0 10px}
+h3{font-family:var(--f-mono);font-weight:500;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 10px}
+.full{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted);min-width:0}
+label .u{font-family:var(--f-mono);font-size:10.5px;margin-left:5px}
+input,select{font-family:var(--f-mono);font-size:14.5px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0;color:var(--ink)}
+input[aria-invalid="true"]{border-color:var(--bad)}
+input.auto{color:var(--muted);font-style:italic}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.hint button{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;text-decoration:underline;font-size:12px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:5px;padding:6px 12px;font-family:var(--f-display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:15px;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.dlg{border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);padding:0;width:min(640px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+.dlg::backdrop{background:rgba(0,0,0,.45)}
+.dlg .in{padding:16px 18px;overflow:auto;max-height:calc(100vh - 56px)}
+.dlg h2{margin:0 0 10px;font-size:16px}.dlg h3{margin:16px 0 6px;font:12px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.dlg .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dlg .row>input[type=text]{flex:1 1 220px}
+.dlg ul{list-style:none;margin:0;padding:0}.dlg li{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.dlg li .nm{flex:1 1 180px;min-width:0}.dlg li .nm b{display:block;overflow-wrap:anywhere}.dlg li .nm small{color:var(--muted);font:12px var(--f-mono)}
+.dlg .sm{padding:4px 10px;font-size:13px}.dlg .msg{min-height:20px;font-size:13px;color:var(--muted);margin-top:8px}
+
+.fixed{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+
+/* Resultados */
+.main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel[hidden]{display:none}
+.banner{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:center;border-left:4px solid var(--accent);background:var(--panel);border-radius:0 6px 6px 0;padding:6px 12px}
+.banner.ok{border-left-color:var(--ok)}.banner.warn{border-left-color:var(--warn)}.banner.bad{border-left-color:var(--bad)}
+.banner b{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase}
+.banner p{margin:0;flex-basis:100%;font-size:12.5px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;border-top:2px solid var(--ink)}
+.kpi.main{border-top-color:var(--rebar)}
+.kpi .l{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-family:var(--f-display);font-weight:600;font-size:22px;line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi .v small{font-family:var(--f-mono);font-size:11.5px;font-weight:400;color:var(--muted);margin-left:4px}
+.kpi .s{font-size:10.5px;color:var(--muted);line-height:1.25}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:11.5px;padding:1px 8px;border:1px solid currentColor;border-radius:3px;white-space:nowrap}
+.pill.ok{color:var(--ok)}.pill.warn{color:var(--warn)}.pill.bad{color:var(--bad)}.pill.info{color:var(--accent)}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
+.adopt{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.arow{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.arow:first-child{border-top:0}
+.arow .n{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.05em;text-transform:uppercase}
+.arow .t{font-family:var(--f-mono);font-size:13.5px;min-width:0}
+.arow .t small{display:block;color:var(--muted);font-size:11.5px}
+@media (max-width:560px){.arow{grid-template-columns:minmax(0,1fr)}}
+.ctl{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.ctl label{min-width:110px}
+.meter{position:relative;height:14px;background:var(--panel-2);border:1px solid var(--line);border-radius:3px;overflow:hidden;margin:6px 0 4px}
+.meter i{position:absolute;top:0;bottom:0;left:0}
+.meter .m1{background:var(--accent)}.meter .m2{background:var(--rebar)}
+.meter.bad{border-color:var(--bad)}
+.meter-ticks{position:relative;height:14px;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.meter-ticks span{position:absolute;transform:translateX(-50%)}
+.scale{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th{font-family:var(--f-mono);font-weight:500;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+td{font-family:var(--f-mono)}
+th:first-child,td:first-child{text-align:left}
+td.k{font-family:var(--f-body);color:var(--muted)}
+details{border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+details>summary{cursor:pointer;padding:10px 16px;font-family:var(--f-display);font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::after{content:"+";float:right;font-family:var(--f-mono)}
+details[open]>summary::after{content:"−"}
+details .body{padding:0 16px 12px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{border:1px solid var(--line);background:var(--bg);border-radius:4px;padding:6px 12px;font-family:var(--f-mono);font-size:14px}
+.opt.first{border-color:var(--accent);background:var(--accent-soft)}
+.err{border:1px solid var(--bad);color:var(--bad);border-radius:6px;padding:10px 14px;font-size:14px;background:var(--panel)}
+.err ul{margin:4px 0 0;padding-left:18px}
+.sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.sumcard{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;cursor:pointer;text-align:left;width:100%;color:inherit}
+.sumcard:hover{border-color:var(--ink)}
+.sumcard .big{font-family:var(--f-display);font-weight:600;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.sumcard .big small{font-family:var(--f-mono);font-size:11.5px;font-weight:400;color:var(--muted);margin-left:4px}
+.sumcard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px}
+.sumcard dt{color:var(--muted)}
+.sumcard dd{margin:0;text-align:right;font-family:var(--f-mono)}
+.sec svg{display:block;width:100%;height:auto;max-height:360px}
+.fgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:14px;align-items:start}
+.fleft{display:flex;flex-direction:column;gap:14px;min-width:0}
+.fright{min-width:0}
+.fright .card{padding:10px 12px}.fright h2{font-size:13px;margin:0 0 6px}
+.sdet{font:11.5px var(--f-mono);color:var(--muted);margin:6px 0 0;line-height:1.5}.sdet b{color:var(--ink);font-weight:600}
+@media (max-width:1100px){.fgrid{grid-template-columns:minmax(0,1fr)}.fright{order:-1}}
+.s-conc{fill:var(--conc);stroke:var(--ink);stroke-width:1.4}
+.s-hi{fill:var(--conc-hi)}
+.s-wall{fill:var(--accent);opacity:.22}
+.s-wallc{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:5 3}
+.s-st{fill:none;stroke:var(--ink)}
+.s-bar{fill:var(--rebar)}
+.s-barc{fill:var(--ink)}
+.s-na{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:6 4}
+.s-dim{stroke:var(--muted);stroke-width:1;fill:none}
+.s-txt{fill:var(--muted);font-family:var(--f-mono);font-size:10px}
+.s-txt-i{fill:var(--ink);font-family:var(--f-mono);font-size:10px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-family:var(--f-mono);font-size:12px;margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.foot{margin-top:22px;font-size:12px;color:var(--muted);max-width:90ch}
+.foot b{color:var(--ink)}
+.grow{display:grid;grid-template-columns:128px 176px 120px 74px 84px 96px 1fr 34px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.grow .n{font-weight:600;font-size:13px}.grow .gs{font:12px var(--f-mono);color:var(--muted)}
+.ghd{display:grid;grid-template-columns:128px 176px 120px 74px 84px 96px 1fr 34px;gap:8px;font:11px var(--f-mono);color:var(--muted);margin-bottom:2px}
+#tor-viga{display:flex;flex-direction:column;gap:14px}
+.chk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+.chk small{display:block;color:var(--muted);font:11.5px var(--f-mono)}
+@media (max-width:760px){.grow,.ghd{grid-template-columns:90px 1fr 1fr 60px 70px 34px}.grow .gs,.ghd span:nth-child(7){grid-column:1/-1}.grow select:nth-of-type(2){grid-column:auto}}
+.seg.full{display:flex;width:100%}.seg.full button{flex:1}
+.elem{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+[hidden]{display:none !important}
+.fh{font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:16px 0 8px;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.fh small{font:11px var(--f-mono);text-transform:none;letter-spacing:0}
+.lhd,.lrow{display:grid;grid-template-columns:84px 110px 130px 1fr 34px;gap:10px;align-items:center}
+.lhd{font:11px var(--f-mono);color:var(--muted);margin-bottom:2px}
+.lrow{padding:6px 0;border-top:1px solid var(--line)}
+.lrow .n{font-weight:600;font-size:13px}.lrow .las{font:12px var(--f-mono);color:var(--muted)}
+.lx{width:30px;height:30px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--bad,#a33);cursor:pointer;font-size:16px}
+.ladd{margin-top:8px;border:1px dashed var(--muted);border-radius:5px;padding:6px 12px;font:12px var(--f-mono);color:var(--accent,#1d5a8c);background:var(--panel);cursor:pointer}
+.ltot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:5px;font:12px var(--f-mono)}
+@media (max-width:640px){.lhd,.lrow{grid-template-columns:62px 88px 1fr 30px}.lhd span:nth-child(4),.lrow .las{grid-column:1/-1}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="bar">
+      <div class="brand"><h1>Calculadora de Concreto</h1><span>Vigas de concreto armado · NBR 6118</span></div>
+      <div class="tools">
+        <div class="seg" role="group" aria-label="Unidade dos esforços">
+          <button type="button" id="u-kn" aria-pressed="true">kN · kN·m</button>
+          <button type="button" id="u-tf" aria-pressed="false">tf · tf·m</button>
+        </div>
+        <span class="fixed" id="memMsg" role="status" aria-live="polite"></span>
+        <button type="button" class="btn" id="calcs">Salvar e abrir cálculos</button>
+        <button type="button" class="btn" id="memorial">Gerar memorial de cálculo</button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Módulos">
+      <button type="button" role="tab" data-tab="resumo" aria-selected="true">Resumo</button>
+      <button type="button" role="tab" data-tab="flexao" aria-selected="false">Flexão<span class="st" id="st-flexao"></span></button>
+      <button type="button" role="tab" data-tab="cisalhamento" aria-selected="false">Cisalhamento<span class="st" id="st-cisalhamento"></span></button>
+      <button type="button" role="tab" data-tab="torcao" aria-selected="false">Torção<span class="st" id="st-torcao"></span></button>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="side" aria-label="Dados do elemento">
+      <div class="card">
+        <h2>Elemento</h2>
+        <div class="seg full" role="group" aria-label="Tipo de elemento">
+          <button type="button" id="t-viga" aria-pressed="true">Viga</button>
+          <button type="button" id="t-laje" aria-pressed="false">Laje</button>
+        </div>
+        <p class="hint" id="tipohint"></p>
+      </div>
+      <div class="card">
+        <h2>Materiais</h2>
+        <div class="grid2">
+          <label><span class="lt">fck <span class="u">MPa</span></span>
+            <select id="fck" data-k="fck"><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option></select></label>
+          <label><span class="lt">Aço (fyk)</span>
+            <select id="fyk" data-k="fyk"><option value="250">CA-25 · 250 MPa</option><option value="500">CA-50 · 500 MPa</option><option value="600">CA-60 · 600 MPa</option></select></label>
+          <label class="full"><span class="lt">Agregado</span>
+            <select id="brita" data-k="brita"><option>Brita 0</option><option>Brita 1</option><option>Brita 2</option><option>Brita 3</option></select></label>
+        </div>
+        <p class="fixed" style="margin:8px 0 0">γc = 1,4 · γs = 1,15 · γf = 1,4 (fixos, como na planilha)</p>
+      </div>
+      <div class="card">
+        <h2>Geometria</h2>
+        <div class="grid2">
+          <label><span class="lt" id="lbw">bw <span class="u">cm</span></span><input id="bw" data-k="bw" inputmode="decimal"></label>
+          <label><span class="lt">h <span class="u">cm</span></span><input id="h" data-k="h" inputmode="decimal"></label>
+          <label class="onlyviga"><span class="lt">bf <span class="u">cm · seção T</span></span><input id="bf" data-k="bf" inputmode="decimal" placeholder="vazio = retangular"></label>
+          <label class="onlyviga"><span class="lt">hf <span class="u">cm · seção T</span></span><input id="hf" data-k="hf" inputmode="decimal" placeholder="vazio = retangular"></label>
+          <label><span class="lt">Cobrimento <span class="u">cm</span></span>
+            <select id="cob" data-k="cob"><option>0.5</option><option>1</option><option>1.5</option><option>2</option><option>2.5</option><option>3</option><option>3.5</option><option>4</option><option>4.5</option><option>5</option></select></label>
+          <label id="lphiT"><span class="lt">Estribo Φt <span class="u">mm</span></span>
+            <select id="phiT" data-k="phiT"><option>5</option><option>6.3</option><option>8</option><option>10</option><option>12.5</option></select></label>
+          <label><span class="lt">d inferior <span class="u">cm · Mk⁺</span></span><input id="d" data-k="d" inputmode="decimal"></label>
+          <label><span class="lt">d superior <span class="u">cm · Mk⁻</span></span><input id="dSup" data-k="dSup" inputmode="decimal" placeholder="automático"></label>
+        </div>
+        <p class="hint" id="dhint"></p>
+      </div>
+      <div class="card">
+        <h2 id="hef">Esforços</h2>
+        <div class="grid2">
+          <label><span class="lt">Mk⁺ <span class="u" id="lm">kN·m · tração embaixo</span></span><input id="Mk" data-k="Mk" inputmode="decimal"></label>
+          <label><span class="lt">Mk⁻ <span class="u" id="lmn">kN·m · tração em cima</span></span><input id="Mkn" data-k="Mkn" inputmode="decimal" placeholder="vazio = sem Mk⁻"></label>
+          <label><span class="lt">Vk <span class="u" id="lv">kN</span></span><input id="Vk" data-k="Vk" inputmode="decimal"></label>
+          <label class="onlyviga"><span class="lt">Tk <span class="u" id="lt">kN·m</span></span><input id="Tk" data-k="Tk" inputmode="decimal"></label>
+        </div>
+        <p class="hint" id="efhint">Os esforços de cálculo são majorados por γf = 1,4. Tk só é usado no módulo Torção.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="panel" id="p-resumo"></section>
+
+      <section class="panel" id="p-flexao" hidden>
+        <div class="fgrid">
+        <div class="card">
+          <h2>Barras da armadura longitudinal</h2>
+          <div class="onlyviga">
+            <h3 class="fh">Armadura inferior <small id="req-inf"></small></h3>
+            <div id="lay-inf"></div>
+            <h3 class="fh">Armadura superior <small id="req-sup"></small></h3>
+            <div id="lay-sup"></div>
+            <h3 class="fh">Pele <small>h ≥ 60 cm</small></h3>
+            <div class="ctl">
+              <label><span class="lt">Φ <span class="u">mm</span></span>
+                <select id="phiPele" data-k="phiPele"><option>5</option><option>6.3</option><option>8</option><option>10</option><option>12.5</option><option>16</option></select></label>
+              <label><span class="lt">Barras por face</span><input id="nPele" data-k="nPele" inputmode="numeric" placeholder="automático"></label>
+            </div>
+          </div>
+          <div class="onlylaje">
+            <h3 class="fh">Armadura inferior</h3>
+            <div class="ctl">
+              <label><span class="lt">Φ <span class="u">mm</span></span>
+                <select id="phiTr" data-k="phiTr"><option>5</option><option>6.3</option><option>8</option><option>10</option><option>12.5</option><option>16</option><option>20</option><option>25</option></select></label>
+              <label><span class="lt">Espaçamento <span class="u">cm</span></span><input id="sTr" data-k="sTr" inputmode="decimal" placeholder="automático"></label>
+            </div>
+            <h3 class="fh">Armadura superior</h3>
+            <div class="ctl">
+              <label><span class="lt">Φ <span class="u">mm</span></span>
+                <select id="phiCo" data-k="phiCo"><option>5</option><option>6.3</option><option>8</option><option>10</option><option>12.5</option><option>16</option><option>20</option><option>25</option></select></label>
+              <label><span class="lt">Espaçamento <span class="u">cm</span></span><input id="sCo" data-k="sCo" inputmode="decimal" placeholder="automático"></label>
+            </div>
+          </div>
+          <p class="hint">Deixe a quantidade ou o espaçamento vazio para o cálculo escolher. Mk⁺ traciona a armadura inferior e Mk⁻ a superior; cada face é verificada para o que o momento pede dela.</p>
+        </div>
+        <aside class="fright" aria-label="Corte da seção"><div id="sec-flexao"></div></aside>
+        </div>
+        <div id="out-flexao" class="main"></div>
+        <div class="card" id="fis-card">
+          <h2>Fissuração · abertura de fissuras (ELS-W)</h2>
+          <div class="ctl">
+            <label><span class="lt">Classe de agressividade ambiental</span>
+              <select id="caa" data-k="caa"><option value="1">I · fraca (wk ≤ 0,4 mm)</option><option value="2">II · moderada (wk ≤ 0,3 mm)</option><option value="3">III · forte (wk ≤ 0,3 mm)</option><option value="4">IV · muito forte (wk ≤ 0,2 mm)</option></select></label>
+          </div>
+          <p class="hint">Verificação da NBR 6118 (17.3.3.2) com o Mk informado como momento de serviço, sem minoração nem fatores de combinação. Vale para viga e laje de concreto armado.</p>
+          <div id="fis-out"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="p-cisalhamento" hidden>
+        <div class="card">
+          <h2>Estribos adotados</h2>
+          <div class="ctl">
+            <label><span class="lt" id="lramos">Ramos do estribo</span>
+              <select id="ramos" data-k="ramos"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option></select></label>
+            <label><span class="lt">Diâmetro Φ <span class="u">mm</span></span>
+              <select id="phiT2" data-k="phiT"><option>5</option><option>6.3</option><option>8</option><option>10</option><option>12.5</option></select></label>
+            <label><span class="lt">Espaçamento <span class="u">cm</span></span><input id="sEst" data-k="sEst" inputmode="decimal" placeholder="automático"></label>
+          </div>
+          <div id="cis-adot-out"></div>
+        </div>
+        <div class="card" id="cis-laje-opts" hidden>
+          <h2>Opções da laje</h2>
+          <div class="ctl">
+            <label style="min-width:280px"><span class="lt">Armadura inferior no apoio (define k)</span>
+              <select id="apoio" data-k="apoio"><option value="chega">Chega ao apoio · k = |1,6 − d|</option><option value="nao">50 % ou mais não chega · k = 1</option></select></label>
+          </div>
+          <p class="hint">As1 e ρ1 vêm da armadura de tração adotada na aba Flexão.</p>
+        </div>
+        <div id="out-cisalhamento" class="main"></div>
+      </section>
+
+      <section class="panel" id="p-torcao" hidden>
+        <div id="tor-laje" class="main" hidden></div>
+        <div id="tor-viga"><div class="card">
+          <h2>Estribos adotados</h2>
+          <p class="hint" style="margin-top:0">O ramo 1 é o estribo fechado dentro da seção vazada, que resiste à torção. Os outros ramos ficam fora dela: estribo fechado adicional ou perna simples.</p>
+          <div id="tor-groups"></div>
+          <div id="tor-adot-out"></div>
+        </div>
+        <div class="card">
+          <h2>Opções da torção</h2>
+          <div class="ctl">
+            <label style="min-width:220px"><span class="lt">Verificação da armadura mínima</span>
+              <select id="modoMin" data-k="modoMin"><option value="parcela">Cada parcela, depois soma</option><option value="soma">Só após somar as parcelas</option></select></label>
+            <label><span class="lt">Asinf de flexão <span class="u">cm²</span></span><input id="asInfF" data-k="asInfF" inputmode="decimal"></label>
+            <label><span class="lt">Assup de flexão <span class="u">cm²</span></span><input id="asSupF" data-k="asSupF" inputmode="decimal"></label>
+            <label><span class="lt">c1 <span class="u">cm</span></span><input id="c1" data-k="c1" inputmode="decimal"></label>
+          </div>
+          <p class="hint">Asinf, Assup e c1 vêm da aba Flexão e dos dados da viga. Digite um valor para substituí-los. <button type="button" id="relink">Voltar ao valor automático</button></p>
+        </div>
+        <div id="out-torcao" class="main"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <p class="foot"><b>Importante.</b> O motor de cálculo reproduz as abas Flexão, Cisalhamento e Torção da planilha “1.3.0 - CA - DIM. DE VIGAS”, desenvolvida pelo Eng. Rafael Júnior Alves. Esta ferramenta deve ser usada apenas para fins didáticos, em auxílio ao estudo do conteúdo das disciplinas de Concreto Armado. A interpretação e a validação dos resultados são de exclusiva responsabilidade do usuário.</p>
+</div>
+
+<dialog class="dlg" id="dlg-calcs" aria-labelledby="dlg-t"><div class="in">
+  <h2 id="dlg-t">Salvar e abrir cálculos</h2>
+  <h3>Salvar o cálculo atual</h3>
+  <div class="row"><input type="text" id="calc-nome" placeholder="Nome do cálculo (ex.: Viga V12 - 25x60)" aria-label="Nome do cálculo" maxlength="80">
+    <button type="button" class="btn sm" id="calc-salvar">Salvar no navegador</button>
+    <button type="button" class="btn sm" id="calc-baixar">Baixar arquivo</button></div>
+  <h3>Abrir um arquivo</h3>
+  <div class="row"><input type="file" id="calc-arq" accept=".json,.dimis,application/json" aria-label="Arquivo de cálculo"></div>
+  <h3>Salvos neste navegador</h3>
+  <ul id="calc-lista"></ul>
+  <div class="msg" id="calc-msg" role="status" aria-live="polite"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:10px"><button type="button" class="btn sm" id="calc-fechar">Fechar</button></div>
+</div></dialog>
+<script>
+/* Motor de cálculo — reproduz as abas Flexão, Cisalhamento e Torção da planilha
+   "1.3.0 - CA - DIM. DE VIGAS" (desenvolvido pelo Eng. Rafael Júnior Alves).
+   Unidades internas: kN e cm. */
+var Motor = (function () {
+  var BARS = [5, 6.3, 8, 10, 12.5, 16, 20, 25];
+  var BRITA = { 'Brita 0': 9.5, 'Brita 1': 19, 'Brita 2': 25, 'Brita 3': 38 };
+  var KX_LIM = 0.45;
+  var EPS = 1e-9;
+
+  function area(phi) { return Math.PI * phi * phi / 400; } // cm² (phi em mm)
+
+  function materiais(fck, fyk) {
+    var fctm = 0.1 * 0.3 * Math.pow(fck, 2 / 3);
+    return {
+      fck: fck, fyk: fyk,
+      fcd: 0.1 * fck / 1.4,
+      fyd: 0.1 * fyk / 1.15,
+      eyd: 1000 * fyk / (1.15 * 210000),
+      fctm: fctm,
+      fctkSup: 1.3 * fctm,
+      fctd: 0.1 * 0.21 * Math.pow(fck, 2 / 3) / 1.4,
+      fywd: Math.min(0.1 * fyk / 1.15, 43.5),
+      fywk: 0.1 * fyk,
+      av2: 1 - 0.1 * fck / 25
+    };
+  }
+
+  function vRd2(m, bw, d) { return 0.27 * m.av2 * m.fcd * bw * d; }
+
+  /* ---------- Camadas de barras (espaçamentos da aba Flexão) ---------- */
+  function camadas(n, phi, bw, cob, phiT, dmax) {
+    var ah = Math.max(2, 0.104 * phi, 0.12 * dmax);
+    var av = Math.max(2, 0.104 * phi, 0.05 * dmax);
+    var util = bw - 2 * (cob + 0.1 * phiT + 0.052 * phi);
+    var passo = 0.104 * phi + ah;
+    var porCamada = Math.floor(util / passo + EPS) + 1;
+    var nCam = n / porCamada > 1 ? Math.ceil(n / porCamada - EPS) : 1;
+    return { ah: ah, av: av, porCamada: porCamada, camadas: nCam };
+  }
+
+  /* ---------- FLEXÃO ---------- */
+  function flexao(i) {
+    var m = materiais(i.fck, i.fyk);
+    var bw = i.bw, h = i.h, d = i.d, cob = i.cob;
+    var bf = i.bf || 0, hf = i.hf || 0;
+    var isT = bf > 0 && hf > 0;
+    var dl = i.dl > 0 ? i.dl : cob + 1.5;   // d' (planilha: cob + 1,5; o app informa o CG real da armadura comprimida)
+    var ds = d - dl;
+    var Md = i.Md;                 // kN.cm
+    var fcd = m.fcd, fyd = m.fyd;
+    var w = isT ? bf : bw;         // largura usada no KMD/y (S25)
+
+    var W0 = bw * h * h / 6;
+    var Mdmin = 0.8 * W0 * m.fctkSup;
+
+    var uM = 0.85 * fcd * w * d * d * 0.8 * KX_LIM * (1 - 0.5 * 0.8 * KX_LIM);
+    var vM = isT
+      ? 0.85 * fcd * (bf - bw) * hf * (d - 0.5 * hf) + 0.85 * fcd * bw * d * d * 0.8 * KX_LIM * (1 - 0.5 * 0.8 * KX_LIM)
+      : uM;
+    var Mlim = Math.min(uM, vM);
+    var dM = Md - Mlim;
+
+    var U41 = 1 - Md / (0.425 * w * d * d * fcd);
+    var yBf = U41 < 0 ? 0 : d * (1 - Math.sqrt(U41));
+    var xS39 = U41 < 0 ? KX_LIM * d : (dM < 0 ? Math.min(yBf / 0.8, KX_LIM * d) : KX_LIM * d);
+    var U39 = isT ? (0.8 * xS39 > hf ? 1 : 0) : 0;
+    var U40 = (xS39 / d >= KX_LIM - EPS) ? 1 : 0;
+    var caso;
+    if (!isT) caso = U40;
+    else caso = (U40 === 1 && U39 === 0) ? 1 : 2 + U39 + U40;
+    var nomes = ['Armadura simples, seção retangular', 'Armadura dupla, seção retangular',
+      'Armadura simples, seção T (linha neutra na mesa)', 'Armadura simples, seção T (linha neutra na alma)',
+      'Armadura dupla, seção T'];
+
+    var r = {
+      mat: m, isT: isT, caso: caso, nomeCaso: nomes[caso], dl: dl, ds: ds, W0: W0, Mdmin: Mdmin,
+      Mlim: Mlim, dM: dM, KMD: Md / (w * d * d * fcd), Md: Md, w: w
+    };
+    if (isT && caso === 1) r.nomeCaso = 'Armadura dupla, seção T (linha neutra na mesa)';
+
+    // esmagamento: ΔMd,lim maior que Md,lim (planilha: "Armadura não determinada")
+    if (dM > Mlim) { r.esmagamento = true; return r; }
+
+    var C1 = 0, C2 = 0, Cs = 0, Asc = 0, As, kx, sigS = 0, epsS = 0, y = 0;
+    if (caso === 0 || caso === 2) {
+      var ww = caso === 0 ? bw : bf;
+      y = d * (1 - Math.sqrt(1 - Md / (0.425 * ww * d * d * fcd)));
+      C1 = 0.85 * fcd * ww * y;
+      As = C1 / fyd;
+      kx = y / (0.8 * d);
+    } else if (caso === 3) {
+      var C1f = 0.85 * fcd * (bf - bw) * hf;
+      var Md1 = C1f * (d - 0.5 * hf);
+      var arg = 1 - (Md - Md1) / (0.425 * bw * d * d * fcd);
+      var y2 = arg < 0 ? d : d * (1 - Math.sqrt(arg));
+      C1 = C1f; C2 = 0.85 * fcd * bw * y2;
+      As = (C1 + C2) / fyd;
+      kx = Math.max(yBf, y2) / (0.8 * d);
+      y = y2;
+    } else if (caso === 1) {
+      var wc = isT ? bf : bw;
+      var a1 = 1 - Md / (0.425 * wc * d * d * fcd);
+      var yy = a1 < 0 ? 0.8 * KX_LIM * d : d * (1 - Math.sqrt(a1));
+      kx = yy / (0.8 * d);
+      C1 = 0.85 * fcd * wc * 0.8 * KX_LIM * d;
+      var S37c = a1 < 0 ? 0 : C1 * (d - 0.5 * (isT ? hf : 0));
+      var argc = 1 - (Md - S37c) / (0.425 * bw * d * d * fcd);
+      kx = Math.max(kx, (argc < 0 ? d : d * (1 - Math.sqrt(argc))) / (0.8 * d));
+      var xl = KX_LIM * d;
+      epsS = 3.5 * (1 - dl / xl);
+      sigS = epsS < m.eyd ? epsS * 21 : fyd;
+      Asc = dM / (sigS * ds);
+      Cs = Asc * sigS;
+      As = C1 / fyd + dM / (fyd * ds);
+      y = 0.8 * xl;
+    } else { // caso 4
+      var C1g = 0.85 * fcd * (bf - bw) * hf;
+      var Md1g = C1g * (d - 0.5 * hf);
+      var arg4 = 1 - (Md - Md1g) / (0.425 * bw * d * d * fcd);
+      var y24 = arg4 < 0 ? d : d * (1 - Math.sqrt(arg4));
+      var a4f = 1 - Md / (0.425 * bf * d * d * fcd);
+      kx = Math.max(y24 / (0.8 * d), (a4f < 0 ? d : d * (1 - Math.sqrt(a4f))) / (0.8 * d));
+      C1 = C1g;
+      C2 = 0.85 * 0.8 * KX_LIM * fcd * bw * d;
+      var xl4 = KX_LIM * d;
+      epsS = 3.5 * (1 - dl / xl4);
+      sigS = epsS < m.eyd ? epsS * 21 : fyd;
+      Asc = dM / (sigS * ds);
+      Cs = Asc * sigS;
+      As = (C1 + C2) / fyd + dM / (fyd * ds);
+      y = 0.8 * xl4;
+    }
+    var dupla = caso === 1 || caso === 4;
+    var x = Math.min(KX_LIM, kx) * d;
+
+    // armadura mínima
+    var aMin = 1 - Mdmin / (0.425 * w * d * d * fcd);
+    var yMin = aMin < 0 ? d : d * (1 - Math.sqrt(aMin));
+    var AsminM = 0.85 * fcd * bw * yMin / fyd;
+    var Asmin = Math.max(bw * 0.0015 * h, AsminM);
+
+    r.esmagamento = false;
+    r.dupla = dupla;
+    r.kx = kx; r.x = x; r.kxExcedido = kx > KX_LIM + EPS;
+    r.C1 = C1; r.C2 = C2; r.Cs = Cs; r.Rcd = C1 + (caso === 3 ? C2 : 0);
+    r.Rcd1 = C1; r.Rcd2 = caso === 3 ? C2 : (caso === 4 ? C2 : 0);
+    r.Rtd = As * fyd;
+    r.As = As; r.Asmin = Asmin; r.AsBase = Math.max(As, Asmin); r.minGoverna = Asmin > As;
+    r.Asc = dupla ? Asc : 0;
+    r.sigS = sigS; r.epsS = epsS;
+    r.exagerada = dupla && As > 0 && (Asc / As) > 0.27;
+    r.razaoAsc = dupla && As > 0 ? Asc / As : 0;
+    r.epsTracao = 3.5 * (d - x) / x;
+    r.dominio = r.epsTracao >= 10 ? 2 : (r.epsTracao >= m.eyd ? 3 : 4);
+    r.Mrd = null;
+    return r;
+  }
+
+  /* Detalhamento da armadura longitudinal escolhida */
+  function barrasFlexao(r, i) {
+    var dmax = BRITA[i.brita] || 19;
+    var out = {};
+    var Ab = area(i.phiTr);
+    var nAuto = Math.max(2, Math.ceil(r.AsBase / Ab - EPS));
+    var n = i.nTr > 0 ? Math.round(i.nTr) : nAuto;
+    var cam = camadas(n, i.phiTr, i.bw, i.cob, i.phiT, dmax);
+    var nCam = i.camTr > 0 ? Math.round(i.camTr) : cam.camadas;
+    var porCam = i.camTr > 0 ? Math.ceil(n / nCam - EPS) : cam.porCamada;
+    out.tracao = { phi: i.phiTr, n: n, nAuto: nAuto, As: n * Ab, camadas: nCam, porCamada: porCam, maxPorCamada: cam.porCamada,
+      excede: porCam > cam.porCamada, ah: cam.ah, av: cam.av, manual: i.nTr > 0 || i.camTr > 0 };
+    out.avisoCG = nCam > 1;
+
+    var Ac = area(i.phiCo);
+    var ncAuto = r.dupla ? Math.max(2, Math.ceil(r.Asc / Ac - EPS)) : 2;
+    var nc = i.nCo > 0 ? Math.round(i.nCo) : ncAuto;
+    var camc = camadas(nc, i.phiCo, i.bw, i.cob, i.phiT, dmax);
+    var ncCam = i.camCo > 0 ? Math.round(i.camCo) : (r.dupla || nc > 2 ? camc.camadas : 1);
+    var porCamC = i.camCo > 0 ? Math.ceil(nc / ncCam - EPS) : camc.porCamada;
+    out.compressao = { phi: i.phiCo, n: nc, nAuto: ncAuto, As: nc * Ac, camadas: ncCam, porCamada: porCamC, maxPorCamada: camc.porCamada,
+      excede: porCamC > camc.porCamada, portaEstribo: !r.dupla && !(i.nCo > 0 && nc > 2), ah: camc.ah, av: camc.av, manual: i.nCo > 0 || i.camCo > 0 };
+
+    if (i.h >= 60) {
+      var Asp = 0.001 * i.bw * i.h;          // por face
+      var Ap = area(i.phiPele);
+      var np = Math.ceil(Asp / Ap - EPS);
+      var tmax = Math.min(20, 1.5 * i.phiPele, i.d / 3);
+      var sp = Math.min(tmax, Math.round(0.65 * i.h / np));
+      var nf = Math.max(np, Math.round(0.65 * i.h / sp));
+      var manualP = i.nPele > 0;
+      if (manualP) { nf = Math.round(i.nPele); sp = 0.65 * i.h / nf; }
+      out.pele = { necessaria: true, Asp: Asp, phi: i.phiPele, n: nf, nAuto: Math.max(np, Math.round(0.65 * i.h / Math.min(tmax, Math.round(0.65 * i.h / np)))), s: sp, tmax: tmax,
+        As: nf * Ap, manual: manualP, espacado: sp > tmax + 1e-9 };
+    } else {
+      out.pele = { necessaria: false };
+    }
+    return out;
+  }
+
+
+  /* ---------- FISSURAÇÃO (ELS-W) — NBR 6118, 17.3.3.2 ----------
+     Estádio II com αe = Es/Ecs; wk = mín(w1, w2); Acri limitada a 7,5·Φ do eixo da barra.
+     Momento de serviço = Mk informado (sem minoração/combinação). Unidades: kN, cm (σ em MPa no cálculo de w). */
+  var WLIM = { 1: 0.4, 2: 0.3, 3: 0.3, 4: 0.2 };
+  function fissuracao(i) {
+    var m = materiais(i.fck, i.fyk), Es = 210000;
+    var Eci = 5600 * Math.sqrt(i.fck), alI = Math.min(1, 0.8 + 0.2 * i.fck / 80), Ecs = alI * Eci, aE = Es / Ecs;
+    var bw = i.bw, h = i.h, bf = i.bf || 0, hf = i.hf || 0, isT = !i.laje && bf > bw && hf > 0;
+    var fctInf = 0.7 * m.fctm, fctmMPa = 10 * m.fctm;
+    var out = { Ecs: Ecs, alphaE: aE, wlim: WLIM[i.caa] || 0.3, eta: i.fyk >= 500 ? 2.25 : 1.0, fctm: fctmMPa, fctInf: fctInf * 10, caa: i.caa };
+    // seção bruta (Mr)
+    var bT = i.laje ? 100 : bw, A, yc, Ic, alfa;
+    if (isT) {
+      A = bw * h + (bf - bw) * hf; yc = (bw * h * h / 2 + (bf - bw) * hf * hf / 2) / A;
+      Ic = bw * h * h * h / 12 + bw * h * Math.pow(h / 2 - yc, 2) + (bf - bw) * Math.pow(hf, 3) / 12 + (bf - bw) * hf * Math.pow(yc - hf / 2, 2);
+      alfa = 1.2;
+    } else { A = bT * h; yc = h / 2; Ic = bT * h * h * h / 12; alfa = 1.5; }
+    var yt = i.tracaoInf ? h - yc : yc;
+    if (isT && !i.tracaoInf) yt = yc;
+    out.Mr = alfa * fctInf * Ic / yt; out.alfa = alfa; out.Ic = Ic; out.yt = yt;
+    out.fissurado = i.Mk > out.Mr;
+    if (!out.fissurado) {   // estádio I: tensão no aço da seção íntegra (informativa)
+      var arm = i.tracaoInf ? (h - i.y1) - yc : yc - i.y1;
+      out.sigma = 10 * aE * i.Mk * arm / Ic; out.estadio = 'I'; out.wk = 0; out.ok = true; return out;
+    }
+    out.estadio = 'II';
+    // estádio II
+    var As = i.As, d = i.d, flange = isT && i.tracaoInf, x, III;
+    var aA = aE * As;
+    if (flange) {
+      x = (-aA + Math.sqrt(aA * aA + 2 * bf * aA * d)) / bf;
+      if (x > hf) {
+        var a = bw / 2, b = (bf - bw) * hf + aA, c = -((bf - bw) * hf * hf / 2 + aA * d);
+        x = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+        III = bw * Math.pow(x, 3) / 3 + (bf - bw) * (Math.pow(x, 3) - Math.pow(x - hf, 3)) / 3 + aA * Math.pow(d - x, 2);
+      } else III = bf * Math.pow(x, 3) / 3 + aA * Math.pow(d - x, 2);
+    } else {
+      var bb = i.laje ? 100 : bw;
+      x = (-aA + Math.sqrt(aA * aA + 2 * bb * aA * d)) / bb;
+      III = bb * Math.pow(x, 3) / 3 + aA * Math.pow(d - x, 2);
+    }
+    out.x = x; out.III = III;
+    var d1 = h - i.y1;                       // altura até o eixo da barra mais afastada
+    out.sigma = 10 * aE * i.Mk * (d1 - x) / III;   // MPa
+    // Acri
+    var phi = i.phi, r75 = 7.5 * phi / 10;   // cm
+    var alt = Math.min(i.y1 + r75, h - x), larg, nb;
+    if (i.laje) { larg = Math.min(i.s, 2 * r75); nb = 1; out.AsReg = area(phi); }
+    else {
+      var cl = i.cob + i.phiT / 10 + phi / 20, n = i.n1, e = n > 1 ? (bw - 2 * cl) / (n - 1) : 0;
+      larg = n > 1 ? (n - 1) * Math.min(e, 2 * r75) + 2 * Math.min(r75, cl) : 2 * Math.min(r75, cl);
+      if (n > 1) larg = Math.min(larg, bw); nb = n; out.AsReg = n * area(phi);
+    }
+    out.Acri = larg * alt; out.rho = out.AsReg / out.Acri; out.phi = phi; out.alt = alt; out.larg = larg;
+    var k = phi / (12.5 * out.eta) * out.sigma / Es;
+    out.w1 = k * 3 * out.sigma / fctmMPa; out.w2 = k * (4 / out.rho + 45);
+    out.wk = Math.min(out.w1, out.w2); out.ok = out.wk <= out.wlim + 1e-9;
+    return out;
+  }
+
+  /* ---------- Opções de estribos (compartilhado por cisalhamento e torção) ---------- */
+  function opcoesEstribos(aswPerna, smax, phiMax) {
+    var q = [], t = [];
+    BARS.forEach(function (phi) {
+      if (phi > phiMax) return;
+      var sCalc = Math.trunc(Math.PI * phi * phi / 4 / aswPerna);
+      if (sCalc >= 7 && sCalc <= smax) q.push({ phi: phi, s: sCalc });
+      else if (sCalc > smax) t.push({ phi: phi, s: smax });
+    });
+    var opts = q.length ? q : t.slice(0, 1);
+    return opts.slice(0, 4);
+  }
+
+  function phiMaxEstribo(bw) {
+    var lim = [25, 20, 16, 12.5, 10, 8, 6.3];
+    for (var k = 0; k < lim.length; k++) if (bw >= lim[k]) return lim[k];
+    return 5;
+  }
+
+  /* ---------- CISALHAMENTO (Modelo I) ---------- */
+  function cisalhamento(i) {
+    var m = materiais(i.fck, i.fyk);
+    var bw = i.bw, d = i.d;
+    var Vsd = i.Vsd;
+    var VRd2 = vRd2(m, bw, d);
+    var rhoMin = 0.2 * m.fctm / m.fywk;
+    var Vsdmin = 0.6 * bw * d * m.fctd + 0.9 * bw * d * m.fywd * rhoMin;
+    var r = { mat: m, Vsd: Vsd, VRd2: VRd2, razao: Vsd / VRd2, rhoMin: rhoMin, Vsdmin: Vsdmin };
+    if (Vsd > VRd2) { r.esmagamento = true; return r; }
+    r.esmagamento = false;
+    var Vc = 0.6 * bw * d * m.fctd;
+    var Aswmin = 100 * bw * rhoMin;
+    r.apenasMinima = Vsd <= Vsdmin;
+    r.Vc = Vc;
+    r.Vsw = Math.max(Vsd - Vc, 0);
+    r.AswCalc = r.apenasMinima ? 0 : 100 * r.Vsw / (0.9 * d * m.fywd);
+    r.Aswmin = Aswmin;
+    r.Asw = Math.max(r.AswCalc, Aswmin);
+    r.VRd3 = Vc + r.Vsw;
+
+    r.phiMin = 5;
+    r.phiMax = phiMaxEstribo(bw);
+    r.smax = Math.trunc(r.razao > 0.67 ? Math.min(0.3 * d, 20) : Math.min(30, 0.6 * d));
+    r.stmax = Math.trunc(r.razao > 0.2 ? Math.min(0.6 * d, 35) : Math.min(80, d));
+    r.nMin = i.norma ? Math.max(2, Math.ceil((bw - 2 * (i.cob + 0.05 * i.phiT)) / r.stmax - EPS) + 1) : Math.max(2, Math.trunc(2 * (bw / Math.trunc(r.stmax))));
+    r.ramos = Math.max(r.nMin, i.ramos);
+    r.aswPerna = r.Asw / r.ramos;
+    r.opcoes = opcoesEstribos(r.aswPerna, r.smax, r.phiMax);
+    return r;
+  }
+
+
+
+  /* ---------- Armadura de uma face (inferior ou superior) em camadas ---------- */
+  // o: { layers:[{phi,n}], req (cm²), bw, cob, phiT, brita }. Uma só camada sem quantidade = automático.
+  function armaduraFace(o) {
+    var dmax = BRITA[o.brita] || 19;
+    var L = o.layers || [];
+    var auto = L.length >= 1 && !L.some(function (l) { return l.n > 0; });
+    var rows = [], nAuto = null;
+    if (auto) {
+      var Ab0 = area(L[0].phi);
+      var n0 = Math.max(2, Math.ceil((o.req || 0) / Ab0 - EPS));
+      var cam = camadas(n0, L[0].phi, o.bw, o.cob, o.phiT, dmax);
+      var rem = n0;
+      while (rem > 0) { var cnt = Math.min(cam.porCamada, rem); rows.push({ phi: L[0].phi, n: cnt }); rem -= cnt; }
+      nAuto = n0;
+    } else {
+      L.forEach(function (l) { if (l.n > 0) rows.push({ phi: l.phi, n: Math.round(l.n) }); });
+    }
+    var y = 0, prevPhi = 0, sumA = 0, sumAy = 0, ext = 0, excede = false;
+    rows.forEach(function (l, k) {
+      var Ab = area(l.phi);
+      var cm = camadas(l.n, l.phi, o.bw, o.cob, o.phiT, dmax);
+      y = k === 0 ? o.cob + o.phiT / 10 + l.phi / 20 : y + prevPhi / 20 + cm.av + l.phi / 20;
+      l.As = l.n * Ab; l.y = y; l.max = cm.porCamada; l.excede = l.n > cm.porCamada; l.ah = cm.ah; l.av = cm.av;
+      if (l.excede) excede = true;
+      sumA += l.As; sumAy += l.As * y; ext = y + l.phi / 20; prevPhi = l.phi;
+    });
+    return { layers: rows, auto: auto, nAuto: nAuto, As: sumA, n: rows.reduce(function (a, l) { return a + l.n; }, 0),
+      cg: sumA > 0 ? sumAy / sumA : NaN, ext: ext, excede: excede };
+  }
+
+  function faixaLaje(phi, Asn, sUser, h) {
+    var smax = Math.min(20, 2 * h), Ab = area(phi);
+    var sCalc = Math.floor(100 * Ab / Math.max(Asn, 0.0001) + EPS);
+    var man = sUser > 0;
+    var s = man ? sUser : Math.min(smax, sCalc);
+    return { phi: phi, s: s, sCalc: sCalc, As: 100 * Ab / s, n: Math.floor(100 / s + EPS) + 1, curto: s < 7, limitadoSmax: !man && sCalc > smax,
+      acimaSmax: man && s > smax, manual: man, smax: smax };
+  }
+
+  /* ---------- LAJES (faixa de 1 m) ---------- */
+  function fywdLaje(h, fywdFull) {           // NBR 6118, 19.4.2: limite de fywd conforme a espessura
+    if (h <= 15) return Math.min(25, fywdFull);
+    if (h > 35) return fywdFull;
+    return Math.min(25 + (fywdFull - 25) * (h - 15) / 20, fywdFull);
+  }
+
+  function barrasLaje(r, i) {
+    var smax = Math.min(20, 2 * i.h);
+    var esc = 100 / i.bw;                    // As por metro
+    function faixa(phi, Asn, sUser) {
+      var Ab = area(phi);
+      var sCalc = Math.floor(100 * Ab / Asn + EPS);
+      var man = sUser > 0;
+      var s = man ? sUser : Math.min(smax, sCalc);
+      return { phi: phi, s: s, sCalc: sCalc, As: 100 * Ab / s, n: Math.floor(100 / s + EPS) + 1, curto: s < 7, limitadoSmax: !man && sCalc > smax,
+        acimaSmax: man && s > smax, manual: man };
+    }
+    var out = { smax: smax };
+    out.tracao = faixa(i.phiTr, r.AsBase * esc, i.sTr);
+    out.compressao = (r.dupla || i.sCo > 0) ? faixa(i.phiCo, Math.max(r.Asc * esc, 0.0001), i.sCo) : null;
+    out.AsDist = Math.max(0.2 * out.tracao.As, 0.9, 0.5 * r.Asmin * esc);
+    return out;
+  }
+
+  /* VRd1 (sem armadura transversal) e, se Vsd > VRd1, armadura de cisalhamento (Modelo I, como em vigas) */
+  function cisalhamentoLaje(i) {
+    var m = materiais(i.fck, i.fyk);
+    var bw = i.bw, d = i.d, h = i.h, Vsd = i.Vsd;
+    var tauRd = 0.25 * m.fctd;                         // kN/cm²
+    var k = i.barrasChegam ? Math.abs(1.6 - d / 100) : 1;
+    var rho1 = Math.min(i.As1 / (bw * d), 0.02);
+    var VRd1 = (tauRd * k * (1.2 + 40 * rho1) + 0.15 * (i.sigmaCp || 0)) * bw * d;
+    var VRd2 = vRd2(m, bw, d);
+    var r = { mat: m, Vsd: Vsd, tauRd: tauRd, k: k, rho1: rho1, rho1Lim: i.As1 / (bw * d) > 0.02, As1: i.As1, VRd1: VRd1, VRd2: VRd2,
+      razao1: Vsd / VRd1, razao: Vsd / VRd2, precisa: Vsd > VRd1 };
+    if (!r.precisa) { r.esmagamento = false; return r; }
+    if (Vsd > VRd2) { r.esmagamento = true; return r; }
+    r.esmagamento = false;
+    var fywdFull = m.fywd, fywd = fywdLaje(h, fywdFull);
+    var rhoMin = 0.2 * m.fctm / m.fywk;
+    var Vc = 0.6 * bw * d * m.fctd;
+    r.fywdFull = fywdFull; r.fywd = fywd; r.rhoMin = rhoMin; r.Vc = Vc;
+    r.Vsw = Math.max(Vsd - Vc, 0);
+    r.AswCalc = 100 * r.Vsw / (0.9 * d * fywd);
+    r.Aswmin = 100 * bw * rhoMin;
+    r.Asw = Math.max(r.AswCalc, r.Aswmin);
+    r.VRd3 = Vc + r.Vsw;
+    r.smax = Math.trunc(r.razao > 0.67 ? Math.min(0.3 * d, 20) : Math.min(30, 0.6 * d));
+    r.ramos = i.ramos;
+    r.aswPerna = r.Asw / r.ramos;
+    r.opcoes = opcoesEstribos(r.aswPerna, r.smax, 12.5);
+    return r;
+  }
+
+
+  /* ---------- Estribos adotados (verificação do que o usuário escolhe) ---------- */
+  // Cisalhamento: r = resultado de cisalhamento()/cisalhamentoLaje() sem esmagamento; i = { ramos, phi, s, laje }
+  function estriboCis(r, i) {
+    var Ab = area(i.phi), need = r.aswPerna;
+    var sAuto = Math.min(r.smax, Math.trunc(Ab * 100 / need + EPS));
+    var auto = !(i.s > 0), s = auto ? sAuto : i.s;
+    var AswEf = s > 0 ? i.ramos * Ab * 100 / s : 0;
+    var phiMax = i.laje ? 12.5 : r.phiMax;
+    return { phi: i.phi, s: s, sAuto: sAuto, auto: auto, ramos: i.ramos, Ab: Ab, AswEf: AswEf, AswNec: r.Asw,
+      ok: s > 0 && AswEf + 1e-9 >= r.Asw, sOk: s <= r.smax, curto: s < 7, phiOk: i.phi >= 5 - EPS && i.phi <= phiMax + EPS, phiMax: phiMax,
+      ramosOk: i.laje ? true : i.ramos >= r.nMin, nMin: i.laje ? 0 : r.nMin };
+  }
+
+  // Torção: r = resultado de torcao() sem esmagamento; groups = [{tipo:'f'|'p', qtd, phi, s}]
+  // Grupo 1 = estribo fechado na seção vazada (pernas externas, resistem à torção); demais = pernas adicionais.
+  function estribosTorcao(r, groups) {
+    var legsTot = 0;
+    var nT = 0;
+    groups.forEach(function (g) {
+      g.legs = (g.tipo === 'f' ? 2 : 1) * g.qtd; legsTot += g.legs;
+      g.tor = g.tipo === 'f' && g.tor !== false;           // só estribo fechado participa da torção
+      if (g.tor) nT += g.qtd;
+    });
+    var out = { groups: groups, legsTot: legsTot, nT: nT, Aswt: r.Aswt, Aswc: r.AswcFinal, Aswmin: r.Aswmin };
+    var Atot = 0;
+    groups.forEach(function (g, k) {
+      var Ab = area(g.phi);
+      var need = Math.max((g.tor ? r.Aswt / nT : 0) + r.AswcFinal / Math.max(legsTot, 1), r.Aswmin / Math.max(legsTot, 1));
+      g.need = need; g.Ab = Ab; g.sAuto = Math.min(r.smax, Math.trunc(Ab * 100 / need + EPS));
+      g.auto = !(g.s > 0); g.sUse = g.auto ? g.sAuto : g.s;
+      g.A = g.sUse > 0 ? g.legs * Ab * 100 / g.sUse : 0;           // cm²/m
+      g.a = g.sUse > 0 ? Ab * 100 / g.sUse : 0;                      // cm²/m por perna
+      g.sOk = g.sUse <= r.smax; g.curto = g.sUse < 7;
+      g.phiOk = g.phi >= 5 - EPS && g.phi <= r.phiMax + EPS;
+      Atot += g.A;
+    });
+    out.Atot = Atot;
+    var torSum = 0;
+    groups.forEach(function (g) { if (g.tor) torSum += g.qtd * g.a; });
+    out.closedOk = nT >= 1;
+    out.a1 = torSum;
+    var cisPerna = r.AswcFinal / Math.max(legsTot, 1);          // cisalhamento dividido igualmente entre as pernas
+    out.cisPerna = cisPerna; out.reqOuter = r.Aswt + nT * cisPerna;
+    out.torsOk = out.closedOk && torSum + 1e-9 >= out.reqOuter;
+    out.shearOk = groups.every(function (g) { return g.a + 1e-9 >= cisPerna; });
+    out.minOk = Atot + 1e-9 >= r.Aswmin;
+    out.sOk = groups.every(function (g) { return g.sOk; });
+    out.phiOk = groups.every(function (g) { return g.phiOk; });
+    out.legsOk = legsTot >= r.nMin; out.nMin = r.nMin;
+    out.Areq = Math.max(r.AswcFinal + 2 * r.Aswt, r.Aswmin);
+    out.ok = out.torsOk && out.shearOk && out.minOk && out.sOk && out.phiOk && out.legsOk;
+    return out;
+  }
+
+  /* ---------- TORÇÃO ---------- */
+  function torcao(i) {
+    var m = materiais(i.fck, i.fyk);
+    var bw = i.bw, h = i.h, d = i.d, cob = i.cob;
+    var Vsd = i.Vsd, Tsd = i.Tsd;     // kN, kN.cm
+    var A = bw * h, u = 2 * (bw + h);
+    var Au = A / u;
+    var he = Math.max(Au, 2 * i.c1);
+    var bnuc = bw - he, hnuc = h - he;
+    var Ae = bnuc * hnuc;
+    var VRd2 = vRd2(m, bw, d);
+    var TRd2 = 0.5 * m.av2 * m.fcd * Ae * he;
+    if (i.legado) TRd2 = 0.5 * m.av2 * m.fcd * i.fck * Ae;  // reprodução da referência da planilha (somente testes)
+    var rV = Vsd / VRd2, rT = Tsd / TRd2, inter = rV + rT;
+    var rhoMin = 0.2 * m.fctm / m.fywk;
+    var r = { mat: m, A: A, u: u, Au: Au, he: he, Ae: Ae, bnuc: bnuc, hnuc: hnuc, VRd2: VRd2, TRd2: TRd2,
+      rV: rV, rT: rT, inter: inter, rhoMin: rhoMin };
+    if (inter > 1) { r.esmagamento = true; return r; }
+    r.esmagamento = false;
+    var Vsdmin = 0.6 * bw * d * m.fctd + 0.9 * bw * d * m.fywd * rhoMin;
+    var Vc = 0.6 * bw * d * m.fctd;
+    var porParcela = i.modoMinimo === 'parcela';
+    var Aswmin = 100 * bw * rhoMin;
+    var Vsw = Math.max(Vsd - Vc, 0.0001);
+    var Aswc = 100 * Vsw / (0.9 * d * m.fywd);
+    var AswcFinal = porParcela ? Math.max(Aswc, Aswmin) : Aswc;
+    var AswtCalc = 100 * Tsd / (2 * Ae * m.fywd);
+    var Aswt = porParcela ? Math.max(AswtCalc, Aswmin) : AswtCalc;
+    r.Vsdmin = Vsdmin; r.Vc = Vc; r.Aswmin = Aswmin; r.Vsw = Vsw;
+    r.Aswc = Aswc; r.AswcFinal = AswcFinal; r.AswtCalc = AswtCalc; r.Aswt = Aswt;
+    r.cisalhaApenasMinima = Vsd <= Vsdmin;
+
+    // detalhamento transversal
+    r.phiMin = 5; r.phiMax = phiMaxEstribo(bw);
+    r.smax = Math.trunc(inter > 0.67 ? Math.min(0.3 * d, 20) : Math.min(30, 0.6 * d));
+    r.stmax = Math.trunc(inter > 0.2 ? Math.min(0.6 * d, 35) : Math.min(80, d));
+    r.nMin = i.norma ? Math.max(2, Math.ceil((bw - 2 * (cob + 0.05 * (i.phiT || 0))) / r.stmax - EPS) + 1) : Math.max(2, Math.trunc((bw - 2 * cob) / Math.trunc(r.stmax)));
+    r.ramos = Math.max(r.nMin, i.ramos);
+    var AswTot = Math.max(Aswt + AswcFinal / r.ramos, Aswmin);
+    r.AswTot = AswTot;                       // cm²/m por perna
+    r.aswPerna = Math.max(AswTot, Aswmin / r.ramos);
+    r.opcoes = opcoesEstribos(r.aswPerna, r.smax, r.phiMax);
+
+    // armadura longitudinal
+    r.Asl = 0.02 * AswtCalc * (bnuc + hnuc);
+    var rho = i.fck <= 30 ? 0.0015 : (i.fck === 35 ? 0.00164 : (i.fck === 40 ? 0.00179 : (i.fck === 45 ? 0.00194 : 0.00208)));
+    r.rhoMinLong = rho;
+    var AsInfMin = 0.67 * bw * rho * h, AsSupMin = bw * rho * h;
+    var AsInfT = 0.01 * AswtCalc * bnuc + i.AsInfF;
+    var AsSupT = 0.01 * AswtCalc * bnuc + i.AsSupF;
+    r.AsInfTors = 0.01 * AswtCalc * bnuc;
+    r.AsInf = Math.max(AsInfT, AsInfMin); r.AsInfMin = AsInfMin; r.infMinGoverna = AsInfMin > AsInfT;
+    r.AsSup = Math.max(AsSupT, AsSupMin); r.AsSupMin = AsSupMin; r.supMinGoverna = AsSupMin > AsSupT;
+    r.AsLat = 0.01 * AswtCalc * hnuc;
+    return r;
+  }
+
+  return { BARS: BARS, BRITA: BRITA, area: area, materiais: materiais, flexao: flexao, barrasFlexao: barrasFlexao,
+    fissuracao: fissuracao, estriboCis: estriboCis, estribosTorcao: estribosTorcao, armaduraFace: armaduraFace, faixaLaje: faixaLaje, cisalhamento: cisalhamento, cisalhamentoLaje: cisalhamentoLaje, barrasLaje: barrasLaje, fywdLaje: fywdLaje, torcao: torcao, phiMaxEstribo: phiMaxEstribo };
+})();
+if (typeof module !== 'undefined') module.exports = Motor;
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var M = Motor;
+
+  var DEFAULTS = {
+    unid: 'kN', caa: '2', fck: '40', fyk: '500', brita: 'Brita 1',
+    bw: '175', h: '100', bf: '', hf: '', cob: '5', d: '93', phiT: '8', ramos: '6',
+    Mk: '368', Vk: '973', Tk: '580',
+    phiTr: '20', phiCo: '16', phiPele: '16',
+    modoMin: 'parcela', tipo: 'viga', apoio: 'chega', nPele: '', sTr: '', sCo: '', Mkn: '', dSup: '', layInf: '20:', laySup: '16:', sEst: '', estTor: 'f:1:8:', asInfF: '', asSupF: '', c1: ''
+  };
+  var state = {};
+  var tab = 'resumo';
+  var KEYS = Object.keys(DEFAULTS);
+
+  function load() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem('dimis-vigas-v1') || 'null'); } catch (e) { saved = null; }
+    KEYS.forEach(function (k) { state[k] = (saved && typeof saved[k] === 'string') ? saved[k] : DEFAULTS[k]; });
+  }
+  function save() { try { localStorage.setItem('dimis-vigas-v1', JSON.stringify(state)); } catch (e) { /* sem armazenamento */ } }
+
+  /* ---------- formatação ---------- */
+  function num(v) { var n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : NaN; }
+  function f(v, n) {
+    if (!isFinite(v)) return '–';
+    return v.toLocaleString('pt-BR', { minimumFractionDigits: n, maximumFractionDigits: n });
+  }
+  function phiTxt(p) { return String(p).replace('.', ','); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function parseLay(str, def) {
+    var a = String(str || '').split('|').filter(function (x) { return x !== ''; }).map(function (t) {
+      var p = t.split(':'); var ph = num(p[0]);
+      return { phi: isFinite(ph) ? ph : def, n: p[1] === undefined ? '' : p[1] };
+    });
+    return a.length ? a : [{ phi: def, n: '' }];
+  }
+  function parseGroups(str) {
+    var a = String(str || '').split('|').filter(Boolean).map(function (t) {
+      var p = t.split(':');
+      var tp = p[0] === 'p' ? 'p' : 'f';
+      return { tipo: tp, qtd: p[1] === undefined ? '1' : p[1], phi: p[2] === undefined ? '8' : p[2], s: p[3] === undefined ? '' : p[3], tor: p[4] === undefined ? '' : p[4] };
+    });
+    if (!a.length) a = [{ tipo: 'f', qtd: '1', phi: '8', s: '', tor: '1' }];
+    a.forEach(function (g, k) { if (g.tor === '') g.tor = k === 0 ? '1' : '0'; if (g.tipo === 'p') g.tor = '0'; });
+    a[0].tipo = 'f';
+    return a;
+  }
+  function serGroups(a) { return a.map(function (g) { return g.tipo + ':' + g.qtd + ':' + g.phi + ':' + g.s + ':' + (g.tipo === 'p' ? '0' : g.tor); }).join('|'); }
+  function serLay(a) { return a.map(function (l) { return l.phi + ':' + l.n; }).join('|'); }
+  var isLaje = function () { return state.tipo === 'laje'; };
+  var isTf = function () { return state.unid === 'tf'; };
+  var kF = function () { return isTf() ? 10 : 1; };          // kN por unidade de força
+  var kM = function () { return isTf() ? 1000 : 100; };       // kN·cm por unidade de momento
+  var uF = function () { return isTf() ? 'tf' : 'kN'; };
+  var uM = function () { return isTf() ? 'tf·m' : 'kN·m'; };
+  var toF = function (kN) { return kN / kF(); };
+  var toM = function (kNcm) { return kNcm / kM(); };
+
+  /* ---------- leitura e validação ---------- */
+  function geom() {
+    var g = {
+      bw: num(state.bw), h: num(state.h), cob: num(state.cob), d: num(state.d), phiT: num(state.phiT),
+      fck: num(state.fck), fyk: num(state.fyk), brita: state.brita, ramos: num(state.ramos),
+      bf: state.bf === '' ? 0 : num(state.bf), hf: state.hf === '' ? 0 : num(state.hf)
+    };
+    if (isLaje()) { g.bw = 100; g.bf = 0; g.hf = 0; }
+    var errs = [];
+    if (!(g.bw > 0)) errs.push('Informe bw maior que zero.');
+    if (!(g.h > 0)) errs.push('Informe h maior que zero.');
+    if (!(g.d > 0)) errs.push('Informe d maior que zero.');
+    if (g.bw > 0 && g.h > 0 && g.d > 0 && g.d > g.h - g.cob) errs.push('d deve ser menor ou igual a h − cobrimento (' + f(g.h - g.cob, 1) + ' cm).');
+    if (!isLaje() && g.bw < 10) errs.push('bw deve ser pelo menos 10 cm.');
+    if (g.h < 7) errs.push('h deve ser pelo menos 7 cm.');
+    if (!isLaje() && g.h < 10) errs.push('h deve ser pelo menos 10 cm.');
+    var t1 = g.bf > 0, t2 = g.hf > 0;
+    if (t1 !== t2) errs.push('Para seção T, preencha bf e hf. Para seção retangular, deixe os dois vazios.');
+    if (t1 && t2) {
+      if (g.bf < g.bw) errs.push('bf deve ser maior ou igual a bw.');
+      if (g.hf >= g.h) errs.push('hf deve ser menor que h.');
+    }
+    return { g: g, errs: errs };
+  }
+
+  /* ---------- cálculo ---------- */
+  function compute() {
+    var out = { geo: geom() };
+    var g = out.geo.g;
+    var gErr = out.geo.errs;
+
+    // Flexão
+    var Mk = state.Mk === '' ? 0 : num(state.Mk), Mkn = state.Mkn === '' ? 0 : num(state.Mkn);
+    var Mp = Mk > 0 ? Mk : 0, Mn = Mkn > 0 ? Mkn : 0;
+    var fe = gErr.slice();
+    if (!(Mp > 0) && !(Mn > 0)) fe.push('Informe Mk⁺ ou Mk⁻ maior que zero.');
+    if (!isFinite(Mk) || !isFinite(Mkn) || Mk < 0 || Mkn < 0) fe.push('Mk⁺ e Mk⁻ devem ser números maiores ou iguais a zero.');
+    out.flexao = { errs: fe };
+    var lj = isLaje(), esc100 = 100 / g.bw;
+    var layI = parseLay(state.layInf, 20), layS = parseLay(state.laySup, 16);
+    var phiI = lj ? num(state.phiTr) : layI[0].phi, phiS = lj ? num(state.phiCo) : layS[0].phi;
+    var dSupMan = state.dSup === '' ? NaN : num(state.dSup);
+    var dSup = isFinite(dSupMan) ? dSupMan : (lj ? g.h - g.cob - phiS / 20 : g.h - g.cob - g.phiT / 10 - phiS / 20);
+    if (isFinite(dSupMan) && !(dSupMan > 0 && dSupMan <= g.h - g.cob)) fe.push('d superior deve estar entre 0 e h − cobrimento (' + f(g.h - g.cob, 1) + ' cm).');
+    if (!fe.length) {
+      var mk = function (Mx, bf, hf, d, dlx) {
+        return M.flexao({ bw: g.bw, h: g.h, bf: bf, hf: hf, cob: g.cob, d: d, phiT: g.phiT, fck: g.fck, fyk: g.fyk, Md: 1.4 * Mx * kM(), brita: g.brita,
+          phiTr: phiI, phiCo: phiS, phiPele: num(state.phiPele), nPele: num(state.nPele), dl: dlx });
+      };
+      var fx = out.flexao, rP = null, rN = null, fI = null, fS = null, reqI = 0, reqS = 0;
+      // d′ real: centro de gravidade da armadura da face comprimida (laje: cobrimento + Φ/2)
+      for (var it = 0; it < 3; it++) {
+        var dlP = lj ? g.cob + phiS / 20 : (fS && isFinite(fS.cg) ? fS.cg : undefined);
+        var dlN = lj ? g.cob + phiI / 20 : (fI && isFinite(fI.cg) ? fI.cg : undefined);
+        rP = Mp > 0 ? mk(Mp, g.bf, g.hf, g.d, dlP) : null;
+        rN = Mn > 0 ? mk(Mn, 0, 0, dSup, dlN) : null;
+        if ((rP && rP.esmagamento) || (rN && rN.esmagamento)) break;
+        reqI = Math.max(rP ? rP.AsBase : 0, rN && rN.dupla ? rN.Asc : 0);
+        reqS = Math.max(rN ? rN.AsBase : 0, rP && rP.dupla ? rP.Asc : 0);
+        if (lj) break;
+        fI = M.armaduraFace({ layers: layI, req: reqI, bw: g.bw, cob: g.cob, phiT: g.phiT, brita: g.brita });
+        fS = M.armaduraFace({ layers: layS, req: reqS, bw: g.bw, cob: g.cob, phiT: g.phiT, brita: g.brita });
+        if (!isFinite(dSupMan) && rN && isFinite(fS.cg)) dSup = g.h - fS.cg;
+      }
+      fx.pos = rP; fx.neg = rN; fx.dSup = dSup;
+      fx.esm = !!((rP && rP.esmagamento) || (rN && rN.esmagamento));
+      fx.r = { esmagamento: fx.esm };
+      if (!fx.esm) {
+        var rr = rP || rN;
+        if (lj) {
+          var sI = num(state.sTr), sS = num(state.sCo);
+          var fi = (reqI > 0 || sI > 0) ? M.faixaLaje(phiI, reqI * esc100, sI, g.h) : null;
+          var fs = (reqS > 0 || sS > 0) ? M.faixaLaje(phiS, reqS * esc100, sS, g.h) : null;
+          fx.inf = { face: fi, req: reqI, reqTr: rP ? rP.AsBase : 0, reqCo: rN && rN.dupla ? rN.Asc : 0 };
+          fx.sup = { face: fs, req: reqS, reqTr: rN ? rN.AsBase : 0, reqCo: rP && rP.dupla ? rP.Asc : 0 };
+          fx.smax = Math.min(20, 2 * g.h);
+        } else {
+          fx.inf = { face: fI, req: reqI, reqTr: rP ? rP.AsBase : 0, reqCo: rN && rN.dupla ? rN.Asc : 0 };
+          fx.sup = { face: fS, req: reqS, reqTr: rN ? rN.AsBase : 0, reqCo: rP && rP.dupla ? rP.Asc : 0 };
+          var rpel = rr;
+          fx.pele = M.barrasFlexao(rpel, { bw: g.bw, h: g.h, d: g.d, cob: g.cob, phiT: g.phiT, brita: g.brita, phiTr: phiI, phiCo: phiS, phiPele: num(state.phiPele), nPele: num(state.nPele) }).pele;
+        }
+      }
+    }
+
+    // Cisalhamento
+    var Vk = num(state.Vk);
+    var ce = gErr.slice();
+    if (!(Vk > 0)) ce.push('Informe Vk maior que zero.');
+    out.cis = { errs: ce };
+    if (!ce.length) {
+      if (isLaje()) {
+        var fxi = out.flexao.inf;
+        var as1 = fxi && fxi.face ? fxi.face.As : NaN;
+        out.cis.semAs1 = !(as1 > 0);
+        out.cis.inp = { bw: g.bw, d: g.d, h: g.h, fck: g.fck, fyk: g.fyk, ramos: g.ramos, Vsd: 1.4 * Vk * kF(),
+          As1: as1 > 0 ? as1 : 0, barrasChegam: state.apoio !== 'nao' };
+        out.cis.r = M.cisalhamentoLaje(out.cis.inp);
+      } else {
+        out.cis.inp = { bw: g.bw, d: g.d, fck: g.fck, fyk: g.fyk, ramos: g.ramos, Vsd: 1.4 * Vk * kF(), cob: g.cob, phiT: g.phiT, norma: true };
+        out.cis.r = M.cisalhamento(out.cis.inp);
+      }
+      var rcz = out.cis.r;
+      if (!rcz.esmagamento && (isLaje() ? rcz.precisa : true)) out.cis.est = M.estriboCis(rcz, { ramos: g.ramos, phi: num(state.phiT), s: num(state.sEst), laje: isLaje() });
+    }
+
+    // Torção
+    var Tk = num(state.Tk);
+    var te = gErr.slice();
+    if (isLaje()) te.push('A torção não se aplica à laje.');
+    if (!(Vk > 0)) te.push('Informe Vk maior que zero.');
+    if (!(Tk > 0)) te.push('Informe Tk maior que zero.');
+    if (g.d > 0 && g.h > 0 && g.d > g.h - g.cob - 1.5) te.push('Na torção, d deve ser menor ou igual a h − cobrimento − 1,5 cm (' + f(g.h - g.cob - 1.5, 1) + ' cm).');
+    var autoInf = out.flexao.inf && !isLaje() ? out.flexao.inf.face.As : NaN;
+    var autoSup = out.flexao.sup && !isLaje() ? out.flexao.sup.face.As : NaN;
+    var autoC1 = g.cob + 0.1 * g.phiT + 0.05 * (isLaje() ? num(state.phiTr) : parseLay(state.layInf, 20)[0].phi);
+    var asInf = state.asInfF === '' ? autoInf : num(state.asInfF);
+    var asSup = state.asSupF === '' ? autoSup : num(state.asSupF);
+    var c1 = state.c1 === '' ? autoC1 : num(state.c1);
+    out.auto = { asInf: autoInf, asSup: autoSup, c1: autoC1 };
+    if (!isLaje() && (!(asInf > 0) || !(asSup > 0))) te.push('Informe Asinf e Assup de flexão (ou preencha a aba Flexão).');
+    if (!(c1 > 0)) te.push('Informe c1 maior que zero.');
+    out.tor = { errs: te };
+    var grp = parseGroups(state.estTor).map(function (x, k) {
+      var q = Math.round(num(x.qtd)); var ph = k === 0 ? g.phiT : num(x.phi);
+      return { tipo: x.tipo, qtd: q >= 1 ? q : 1, phi: isFinite(ph) ? ph : g.phiT, s: x.s === '' ? 0 : num(x.s), tor: x.tor === '1' };
+    });
+    var legsG = grp.reduce(function (a, x) { return a + (x.tipo === 'f' ? 2 : 1) * x.qtd; }, 0);
+    if (!te.length) {
+      out.tor.inp = { bw: g.bw, h: g.h, d: g.d, cob: g.cob, fck: g.fck, fyk: g.fyk, ramos: Math.max(2, legsG), AsInfF: asInf, AsSupF: asSup,
+        c1: c1, Vsd: 1.4 * Vk * kF(), Tsd: 1.4 * Tk * kM(), modoMinimo: state.modoMin, phiT: g.phiT, norma: true };
+      out.tor.r = M.torcao(out.tor.inp);
+      if (!out.tor.r.esmagamento) out.tor.est = M.estribosTorcao(out.tor.r, grp);
+    }
+    return out;
+  }
+
+  /* ---------- componentes ---------- */
+  function pill(kind, text) { return '<span class="pill ' + kind + '">' + text + '</span>'; }
+  function kpi(label, value, unit, sub, main) {
+    return '<div class="kpi' + (main ? ' main' : '') + '"><div class="l">' + label + '</div><div class="v">' + value +
+      (unit ? '<small>' + unit + '</small>' : '') + '</div>' + (sub ? '<div class="s">' + sub + '</div>' : '') + '</div>';
+  }
+  function banner(kind, title, text) {
+    return '<div class="banner ' + kind + '"><b>' + title + '</b>' + (text ? '<p>' + text + '</p>' : '') + '</div>';
+  }
+  function errBox(errs) {
+    return '<div class="err"><b>Não foi possível calcular.</b><ul>' + errs.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>';
+  }
+  function memoria(rows) {
+    return '<details><summary>Memória de cálculo</summary><div class="body"><div class="scale"><table><tbody>' +
+      rows.map(function (r) {
+        if (r.length === 1) return '<tr><th colspan="3" style="text-align:left;padding-top:12px">' + r[0] + '</th></tr>';
+        return '<tr><td class="k">' + r[0] + '</td><td>' + r[1] + '</td><td class="k" style="text-align:left">' + (r[2] || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div></details>';
+  }
+  function meter(parts, ticks, bad) {
+    var max = 1.2;
+    var html = '<div class="meter' + (bad ? ' bad' : '') + '">';
+    var acc = 0;
+    parts.forEach(function (p, k) {
+      var w = Math.min(p.v, max - acc) / max * 100;
+      html += '<i class="m' + (k + 1) + '" style="left:' + (acc / max * 100) + '%;width:' + Math.max(w, 0) + '%"></i>';
+      acc += p.v;
+    });
+    html += '</div><div class="meter-ticks">';
+    ticks.forEach(function (t) { html += '<span style="left:' + (t.v / max * 100) + '%">' + t.l + '</span>'; });
+    return html + '</div>';
+  }
+
+  /* ---------- seção transversal ---------- */
+  var secUid = 0, secLog = [], secTag = '';
+  function secao(o) {
+    var isT = o.bf > 0 && o.hf > 0;
+    var W = isT ? o.bf : o.bw;
+    var sc = o.laje ? Math.min(560 / W, 320 / o.h) : Math.min(300 / W, 300 / o.h);
+    var padL = 50, padR = 54, padT = isT ? 40 : 30, padB = 40;
+    var vw = W * sc + padL + padR, vh = o.h * sc + padT + padB;
+    var xF = padL, y0 = padT;
+    var xW = padL + (W - o.bw) / 2 * sc;
+    var id = 'clip-' + (++secUid);
+    var P = function (v) { return (Math.round(v * 100) / 100); };
+    var s = '<svg viewBox="0 0 ' + P(vw) + ' ' + P(vh) + '" role="img" aria-label="Seção transversal">';
+    var path;
+    if (isT) {
+      path = 'M' + P(xF) + ' ' + P(y0) + 'H' + P(xF + W * sc) + 'V' + P(y0 + o.hf * sc) + 'H' + P(xW + o.bw * sc) + 'V' + P(y0 + o.h * sc) +
+        'H' + P(xW) + 'V' + P(y0 + o.hf * sc) + 'H' + P(xF) + 'Z';
+    } else {
+      path = 'M' + P(xW) + ' ' + P(y0) + 'H' + P(xW + o.bw * sc) + 'V' + P(y0 + o.h * sc) + 'H' + P(xW) + 'Z';
+    }
+    s += '<defs><clipPath id="' + id + '"><path d="' + path + '"/></clipPath></defs>';
+    s += '<path class="s-conc" d="' + path + '"/>';
+    if (o.nlNeg) {
+      s += '<rect class="s-hi" x="' + P(xW) + '" y="' + P(y0 + (o.h - Math.min(o.nlNeg.blk, o.h)) * sc) + '" width="' + P(o.bw * sc) + '" height="' + P(Math.min(o.nlNeg.blk, o.h) * sc) + '" clip-path="url(#' + id + ')"/>';
+    }
+    if (o.nl) {
+      s += '<rect class="s-hi" x="' + P(xF) + '" y="' + P(y0) + '" width="' + P(W * sc) + '" height="' + P(Math.min(o.nl.blk, o.h) * sc) + '" clip-path="url(#' + id + ')"/>';
+    }
+    if (o.wall) {
+      var he = o.wall.he;
+      var outer = 'M' + P(xW) + ' ' + P(y0) + 'H' + P(xW + o.bw * sc) + 'V' + P(y0 + o.h * sc) + 'H' + P(xW) + 'Z';
+      var inner = 'M' + P(xW + he * sc) + ' ' + P(y0 + he * sc) + 'V' + P(y0 + (o.h - he) * sc) + 'H' + P(xW + (o.bw - he) * sc) + 'V' + P(y0 + he * sc) + 'Z';
+      s += '<path class="s-wall" fill-rule="evenodd" d="' + outer + inner + '"/>';
+      s += '<rect class="s-wallc" x="' + P(xW + he / 2 * sc) + '" y="' + P(y0 + he / 2 * sc) + '" width="' + P((o.bw - he) * sc) + '" height="' + P((o.h - he) * sc) + '"/>';
+    }
+    // estribo (não existe em laje sem armadura de cisalhamento)
+    var e0 = o.cob + o.phiT / 20;
+    var sx0 = xW + e0 * sc, sx1 = xW + (o.bw - e0) * sc, sy0 = y0 + e0 * sc, sy1 = y0 + (o.h - e0) * sc;
+    var sw = Math.max(1.2, o.phiT / 10 * sc);
+    if (o.laje && !o.semEstribo) {
+      var nl2 = Math.max(2, o.ramos || 2);
+      for (var q2 = 0; q2 < nl2; q2++) {
+        var xq = sx0 + (sx1 - sx0) * q2 / (nl2 - 1);
+        s += '<line class="s-st" x1="' + P(xq) + '" y1="' + P(sy0) + '" x2="' + P(xq) + '" y2="' + P(sy1) + '" stroke-width="' + P(sw) + '"/>';
+      }
+    } else     if (!o.semEstribo) s += '<rect class="s-st" x="' + P(sx0) + '" y="' + P(sy0) + '" width="' + P(sx1 - sx0) + '" height="' + P(sy1 - sy0) + '" rx="' + P(Math.max(2, 2.5 * o.phiT / 10 * sc)) + '" stroke-width="' + P(sw) + '"/>';
+    for (var k = 1; !o.semEstribo && !o.laje && k <= (o.ramos || 2) - 2; k++) {
+      var xk = sx0 + (sx1 - sx0) * k / ((o.ramos || 2) - 1);
+      s += '<line class="s-st" x1="' + P(xk) + '" y1="' + P(sy0) + '" x2="' + P(xk) + '" y2="' + P(sy1) + '" stroke-width="' + P(sw) + '"/>';
+    }
+    function drawLayers(list, fromBottom, cls) {
+      (list || []).forEach(function (l) {
+        var rad = Math.max(3, l.phi / 20 * sc);
+        var py = fromBottom ? y0 + (o.h - l.y) * sc : y0 + l.y * sc;
+        var xa = xW + (o.cob + o.phiT / 10 + l.phi / 20) * sc, xb = xW + o.bw * sc - (o.cob + o.phiT / 10 + l.phi / 20) * sc;
+        for (var j = 0; j < l.n; j++) {
+          var px = l.n === 1 ? (xa + xb) / 2 : xa + (xb - xa) * j / (l.n - 1);
+          s += '<circle class="' + cls + '" cx="' + P(px) + '" cy="' + P(py) + '" r="' + P(rad) + '"/>';
+        }
+      });
+    }
+    drawLayers(o.inf, true, o.infCls || 's-bar');
+    drawLayers(o.sup, false, o.supCls || 's-bar');
+    if (o.pele && o.pele.n > 0) {
+      var yLo = o.h - (o.infExt || o.cob + 3) - 3, yHi = (o.supExt || o.cob + 1) + 3;
+      var radp = Math.max(2.4, o.pele.phi / 20 * sc);
+      var xl = xW + (o.cob + o.phiT / 10 + o.pele.phi / 20) * sc, xr = xW + (o.bw - o.cob - o.phiT / 10 - o.pele.phi / 20) * sc;
+      for (var q = 0; q < o.pele.n; q++) {
+        var yy = o.pele.n === 1 ? (yLo + yHi) / 2 : yHi + (yLo - yHi) * q / (o.pele.n - 1);
+        s += '<circle class="s-bar" cx="' + P(xl) + '" cy="' + P(y0 + yy * sc) + '" r="' + P(radp) + '"/>';
+        s += '<circle class="s-bar" cx="' + P(xr) + '" cy="' + P(y0 + yy * sc) + '" r="' + P(radp) + '"/>';
+      }
+    }
+    if (o.nlNeg) {
+      var ynn = y0 + (o.h - o.nlNeg.x) * sc;
+      s += '<line class="s-na" x1="' + P(xW - 8) + '" y1="' + P(ynn) + '" x2="' + P(xW + o.bw * sc + 8) + '" y2="' + P(ynn) + '"/>';
+      s += '<text class="s-txt-i" x="' + P(xW + o.bw * sc + 10) + '" y="' + P(ynn + 3.5) + '">LN⁻</text>';
+    }
+    if (o.nl) {
+      var yn = y0 + o.nl.x * sc;
+      s += '<line class="s-na" x1="' + P(xF - 8) + '" y1="' + P(yn) + '" x2="' + P(xF + W * sc + 8) + '" y2="' + P(yn) + '"/>';
+      s += '<text class="s-txt-i" x="' + P(xF + W * sc + 10) + '" y="' + P(yn + 3.5) + '">LN</text>';
+    }
+    // cotas
+    var yb = y0 + o.h * sc + 14;
+    s += '<line class="s-dim" x1="' + P(xW) + '" y1="' + P(yb) + '" x2="' + P(xW + o.bw * sc) + '" y2="' + P(yb) + '"/>';
+    s += '<text class="s-txt" text-anchor="middle" x="' + P(xW + o.bw * sc / 2) + '" y="' + P(yb + 13) + '">' + (o.laje ? 'faixa de ' : 'bw = ') + f(o.bw, 0) + ' cm</text>';
+    s += '<line class="s-dim" x1="' + P(xF - 14) + '" y1="' + P(y0) + '" x2="' + P(xF - 14) + '" y2="' + P(y0 + o.h * sc) + '"/>';
+    s += '<text class="s-txt" text-anchor="middle" transform="translate(' + P(xF - 20) + ',' + P(y0 + o.h * sc / 2) + ') rotate(-90)">h = ' + f(o.h, 0) + ' cm</text>';
+    if (isT) {
+      s += '<line class="s-dim" x1="' + P(xF) + '" y1="' + P(y0 - 12) + '" x2="' + P(xF + W * sc) + '" y2="' + P(y0 - 12) + '"/>';
+      s += '<text class="s-txt" text-anchor="middle" x="' + P(xF + W * sc / 2) + '" y="' + P(y0 - 17) + '">bf = ' + f(o.bf, 0) + ' cm</text>';
+      s += '<line class="s-dim" x1="' + P(xF + W * sc + 14) + '" y1="' + P(y0) + '" x2="' + P(xF + W * sc + 14) + '" y2="' + P(y0 + o.hf * sc) + '"/>';
+      s += '<text class="s-txt" x="' + P(xF + W * sc + 18) + '" y="' + P(y0 + o.hf * sc / 2 + 3) + '">hf</text>';
+    }
+    if (o.d && !o.nl && !o.wall) { /* sem linha de d */ }
+    if (o.d) {
+      var xd = xW + o.bw * sc + (isT ? 0 : 14);
+      if (!isT) {
+        s += '<line class="s-dim" x1="' + P(xd) + '" y1="' + P(y0) + '" x2="' + P(xd) + '" y2="' + P(y0 + o.d * sc) + '"/>';
+        s += '<text class="s-txt" x="' + P(xd + 4) + '" y="' + P(y0 + o.d * sc / 2 + 3) + '">d</text>';
+      }
+    }
+    s += '</svg>';
+    secLog.push({ tag: secTag, svg: s, laje: !!o.laje });
+    return s;
+  }
+  function legend(items) {
+    return '<div class="legend">' + items.map(function (i) { return '<span><i style="background:' + i[0] + '"></i>' + i[1] + '</span>'; }).join('') + '</div>';
+  }
+
+
+  function elemTag() {
+    return '<div class="elem">' + pill('info', isLaje() ? 'Elemento: Laje' : 'Elemento: Viga') +
+      '<span class="fixed">' + (isLaje() ? 'faixa de 1 m · sem estribos, salvo se Vsd > VRd1' : 'seção com estribos') + '</span></div>';
+  }
+  function facePill(ef, nec, extraBad) {
+    if (nec > 0 && ef + 1e-9 < nec) return pill('bad', 'Insuficiente · faltam ' + f(nec - ef, 2) + ' cm²');
+    if (extraBad) return pill('warn', 'Suficiente · ' + extraBad);
+    if (nec > 0) return pill('ok', 'Suficiente · folga ' + f((ef / nec - 1) * 100, 1) + ' %');
+    return pill('info', 'Armadura construtiva');
+  }
+  function reqTxt(x, un) {
+    var t = [];
+    if (x.reqTr > 0) t.push('tração ' + f(x.reqTr, 2));
+    if (x.reqCo > 0) t.push('compressão ' + f(x.reqCo, 2));
+    return t.length ? 'necessária: ' + t.join(' · ') + ' ' + un : 'sem exigência de cálculo';
+  }
+  function slabRow(name, fc, x) {
+    if (!fc) return '<div class="arow"><span class="n">' + name + '</span><span class="t">Não necessária<small>' + reqTxt(x, 'cm²/m') + '</small></span>' + pill('ok', 'Dispensada') + '</div>';
+    var avisos = (fc.acimaSmax ? ' · espaçamento acima do máximo' : '') + (fc.curto ? ' · espaçamento menor que 7 cm' : '');
+    return '<div class="arow"><span class="n">' + name + '</span><span class="t">Φ' + phiTxt(fc.phi) + ' c/ ' + fc.s + ' cm' +
+      '<small>As,ef = ' + f(fc.As, 2) + ' cm²/m · ' + reqTxt(x, 'cm²/m') + ' · ' + fc.n + ' barras por metro' + avisos + '</small></span>' +
+      facePill(fc.As, x.req, fc.acimaSmax ? 's acima do máximo' : '') + '</div>';
+  }
+  function casoKpis(titulo, r, g, unitA) {
+    var avisos = [];
+    if (r.kxExcedido) avisos.push('KX = ' + f(r.kx, 3) + ' ultrapassa 0,45. A linha neutra foi limitada a 0,45·d e a armadura dupla compensa a diferença.');
+    if (r.exagerada) avisos.push('Armadura dupla exagerada: As′ é ' + f(r.razaoAsc * 100, 1) + ' % de As, acima de 27 %.');
+    return '<h3 class="fh" style="margin-top:6px">' + titulo + '</h3>' + banner(r.dupla ? 'warn' : 'ok', r.nomeCaso, avisos.join(' ')) +
+      '<div class="kpis">' +
+      kpi('As calculada', f(r.As, 2), unitA, r.minGoverna ? 'As,mín governa' : 'governa o cálculo', true) +
+      kpi('As,mín', f(r.Asmin, 2), unitA, 'ρmín = ' + f(r.Asmin / (g.bw * g.h) * 100, 3) + ' %') +
+      kpi('As′ compressão', f(r.Asc, 2), unitA, r.dupla ? 'armadura dupla' : 'não necessária') +
+      kpi('x / d', f(r.kx, 3), '', 'x = ' + f(r.x, 2) + ' cm · limite 0,45') +
+      kpi('Md', f(toM(r.Md), 1), uM(), 'domínio ' + r.dominio) + '</div>';
+  }
+  function memFlex(titulo, r) {
+    return [[titulo],
+      ['Md = 1,4·M', f(toM(r.Md), 2), uM()], ['Md,mín = 0,8·W0·fctk,sup', f(toM(r.Mdmin), 2), uM()], ['W0', f(r.W0, 0), 'cm³'],
+      ['d usado', f(r.d !== undefined ? r.d : NaN, 1), 'cm'],
+      ['fcd', f(r.mat.fcd * 10, 2), 'MPa'], ['fyd', f(r.mat.fyd * 10, 1), 'MPa'], ['εyd', f(r.mat.eyd, 3), '‰'], ['fctk,sup', f(r.mat.fctkSup * 10, 2), 'MPa'],
+      ['d′ (CG da armadura comprimida)', f(r.dl, 1), 'cm'], ['KMD', f(r.KMD, 4), ''], ['Md,lim', f(toM(r.Mlim), 2), uM()], ['ΔMd,lim = Md − Md,lim', f(toM(r.dM), 2), uM()],
+      ['KX', f(r.kx, 4), ''], ['x', f(r.x, 3), 'cm'], ['εs', f(r.epsTracao, 2), '‰'],
+      ['Rcd1', f(toF(r.Rcd1), 1), uF()], ['Rcd2', f(toF(r.Rcd2), 1), uF()], ['Rscd (compressão, aço)', f(toF(r.Cs), 1), uF()], ['Rstd (tração)', f(toF(r.Rtd), 1), uF()],
+      ['As', f(r.As, 3), 'cm²'], ['As,mín', f(r.Asmin, 3), 'cm²'], ['As′', f(r.Asc, 3), 'cm²']];
+  }
+  function limite4(asTot, Ac) {
+    var pct = asTot / Ac * 100;
+    return { pct: pct, excede: pct > 4 + 1e-9 };
+  }
+  function avisoMax(asTot, Ac) {
+    var l = limite4(asTot, Ac);
+    return l.excede ? banner('bad', 'Armadura máxima excedida', 'As + As′ = ' + f(asTot, 2) + ' cm² é ' + f(l.pct, 2) + ' % da área da seção, acima do limite de 4 % (NBR 6118, 17.3.5.2.4). Aumente a seção.') : '';
+  }
+  function flexEsmag(fx) {
+    var rs = [['Momento positivo (Mk⁺)', fx.pos], ['Momento negativo (Mk⁻)', fx.neg]].filter(function (x) { return x[1] && x[1].esmagamento; });
+    return elemTag() + rs.map(function (x) {
+      var r = x[1];
+      return banner('bad', x[0] + ' · armadura não determinada', 'ΔMd,lim = ' + f(toM(r.dM), 1) + ' ' + uM() + ' é maior que Md,lim = ' + f(toM(r.Mlim), 1) + ' ' + uM() + '. Há esmagamento do concreto: aumente a seção ou a resistência do concreto.');
+    }).join('');
+  }
+  function renderFlexaoLaje(c) {
+    var box = $('out-flexao'), fx = c.flexao, g = c.geo.g, html = elemTag();
+    if (fx.pos) { fx.pos.d = g.d; html += casoKpis('Momento positivo · Mk⁺ (tração embaixo)', fx.pos, g, 'cm²/m'); }
+    if (fx.neg) { fx.neg.d = fx.dSup; html += casoKpis('Momento negativo · Mk⁻ (tração em cima)', fx.neg, g, 'cm²/m'); }
+    var I = fx.inf, S = fx.sup;
+    var asTotL = (I.face ? I.face.As : 0) + (S.face ? S.face.As : 0);
+    html += avisoMax(asTotL, 100 * g.h);
+    html += '<div class="card"><h2>Armadura adotada</h2><div class="adopt">' + slabRow('Inferior', I.face, I) + slabRow('Superior', S.face, S) +
+      '<div class="arow"><span class="n">Distribuição</span><span class="t">As,dist ≥ ' + f(Math.max(0.2 * Math.max(I.face ? I.face.As : 0, S.face ? S.face.As : 0), 0.9, 0.5 * (fx.pos || fx.neg).Asmin), 2) + ' cm²/m<small>maior entre 20 % da armadura principal, 0,9 cm²/m e 50 % de As,mín</small></span>' + pill('info', 'Secundária') + '</div>' +
+      '</div></div>';
+    var bar = function (fc) { return fc ? [{ phi: fc.phi, n: fc.n, y: g.cob + fc.phi / 20 }] : []; };
+    $('sec-flexao').innerHTML = '<div class="card sec"><h2>Corte da laje · faixa de 1 m</h2>' + secao({
+      laje: true, semEstribo: true, bw: g.bw, h: g.h, bf: 0, hf: 0, cob: g.cob, phiT: 0, ramos: 2, d: g.d,
+      inf: bar(I.face), sup: bar(S.face), infExt: I.face ? g.cob + I.face.phi / 10 : 0, supExt: S.face ? g.cob + S.face.phi / 10 : 0,
+      nl: fx.pos ? { x: fx.pos.x, blk: 0.8 * fx.pos.x } : null, nlNeg: fx.neg ? { x: fx.neg.x, blk: 0.8 * fx.neg.x } : null
+    }) + legend([['var(--rebar)', 'Armadura' + (I.face ? ' inferior Φ' + phiTxt(I.face.phi) + ' c/ ' + I.face.s + ' cm' : '') + (S.face ? ' · superior Φ' + phiTxt(S.face.phi) + ' c/ ' + S.face.s + ' cm' : '')], ['var(--conc-hi)', 'Zona comprimida (0,8·x)']]) +
+      '<p class="sdet">' + (I.face ? '<b>Inferior</b> Φ' + phiTxt(I.face.phi) + ' c/ ' + I.face.s + ' cm · ' + f(Math.max(I.face.s - I.face.phi / 10, 0), 1) + ' cm livres entre barras<br>' : '') +
+      (S.face ? '<b>Superior</b> Φ' + phiTxt(S.face.phi) + ' c/ ' + S.face.s + ' cm · ' + f(Math.max(S.face.s - S.face.phi / 10, 0), 1) + ' cm livres entre barras<br>' : '') +
+      'Laje sem estribos. Se Vsd > VRd1, a aba Cisalhamento indica a armadura transversal.</p></div>';
+    var rows = [];
+    if (fx.pos) rows = rows.concat(memFlex('Momento positivo (Mk⁺)', fx.pos));
+    if (fx.neg) rows = rows.concat(memFlex('Momento negativo (Mk⁻)', fx.neg));
+    rows.push(['Espaçamento'], ['s máx = mín(20 cm, 2h)', f(fx.smax, 0), 'cm'], ['Armadura máxima'], ['As + As′ (adotadas)', f(asTotL, 2), 'cm²/m'], ['Limite 4 % · Ac', f(0.04 * 100 * g.h, 2), 'cm²/m']);
+    html += memoria(rows);
+    box.innerHTML = html;
+  }
+
+  function renderCisLaje(c) {
+    var box = $('out-cisalhamento'), ci = c.cis, r = ci.r, g = c.geo.g, html = elemTag();
+    var fxi = c.flexao.inf && c.flexao.inf.face;
+    var barras = fxi ? [{ phi: fxi.phi, n: fxi.n, y: g.cob + fxi.phi / 20 }] : [];
+    var aviso = ci.semAs1 ? ' Mk não informado: ρ1 foi tomado como zero, a favor da segurança.' : '';
+    // verificação 1: VRd1
+    html += banner(r.precisa ? 'warn' : 'ok', r.precisa ? 'Vsd > VRd1 · precisa de armadura de cisalhamento' : 'Vsd ≤ VRd1 · não precisa de armadura de cisalhamento',
+      (r.precisa ? 'A laje não dispensa armadura transversal. A armadura é calculada como em vigas (Modelo I), com fywd limitado pela espessura.' : 'A laje resiste ao cortante só com o concreto.') + aviso);
+    html += '<div class="kpis">' +
+      kpi('Vsd', f(toF(r.Vsd), 1), uF() + '/m', '1,4 · Vk', true) +
+      kpi('VRd1', f(toF(r.VRd1), 1), uF() + '/m', f(r.razao1 * 100, 1) + ' % utilizado') +
+      kpi('VRd2', f(toF(r.VRd2), 1), uF() + '/m', f(r.razao * 100, 1) + ' % utilizado') +
+      kpi(r.precisa && !r.esmagamento ? 'Asw' : 'ρ1', r.precisa && !r.esmagamento ? f(r.Asw, 2) : f(r.rho1 * 100, 3), r.precisa && !r.esmagamento ? 'cm²/m' : '%', r.precisa && !r.esmagamento ? 'armadura transversal' : 'As1 / (bw·d)') + '</div>';
+    html += '<div class="card"><h2>1ª verificação · Vsd ≤ VRd1</h2>' + meter([{ v: r.razao1 }], [{ v: 0, l: '0' }, { v: 1, l: 'VRd1' }], r.precisa) +
+      '<p class="hint">Vsd / VRd1 = ' + f(r.razao1, 3) + ' · ' + (r.precisa ? pill('warn', 'Precisa armar ao cisalhamento') : pill('ok', 'Não precisa armar ao cisalhamento')) + '</p></div>';
+    if (r.precisa && r.esmagamento) {
+      html += banner('bad', 'Esmagamento da diagonal comprimida', 'Vsd = ' + f(toF(r.Vsd), 1) + ' ' + uF() + '/m é maior que VRd2 = ' + f(toF(r.VRd2), 1) + ' ' + uF() + '/m. Aumente a espessura ou o fck.');
+    } else if (r.precisa) {
+      html += '<div class="two"><div class="card"><h2>Armadura de cisalhamento</h2><table><tbody>' +
+        '<tr><td class="k">Vc = 0,6·fctd·bw·d</td><td>' + f(toF(r.Vc), 1) + ' ' + uF() + '/m</td></tr>' +
+        '<tr><td class="k">Vsw = Vsd − Vc</td><td>' + f(toF(r.Vsw), 1) + ' ' + uF() + '/m</td></tr>' +
+        '<tr><td class="k">fywd (limitado por h = ' + f(g.h, 0) + ' cm)</td><td>' + f(r.fywd * 10, 0) + ' MPa</td></tr>' +
+        '<tr><td class="k">Asw calculada</td><td>' + f(r.AswCalc, 2) + ' cm²/m</td></tr>' +
+        '<tr><td class="k">Asw,mín = 100·bw·ρmín</td><td>' + f(r.Aswmin, 2) + ' cm²/m</td></tr>' +
+        '<tr><td class="k">Espaçamento máx. smáx</td><td>' + r.smax + ' cm</td></tr>' +
+        '<tr><td class="k">Ramos por metro</td><td>' + r.ramos + '</td></tr>' +
+        '<tr><td class="k">Asw por ramo</td><td>' + f(r.aswPerna, 3) + ' cm²/m</td></tr></tbody></table></div>' +
+        '<div class="card"><h2>Estribos com ' + r.ramos + ' ramos por metro</h2>' + optsHtml(r.opcoes) +
+        '<p class="hint">Opções de estribo ou gancho. Confira o diâmetro máximo e o detalhamento na NBR 6118, item 19.4.2.</p></div></div>';
+    }
+    var o1 = r.precisa && !r.esmagamento && ci.est ? { phi: ci.est.phi, s: ci.est.s } : null;
+    html += '<div class="card sec"><h2>Seção transversal · faixa de 1 m</h2>' + secao({
+      laje: true, semEstribo: !o1, bw: g.bw, h: g.h, bf: 0, hf: 0, cob: g.cob, phiT: o1 ? o1.phi : 0, ramos: g.ramos, d: g.d,
+      inf: barras, sup: []
+    }) + legend(o1 ? [['var(--ink)', 'Estribo Φ' + phiTxt(o1.phi) + ' c/ ' + f(o1.s, 0) + ' cm · ' + g.ramos + ' ramos'], ['var(--rebar)', 'Armadura de tração']]
+      : [['var(--rebar)', 'Armadura de tração · sem estribos']]) + '</div>';
+    html += memoria([['Materiais'], ['fck', f(r.mat.fck, 0), 'MPa'], ['fctd = 0,7·0,3·fck^(2/3)/1,4', f(r.mat.fctd * 10, 3), 'MPa'],
+      ['VRd1 (NBR 6118, 19.4.1)'], ['τRd = 0,25·fctd', f(r.tauRd * 10, 3), 'MPa'],
+      ['k ' + (state.apoio === 'nao' ? '(50 % não chega ao apoio)' : '= |1,6 − d|'), f(r.k, 3), ''],
+      ['As1', f(r.As1, 2), 'cm²/m'], ['ρ1 = As1/(bw·d) ≤ 0,02', f(r.rho1 * 100, 3), '%'],
+      ['VRd1 = τRd·k·(1,2 + 40·ρ1)·bw·d', f(toF(r.VRd1), 2), uF() + '/m'], ['Vsd', f(toF(r.Vsd), 2), uF() + '/m'],
+      ['VRd2 = 0,27·αv2·fcd·bw·d', f(toF(r.VRd2), 2), uF() + '/m']]);
+    box.innerHTML = html;
+  }
+
+  /* ---------- Flexão ---------- */
+  function layTxt(face) { return face.layers.map(function (l) { return l.n + ' Φ' + phiTxt(l.phi); }).join(' + '); }
+  function faceRow(nome, x, dReal) {
+    var fc = x.face;
+    var small = 'As,ef = ' + f(fc.As, 2) + ' cm² · CG a ' + f(fc.cg, 2) + ' cm da face · ' + reqTxt(x, 'cm²') + (fc.auto ? ' (' + fc.nAuto + ' barras automáticas)' : '') +
+      (fc.excede ? ' · camada com mais barras do que cabe na largura' : '');
+    return '<div class="arow"><span class="n">' + nome + '</span><span class="t">' + layTxt(fc) + ' em ' + fc.layers.length + (fc.layers.length === 1 ? ' camada' : ' camadas') +
+      '<small>' + small + '</small></span>' + facePill(fc.As, x.req, fc.excede ? 'largura excedida' : '') + '</div>';
+  }
+  function renderFlexao(c) {
+    var box = $('out-flexao');
+    var fx = c.flexao;
+    $('sec-flexao').innerHTML = '';
+    if (fx.errs.length) { box.innerHTML = errBox(fx.errs); return; }
+    if (fx.esm) { box.innerHTML = flexEsmag(fx); return; }
+    if (isLaje()) { renderFlexaoLaje(c); return; }
+    var g = c.geo.g, html = elemTag(), I = fx.inf, S = fx.sup;
+    if (fx.pos) html += casoKpis('Momento positivo · Mk⁺ (tração embaixo)', fx.pos, g, 'cm²');
+    if (fx.neg) html += casoKpis('Momento negativo · Mk⁻ (tração em cima)', fx.neg, g, 'cm²');
+    var avisoCG = (I.face.layers.length > 1 || S.face.layers.length > 1) ? ' O centro de gravidade das camadas já entra no d real indicado em cada face. Use o botão Usar para aplicar o d inferior.' : '';
+    if (avisoCG) html += banner('warn', 'Mais de uma camada', avisoCG.trim());
+    var pele = fx.pele;
+    var AcV = g.bw * g.h + (g.bf > 0 && g.hf > 0 ? (g.bf - g.bw) * g.hf : 0), asTotV = I.face.As + S.face.As;
+    html += avisoMax(asTotV, AcV);
+    html += '<div class="card"><h2>Armadura adotada</h2><div class="adopt">' +
+      faceRow('Inferior', I) + faceRow('Superior', S) +
+      '<div class="arow"><span class="n">Pele</span><span class="t">' + (pele.necessaria ? '2 faces × ' + pele.n + ' Φ' + phiTxt(pele.phi) + ' c/ ' + f(pele.s, 0) + ' cm' +
+        '<small>As,pele = ' + f(pele.As, 2) + ' cm² por face · necessária ' + f(pele.Asp, 2) + ' cm² (0,10 % bw·h) · s máx. ' + f(pele.tmax, 1) + ' cm' + (pele.espacado ? ' · espaçamento acima do máximo' : '') + '</small>' : 'Não necessária<small>h menor que 60 cm</small>') + '</span>' +
+      (pele.necessaria ? (pele.As + 1e-9 >= pele.Asp && !pele.espacado ? pill('ok', 'Suficiente') : pill('bad', 'Insuficiente')) : pill('ok', 'Dispensada')) + '</div>' +
+      '</div></div>';
+    var ce = c.cis && c.cis.est;
+    var ramosD = ce ? ce.ramos : num(state.ramos);
+    var sEst = ce ? ce.s : null;
+    var estTxt = 'Estribo Φ' + phiTxt(g.phiT) + ' mm' + (sEst ? ' c/ ' + sEst + ' cm' : '') + ' · ' + ramosD + ' ramos' + (sEst ? '' : ' · espaçamento na aba Cisalhamento');
+    function detFace(nome, face) {
+      return face.layers.map(function (l, k) {
+        var n = l.n, livre = n > 1 ? (g.bw - 2 * (g.cob + 0.1 * g.phiT) - n * l.phi / 10) / (n - 1) : NaN;
+        var av = k > 0 ? l.y - face.layers[k - 1].y - (l.phi + face.layers[k - 1].phi) / 20 : NaN;
+        return '<b>' + nome + ' · camada ' + (k + 1) + '</b> ' + n + ' Φ' + phiTxt(l.phi) + (isFinite(livre) ? ' · espaço livre ' + f(livre, 1) + ' cm' : '') + (isFinite(av) ? ' · av ' + f(av, 1) + ' cm' : '');
+      }).join('<br>');
+    }
+    $('sec-flexao').innerHTML = '<div class="card sec"><h2>Corte da viga</h2>' + secao({
+      bw: g.bw, h: g.h, bf: g.bf, hf: g.hf, cob: g.cob, phiT: g.phiT, ramos: ramosD, d: g.d,
+      inf: I.face.layers, sup: S.face.layers, infCls: I.req > 0 ? 's-bar' : 's-barc', supCls: S.req > 0 ? 's-bar' : 's-barc',
+      infExt: I.face.ext, supExt: S.face.ext,
+      pele: pele.necessaria ? { n: pele.n, phi: pele.phi } : null,
+      nl: fx.pos ? { x: fx.pos.x, blk: 0.8 * fx.pos.x } : null, nlNeg: fx.neg ? { x: fx.neg.x, blk: 0.8 * fx.neg.x } : null
+    }) + legend([['var(--rebar)', 'Armadura de cálculo'], ['var(--ink)', 'Estribo e porta-estribo'], ['var(--conc-hi)', 'Zona comprimida (0,8·x)']]) +
+      '<p class="sdet"><b>' + estTxt + '</b><br>' + detFace('Superior', S.face) + '<br>' + detFace('Inferior', I.face) + '<br>Cobrimento ' + f(g.cob, 1) + ' cm</p></div>';
+    var rows = [];
+    if (fx.pos) { fx.pos.d = g.d; rows = rows.concat(memFlex('Momento positivo (Mk⁺)', fx.pos)); }
+    if (fx.neg) { fx.neg.d = fx.dSup; rows = rows.concat(memFlex('Momento negativo (Mk⁻)', fx.neg)); }
+    rows.push(['Armadura máxima'], ['As + As′ (adotadas)', f(asTotV, 2), 'cm²'], ['Limite 4 % · Ac', f(0.04 * AcV, 2), 'cm²']);
+    html += memoria(rows);
+    box.innerHTML = html;
+  }
+
+
+  /* ---------- Fissuração (ELS-W) ---------- */
+  function calcFis(c) {
+    var fx = c.flexao, g = c.geo.g, lj = isLaje();
+    if (fx.errs.length || fx.esm) return null;
+    var caa = parseInt(state.caa, 10) || 2, itens = [];
+    [['Momento positivo · Mk⁺ (tração embaixo)', true, state.Mk, fx.inf, fx.dSup], ['Momento negativo · Mk⁻ (tração em cima)', false, state.Mkn, fx.sup, fx.dSup]].forEach(function (q) {
+      var Mx = q[2] === '' ? 0 : num(q[2]);
+      if (!(Mx > 0)) return;
+      var face = q[3].face, it = { titulo: q[0], pos: q[1], Mk: Mx * kM() };
+      if (!face || !(face.As > 0)) { it.erro = 'Sem armadura adotada nesta face.'; itens.push(it); return; }
+      var inp = { laje: lj, bw: g.bw, h: g.h, bf: g.bf, hf: g.hf, fck: g.fck, fyk: g.fyk, cob: g.cob, phiT: g.phiT, Mk: it.Mk, tracaoInf: q[1], As: face.As, caa: caa };
+      if (lj) { inp.d = q[1] ? g.d : fx.dSup; inp.y1 = g.h - inp.d; inp.phi = face.phi; inp.s = face.s; }
+      else { inp.d = g.h - face.cg; inp.y1 = face.layers[0].y; inp.phi = face.layers[0].phi; inp.n1 = face.layers[0].n; }
+      it.r = M.fissuracao(inp); itens.push(it);
+    });
+    return itens;
+  }
+  function fisRows(it) {
+    var r = it.r, lj = isLaje(), pm = lj ? '/m' : '', rows = [];
+    rows.push([it.titulo], ['Mk (momento de serviço)', f(toM(it.Mk), 2), uM() + pm],
+      ['Ecs = αi · 5600 · √fck', f(r.Ecs, 0), 'MPa'], ['αe = Es / Ecs', f(r.alphaE, 2), ''], ['fct,inf = 0,7 · fctm', f(r.fctInf, 2), 'MPa'],
+      ['Mr = α · fct,inf · Ic / yt (α = ' + f(r.alfa, 1) + ')', f(toM(r.Mr), 2), uM() + pm]);
+    if (!r.fissurado) { rows.push(['Mk ≤ Mr: seção não fissurada'], ['σs no estádio I = αe · Mk · (distância à LN) / Ic', f(r.sigma, 1), 'MPa']); return rows; }
+    rows.push(['Estádio II'], ['x (linha neutra)', f(r.x, 2), 'cm'], ['III', f(r.III, 0), 'cm⁴'], ['σs = αe · Mk · (d − x) / III', f(r.sigma, 1), 'MPa'],
+      ['Região de envolvimento'], ['Φ da barra mais externa', phiTxt(r.phi), 'mm'], ['Acri (≤ 7,5Φ do eixo da barra)', f(r.Acri, 1), 'cm²'], ['ρri = Asi / Acri', f(r.rho * 100, 3), '%'],
+      ['ηi (barra nervurada)', f(r.eta, 2), ''],
+      ['Abertura de fissuras'], ['w1 = Φ/(12,5·ηi) · σs/Es · 3σs/fctm', f(r.w1, 3), 'mm'], ['w2 = Φ/(12,5·ηi) · σs/Es · (4/ρri + 45)', f(r.w2, 3), 'mm'],
+      ['wk = mín(w1; w2)', f(r.wk, 3), 'mm'], ['Limite (CAA ' + ['I', 'II', 'III', 'IV'][r.caa - 1] + ')', f(r.wlim, 2), 'mm']);
+    return rows;
+  }
+  function renderFis(c) {
+    var box = $('fis-out'), its = calcFis(c);
+    if (!box) return;
+    if (!its) { box.innerHTML = '<p class="hint">Disponível quando a flexão estiver calculada.</p>'; return; }
+    if (!its.length) { box.innerHTML = '<p class="hint">Informe Mk⁺ ou Mk⁻ para verificar a fissuração.</p>'; return; }
+    var html = '', rows = [];
+    its.forEach(function (it) {
+      html += '<h3 class="fh" style="margin-top:10px">' + it.titulo + '</h3>';
+      if (it.erro) { html += '<div class="adopt">' + chk('Fissuração', it.erro, false, 'Sem armadura') + '</div>'; return; }
+      var r = it.r;
+      html += '<div class="kpis">' +
+        kpi('Tensão no aço σs', f(r.sigma, 1), 'MPa', r.fissurado ? 'estádio II · seção fissurada' : 'estádio I · seção não fissurada', true) +
+        kpi('Abertura wk', r.fissurado ? f(r.wk, 3) : '0', 'mm', r.fissurado ? 'w1 = ' + f(r.w1, 3) + ' · w2 = ' + f(r.w2, 3) + ' mm' : 'não há fissuras', true) +
+        kpi('Limite wlim', f(r.wlim, 2), 'mm', 'CAA ' + ['I', 'II', 'III', 'IV'][r.caa - 1]) +
+        kpi('Mk / Mr', f(toM(it.Mk), 1) + ' / ' + f(toM(r.Mr), 1), uM() + (isLaje() ? '/m' : ''), r.fissurado ? 'Mk > Mr: fissurada' : 'Mk ≤ Mr: não fissura') + '</div>' +
+        '<div class="adopt">' + chk('Abertura de fissuras', r.fissurado ? 'wk = ' + f(r.wk, 3) + ' mm ' + (r.ok ? '≤' : '>') + ' ' + f(r.wlim, 2) + ' mm · σs = ' + f(r.sigma, 1) + ' MPa' : 'σs = ' + f(r.sigma, 1) + ' MPa (estádio I)', r.ok, r.fissurado ? (r.ok ? 'Atende' : 'wk acima do limite') : 'Não fissura') + '</div>';
+      rows = rows.concat(fisRows(it));
+    });
+    box.innerHTML = html + (rows.length ? memoria(rows) : '');
+  }
+
+  /* ---------- Estribos adotados ---------- */
+  function chk(titulo, detalhe, ok, textoPill) {
+    return '<div class="chk"><span>' + titulo + (detalhe ? '<small>' + detalhe + '</small>' : '') + '</span>' + pill(ok === null ? 'info' : (ok ? 'ok' : 'bad'), textoPill) + '</div>';
+  }
+  function adotCis(c) {
+    var ci = c.cis, box = $('cis-adot-out');
+    if (!box) return;
+    if (ci.errs.length || !ci.r) { box.innerHTML = ''; return; }
+    var r = ci.r;
+    if (r.esmagamento) { box.innerHTML = ''; return; }
+    var e = ci.est;
+    if (!e) { box.innerHTML = '<p class="hint">Laje com Vsd ≤ VRd1: não há estribo a adotar.</p>'; return; }
+    var h = '<div class="adopt" style="margin-top:8px">' +
+      chk('Φ' + phiTxt(e.phi) + ' c/ ' + f(e.s, 0) + ' cm · ' + e.ramos + ' ramos', 'Asw,ef = ' + f(e.AswEf, 2) + ' cm²/m · necessária ' + f(e.AswNec, 2) + ' cm²/m' + (e.auto ? ' · espaçamento automático' : ''), e.ok, e.ok ? 'Suficiente · folga ' + f((e.AswEf / e.AswNec - 1) * 100, 1) + ' %' : 'Insuficiente · faltam ' + f(e.AswNec - e.AswEf, 2) + ' cm²/m') +
+      chk('Espaçamento máximo', 's = ' + f(e.s, 0) + ' cm · smáx = ' + r.smax + ' cm' + (e.curto ? ' · menor que 7 cm' : ''), e.sOk && !e.curto, e.sOk ? (e.curto ? 'Menor que 7 cm' : 'Atende') : 'Acima de smáx') +
+      chk('Diâmetro', 'Φ entre 5 mm e ' + phiTxt(e.phiMax) + ' mm', e.phiOk, e.phiOk ? 'Atende' : 'Fora do limite');
+    if (!isLaje()) h += chk('Número de ramos', 'mínimo ' + e.nMin + ' pelo espaçamento transversal máximo (st,máx = ' + r.stmax + ' cm)', e.ramosOk, e.ramosOk ? 'Atende' : 'Poucos ramos');
+    h += '</div>';
+    box.innerHTML = h;
+  }
+  function adotTor(c) {
+    var t = c.tor, box = $('tor-adot-out');
+    if (!box) return;
+    if (t.errs.length || !t.r || t.r.esmagamento || !t.est) { box.innerHTML = ''; return; }
+    var r = t.r, e = t.est;
+    var h = '<div class="adopt" style="margin-top:8px">' +
+      chk('Ramos que participam da torção (' + e.nT + ' perna' + (e.nT === 1 ? '' : 's') + ' por lado)', 'a = ' + f(e.a1, 2) + ' cm²/m · necessária ' + f(e.reqOuter, 2) + ' cm²/m (Aswt ' + f(r.Aswt, 2) + ' + cisalhamento ' + f(e.nT * e.cisPerna, 2) + ')', e.torsOk, e.torsOk ? 'Suficiente' : (e.closedOk ? 'Insuficiente' : 'Nenhum ramo participa')) +
+      (e.groups.length > 1 ? chk('Todas as pernas (cisalhamento)', 'cada perna precisa de ' + f(e.cisPerna, 2) + ' cm²/m', e.shearOk, e.shearOk ? 'Suficiente' : 'Insuficiente') : '') +
+      chk('Armadura transversal mínima', 'total ' + f(e.Atot, 2) + ' cm²/m · mínimo ' + f(r.Aswmin, 2) + ' cm²/m', e.minOk, e.minOk ? 'Atende' : 'Abaixo do mínimo') +
+      chk('Espaçamento máximo', 'smáx = ' + r.smax + ' cm' + (e.groups.some(function (g) { return g.curto; }) ? ' · há espaçamento menor que 7 cm' : ''), e.sOk, e.sOk ? 'Atende' : 'Acima de smáx') +
+      chk('Diâmetro', 'Φ entre 5 mm e ' + phiTxt(r.phiMax) + ' mm', e.phiOk, e.phiOk ? 'Atende' : 'Fora do limite') +
+      chk('Número de pernas', e.legsTot + ' pernas · mínimo ' + e.nMin, e.legsOk, e.legsOk ? 'Atende' : 'Poucas pernas') +
+      chk('Total de estribos', 'Asw total = ' + f(e.Atot, 2) + ' cm²/m · Aswc + 2·Aswt = ' + f(e.Aswc + 2 * e.Aswt, 2) + ' cm²/m', null, e.ok ? 'Tudo atende' : 'Há pendências') + '</div>';
+    box.innerHTML = h;
+  }
+  function setGroupInfo(c) {
+    var t = c.tor, grp = parseGroups(state.estTor);
+    grp.forEach(function (x, k) {
+      var el = $('gs-' + k); if (!el) return;
+      var g = t.est && t.est.groups[k];
+      el.textContent = g ? g.legs + ' pernas · cada perna ' + f(g.a, 2) + ' cm²/m (necessária ' + f(g.need, 2) + (g.tor ? ': torção + cisalhamento' : ': cisalhamento') + ') ' + (g.a + 1e-9 >= g.need ? '✓' : '✗ insuficiente') + (g.auto ? ' · s automático ' + g.sUse + ' cm' : '') : '';
+    });
+  }
+  var GPHIS = ['5', '6.3', '8', '10', '12.5', '16'];
+  function buildGroups() {
+    var arr = parseGroups(state.estTor), box = $('tor-groups');
+    var h = '<div class="ghd"><span></span><span>Tipo</span><span>Na torção</span><span>Quantidade</span><span>Φ (mm)</span><span>s (cm)</span><span>Resumo</span><span></span></div>';
+    arr.forEach(function (g, k) {
+      var phi = k === 0 ? state.phiT : g.phi;
+      h += '<div class="grow"><span class="n">Ramo ' + (k + 1) + (k === 0 ? ' · seção vazada' : '') + '</span>' +
+        '<select class="gt"' + (k === 0 ? ' disabled' : '') + '><option value="f"' + (g.tipo === 'f' ? ' selected' : '') + '>Estribo fechado</option><option value="p"' + (g.tipo === 'p' ? ' selected' : '') + '>Perna simples</option></select>' +
+        '<select class="gtor" aria-label="Participação do ramo ' + (k + 1) + ' na torção"' + (g.tipo === 'p' ? ' disabled' : '') + '><option value="1"' + (g.tor === '1' ? ' selected' : '') + '>Participa</option><option value="0"' + (g.tor !== '1' ? ' selected' : '') + '>Só cisalhamento</option></select>' +
+        '<input class="gq" inputmode="numeric" aria-label="Quantidade do ramo ' + (k + 1) + '" value="' + esc(g.qtd) + '">' +
+        '<select class="gp" aria-label="Diâmetro do ramo ' + (k + 1) + '">' + GPHIS.map(function (p) { return '<option' + (num(p) === num(phi) ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select>' +
+        '<input class="gsp" inputmode="decimal" aria-label="Espaçamento do ramo ' + (k + 1) + '" value="' + esc(g.s) + '" placeholder="automático">' +
+        '<span class="gs" id="gs-' + k + '"></span>' +
+        (k > 0 ? '<button type="button" class="lx" aria-label="Remover ramo ' + (k + 1) + '">×</button>' : '<span></span>') + '</div>';
+    });
+    h += '<button type="button" class="ladd">+ Adicionar ramo</button>';
+    box.innerHTML = h;
+    function read() {
+      var out = [];
+      Array.prototype.forEach.call(box.querySelectorAll('.grow'), function (row, k) {
+        var tp = k === 0 ? 'f' : row.querySelector('.gt').value, ts = row.querySelector('.gtor');
+        ts.disabled = tp === 'p'; if (tp === 'p') ts.value = '0';
+        out.push({ tipo: tp, qtd: row.querySelector('.gq').value.trim() || '1', phi: row.querySelector('.gp').value, s: row.querySelector('.gsp').value.trim(), tor: row.querySelector('.gtor').value });
+      });
+      return out;
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('.grow'), function (row, k) {
+      var upd = function () {
+        var a = read(); state.estTor = serGroups(a);
+        if (k === 0) { state.phiT = a[0].phi; $('phiT').value = state.phiT; $('phiT2').value = state.phiT; }
+        refresh();
+      };
+      ['gt', 'gtor', 'gp'].forEach(function (cl) { row.querySelector('.' + cl).addEventListener('change', upd); });
+      ['gq', 'gsp'].forEach(function (cl) { row.querySelector('.' + cl).addEventListener('input', upd); });
+      row.querySelector('.gt').addEventListener('change', function () { if (this.value === 'p') row.querySelector('.gtor').value = '0'; });
+      var x = row.querySelector('.lx');
+      if (x) x.addEventListener('click', function () { var a = read(); a.splice(k, 1); state.estTor = serGroups(a); buildGroups(); refresh(); });
+    });
+    box.querySelector('.ladd').addEventListener('click', function () {
+      var a = read(); a.push({ tipo: 'p', qtd: '1', phi: a[a.length - 1].phi, s: '', tor: '0' }); state.estTor = serGroups(a); buildGroups(); refresh();
+    });
+  }
+
+  /* ---------- Cisalhamento ---------- */
+  function optsHtml(opts) {
+    if (!opts.length) return '<span class="pill bad">Nenhuma bitola atende (Φ ≤ Φmáx, s ≥ 7 cm). Aumente o número de ramos.</span>';
+    return '<div class="opts">' + opts.map(function (o, k) {
+      return '<span class="opt' + (k === 0 ? ' first' : '') + '">Φ' + phiTxt(o.phi) + ' c/ ' + o.s + ' cm</span>';
+    }).join('') + '</div>';
+  }
+  function renderCis(c) {
+    var box = $('out-cisalhamento'), ci = c.cis;
+    if (ci.errs.length) { box.innerHTML = errBox(ci.errs); return; }
+    if (isLaje()) { renderCisLaje(c); return; }
+    var r = ci.r, g = c.geo.g, html = elemTag();
+    if (r.esmagamento) {
+      box.innerHTML = elemTag() + banner('bad', 'Esmagamento da diagonal comprimida', 'Vsd = ' + f(toF(r.Vsd), 1) + ' ' + uF() + ' é maior que VRd2 = ' + f(toF(r.VRd2), 1) + ' ' + uF() + '. A armadura não foi determinada: aumente a seção ou o fck.') +
+        '<div class="card"><h2>Verificação</h2>' + meter([{ v: r.razao }], [{ v: 0, l: '0' }, { v: 1, l: 'VRd2' }], true) + '</div>';
+      return;
+    }
+    html += banner(r.apenasMinima ? 'ok' : 'warn', r.apenasMinima ? 'Armadura transversal mínima' : 'Armadura transversal calculada',
+      r.apenasMinima ? 'Vsd não passa de Vsd,mín. A armadura de cisalhamento corresponde ao Asw,mín.' : 'Vsd é maior que Vsd,mín. A armadura é calculada pela contribuição Vsw (Modelo I, θ = 45°).');
+    html += '<div class="kpis">' +
+      kpi('Asw adotada', f(r.Asw, 2), 'cm²/m', 'total dos ' + r.ramos + ' ramos', true) +
+      kpi('Vsd', f(toF(r.Vsd), 1), uF(), '1,4 · Vk') +
+      kpi('VRd2', f(toF(r.VRd2), 1), uF(), f(r.razao * 100, 1) + ' % utilizado') +
+      kpi('Vsd,mín', f(toF(r.Vsdmin), 1), uF(), 'ρmín = ' + f(r.rhoMin * 100, 3) + ' %') + '</div>';
+    html += '<div class="card"><h2>Esmagamento da diagonal</h2>' + meter([{ v: r.razao }], [{ v: 0, l: '0' }, { v: 0.2, l: '0,2' }, { v: 0.67, l: '0,67' }, { v: 1, l: 'VRd2' }], false) +
+      '<p class="hint">Vsd / VRd2 = ' + f(r.razao, 3) + ' · ' + pill('ok', 'Não há esmagamento') + '</p></div>';
+    html += '<div class="two"><div class="card"><h2>Detalhamento</h2><table><tbody>' +
+      '<tr><td class="k">Diâmetro mínimo Φmín</td><td>' + f(r.phiMin, 0) + ' mm</td></tr>' +
+      '<tr><td class="k">Diâmetro máximo Φmáx (bw/10)</td><td>' + phiTxt(r.phiMax) + ' mm</td></tr>' +
+      '<tr><td class="k">Espaçamento longitudinal máx. smáx</td><td>' + r.smax + ' cm</td></tr>' +
+      '<tr><td class="k">Espaçamento entre ramos máx. st,máx</td><td>' + r.stmax + ' cm</td></tr>' +
+      '<tr><td class="k">Número mínimo de ramos</td><td>' + r.nMin + '</td></tr>' +
+      '<tr><td class="k">Ramos adotados</td><td>' + r.ramos + (r.nMin > num(state.ramos) ? ' (mínimo maior que o informado)' : '') + '</td></tr>' +
+      '<tr><td class="k">Asw por ramo</td><td>' + f(r.aswPerna, 3) + ' cm²/m</td></tr>' +
+      '</tbody></table></div>' +
+      '<div class="card"><h2>Estribos com ' + r.ramos + ' ramos</h2>' + optsHtml(r.opcoes) +
+      '<p class="hint">A primeira opção usa a menor bitola. Espaçamentos abaixo de 7 cm ou acima de smáx não são listados.</p></div></div>';
+    var o1 = r.opcoes[0];
+    html += '<div class="card sec"><h2>Seção transversal</h2>' + secao({ bw: g.bw, h: g.h, bf: g.bf, hf: g.hf, cob: g.cob, phiT: g.phiT, ramos: g.ramos, d: g.d }) +
+      legend([['var(--ink)', ci.est ? 'Estribo Φ' + phiTxt(ci.est.phi) + ' c/ ' + f(ci.est.s, 0) + ' cm · ' + g.ramos + ' ramos' : 'Estribos']]) + '</div>';
+    html += memoria([['Materiais'], ['fcd', f(r.mat.fcd * 10, 2), 'MPa'], ['fctd', f(r.mat.fctd * 10, 3), 'MPa'], ['fctm', f(r.mat.fctm * 10, 3), 'MPa'],
+      ['fywd', f(r.mat.fywd * 10, 1), 'MPa'], ['αv2 = 1 − fck/250', f(r.mat.av2, 3), ''],
+      ['Verificações'], ['VRd2 = 0,27·αv2·fcd·bw·d', f(toF(r.VRd2), 2), uF()], ['Vsd', f(toF(r.Vsd), 2), uF()],
+      ['ρmín = 0,2·fctm/fywk', f(r.rhoMin * 100, 4), '%'], ['Vsd,mín = 0,6·fctd·bw·d + 0,9·bw·d·fywd·ρmín', f(toF(r.Vsdmin), 2), uF()],
+      ['Vc = 0,6·fctd·bw·d', f(toF(r.Vc), 2), uF()], ['Vsw = Vsd − Vc', f(toF(r.Vsw), 2), uF()], ['VRd3 = Vc + Vsw', f(toF(r.VRd3), 2), uF()],
+      ['Asw calculada = 100·Vsw/(0,9·d·fywd)', f(r.AswCalc, 3), 'cm²/m'], ['Asw,mín = 100·bw·ρmín', f(r.Aswmin, 3), 'cm²/m']]);
+    box.innerHTML = html;
+  }
+
+  /* ---------- Torção ---------- */
+  function renderTor(c) {
+    var box = $('out-torcao'), t = c.tor;
+    if (t.errs.length) { box.innerHTML = errBox(t.errs); return; }
+    var r = t.r, g = c.geo.g, html = '';
+    var inter = meter([{ v: r.rV }, { v: r.rT }], [{ v: 0, l: '0' }, { v: 0.2, l: '0,2' }, { v: 0.67, l: '0,67' }, { v: 1, l: '1,0' }], r.inter > 1);
+    if (r.esmagamento) {
+      box.innerHTML = banner('bad', 'Esmagamento da diagonal comprimida', 'Vsd/VRd2 + Tsd/TRd2 = ' + f(r.inter, 3) + ' é maior que 1. A armadura não foi determinada.') +
+        '<div class="card"><h2>Interação cisalhamento e torção</h2>' + inter + '</div>';
+      return;
+    }
+    html += banner('ok', 'Armadura de cisalhamento e torção',
+      'Vsd/VRd2 + Tsd/TRd2 = ' + f(r.inter, 3) + '. Não há esmagamento da diagonal comprimida.');
+    html += '<div class="kpis">' +
+      kpi('Asw total por ramo', f(r.aswPerna, 2), 'cm²/m', r.ramos + ' ramos', true) +
+      kpi('Asinf total', f(r.AsInf, 2), 'cm²', r.infMinGoverna ? 'governa Asmín' : 'flexão + torção') +
+      kpi('Assup total', f(r.AsSup, 2), 'cm²', r.supMinGoverna ? 'governa Asmín' : 'flexão + torção') +
+      kpi('Aslat por face', f(r.AsLat, 2), 'cm²', 'armadura lateral') + '</div>';
+    html += '<div class="card"><h2>Interação cisalhamento e torção</h2>' + inter +
+      '<p class="hint"><span style="color:var(--accent)">■</span> Vsd/VRd2 = ' + f(r.rV, 3) + ' &nbsp; <span style="color:var(--rebar)">■</span> Tsd/TRd2 = ' + f(r.rT, 3) + ' &nbsp; Soma = ' + f(r.inter, 3) + '</p></div>';
+    html += '<div class="two"><div class="card"><h2>Armadura transversal</h2><table><tbody>' +
+      '<tr><td class="k">Cisalhamento Aswc (total)</td><td>' + f(r.AswcFinal, 2) + ' cm²/m</td></tr>' +
+      '<tr><td class="k">Torção Aswt (por face)</td><td>' + f(r.Aswt, 2) + ' cm²/m</td></tr>' +
+      '<tr><td class="k">Asw por ramo = Aswt + Aswc/n</td><td>' + f(r.AswTot, 2) + ' cm²/m</td></tr>' +
+      '<tr><td class="k">Φmín · Φmáx</td><td>' + r.phiMin + ' · ' + phiTxt(r.phiMax) + ' mm</td></tr>' +
+      '<tr><td class="k">smáx · st,máx</td><td>' + r.smax + ' · ' + r.stmax + ' cm</td></tr>' +
+      '<tr><td class="k">Ramos mínimos · adotados</td><td>' + r.nMin + ' · ' + r.ramos + '</td></tr></tbody></table></div>' +
+      '<div class="card"><h2>Estribos com ' + r.ramos + ' ramos</h2>' + optsHtml(r.opcoes) +
+      '<p class="hint">Cada ramo recebe Aswt da torção mais a parcela do cisalhamento.</p></div></div>';
+    html += '<div class="card"><h2>Armadura longitudinal</h2><table><thead><tr><th></th><th>Flexão</th><th>Torção</th><th>Total</th><th>Asmín</th></tr></thead><tbody>' +
+      '<tr><td class="k">Inferior</td><td>' + f(t.inp.AsInfF, 2) + '</td><td>' + f(r.AsInfTors, 2) + '</td><td>' + f(r.AsInf, 2) + '</td><td>' + f(r.AsInfMin, 2) + '</td></tr>' +
+      '<tr><td class="k">Superior</td><td>' + f(t.inp.AsSupF, 2) + '</td><td>' + f(r.AsInfTors, 2) + '</td><td>' + f(r.AsSup, 2) + '</td><td>' + f(r.AsSupMin, 2) + '</td></tr>' +
+      '<tr><td class="k">Lateral, por face</td><td>–</td><td>' + f(r.AsLat, 2) + '</td><td>' + f(r.AsLat, 2) + '</td><td>–</td></tr>' +
+      '</tbody></table><p class="hint">Valores em cm². Asl total da torção = ' + f(r.Asl, 2) + ' cm². ρmín longitudinal = ' + f(r.rhoMinLong * 100, 3) + ' %.</p></div>';
+    var te = t.est, g1 = te && te.groups[0];
+    html += '<div class="card sec"><h2>Seção transversal</h2>' + secao({ bw: g.bw, h: g.h, bf: 0, hf: 0, cob: g.cob, phiT: g.phiT, ramos: te ? te.legsTot : r.ramos, wall: { he: r.he } }) +
+      legend([['var(--accent)', 'Parede equivalente he = ' + f(r.he, 1) + ' cm'], ['var(--ink)', te ? te.groups.map(function (x, k) { return 'Ramo ' + (k + 1) + ' Φ' + phiTxt(x.phi) + ' c/ ' + f(x.sUse, 0) + ' cm'; }).join(' · ') : 'Estribos']]) + '</div>';
+    html += memoria([['Seção vazada equivalente'], ['A = bw·h', f(r.A, 0), 'cm²'], ['u = 2(bw + h)', f(r.u, 0), 'cm'], ['A/u', f(r.Au, 2), 'cm'],
+      ['he = máx(A/u; 2·c1)', f(r.he, 2), 'cm'], ['bnúcleo', f(r.bnuc, 2), 'cm'], ['hnúcleo', f(r.hnuc, 2), 'cm'], ['Ae = bnúcleo·hnúcleo', f(r.Ae, 0), 'cm²'],
+      ['Esmagamento'], ['VRd2', f(toF(r.VRd2), 2), uF()], ['TRd2 = 0,5·αv2·fcd·Ae·he', f(toM(r.TRd2), 2), uM()],
+      ['Vsd / VRd2', f(r.rV, 4), ''], ['Tsd / TRd2', f(r.rT, 4), ''], ['Soma', f(r.inter, 4), ''],
+      ['Armadura transversal'], ['Vsd,mín', f(toF(r.Vsdmin), 2), uF()], ['Vc', f(toF(r.Vc), 2), uF()], ['ρmín', f(r.rhoMin * 100, 4), '%'],
+      ['Aswc calculada', f(r.Aswc, 3), 'cm²/m'], ['Aswt = 100·Tsd/(2·Ae·fywd)', f(r.AswtCalc, 3), 'cm²/m'], ['Asw,mín', f(r.Aswmin, 3), 'cm²/m'],
+      ['Armadura longitudinal'], ['Asl = 0,02·Aswt·(bnúcleo + hnúcleo)', f(r.Asl, 3), 'cm²']]);
+    box.innerHTML = html;
+  }
+
+  /* ---------- Resumo ---------- */
+  function renderResumo(c) {
+    var html = '<div class="sumgrid">';
+    var g = c.geo.g;
+    var fx = c.flexao, ci = c.cis, t = c.tor;
+    function card(tabId, title, status, body) {
+      return '<button type="button" class="sumcard" data-go="' + tabId + '"><h2 style="margin:0">' + title + '</h2>' + status + body + '</button>';
+    }
+    // flexão
+    if (fx.errs.length) html += card('flexao', 'Flexão', pill('warn', 'Dados incompletos'), '<span class="fixed">' + esc(fx.errs[0]) + '</span>');
+    else if (fx.r.esmagamento) html += card('flexao', 'Flexão', pill('bad', 'Esmagamento do concreto'), '<span class="fixed">Aumente a seção ou o fck.</span>');
+    else {
+      var I = fx.inf, S = fx.sup, rr = fx.pos || fx.neg;
+      var dup = (fx.pos && fx.pos.dupla) || (fx.neg && fx.neg.dupla);
+      var txt = function (x) { return x.face ? (isLaje() ? 'Φ' + phiTxt(x.face.phi) + ' c/ ' + x.face.s + ' cm' : layTxt(x.face)) : '–'; };
+      html += card('flexao', 'Flexão' + (isLaje() ? ' · laje' : ''), pill(dup ? 'warn' : 'ok', dup ? 'Armadura dupla' : 'Armadura simples') + (fx.pos && fx.pos.isT ? ' ' + pill('info', 'Seção T') : ''),
+        '<div class="big">' + f(I.face ? I.face.As : 0, 2) + '<small>cm²' + (isLaje() ? '/m' : '') + ' inferior</small></div><dl>' +
+        '<dt>Inferior</dt><dd>' + txt(I) + '</dd><dt>Superior</dt><dd>' + txt(S) + '</dd>' +
+        '<dt>Momentos</dt><dd>' + (fx.pos ? 'Mk⁺' : '') + (fx.pos && fx.neg ? ' e ' : '') + (fx.neg ? 'Mk⁻' : '') + '</dd><dt>x / d</dt><dd>' + f(rr.kx, 3) + '</dd></dl>');
+    }
+    // cisalhamento
+    if (ci.errs.length) html += card('cisalhamento', 'Cisalhamento', pill('warn', 'Dados incompletos'), '<span class="fixed">' + esc(ci.errs[0]) + '</span>');
+    else if (ci.r.esmagamento && !isLaje()) html += card('cisalhamento', 'Cisalhamento', pill('bad', 'Esmagamento da diagonal'), '<span class="fixed">Vsd maior que VRd2.</span>');
+    else {
+      var rc = ci.r, o = rc.opcoes ? rc.opcoes[0] : null;
+      if (isLaje()) html += card('cisalhamento', 'Cisalhamento · laje', rc.precisa ? (rc.esmagamento ? pill('bad', 'Esmagamento da diagonal') : pill('warn', 'Precisa armar')) : pill('ok', 'Não precisa armar'),
+        '<div class="big">' + f(rc.razao1, 2) + '<small>Vsd / VRd1</small></div><dl>' +
+        '<dt>Vsd</dt><dd>' + f(toF(rc.Vsd), 1) + ' ' + uF() + '/m</dd><dt>VRd1</dt><dd>' + f(toF(rc.VRd1), 1) + ' ' + uF() + '/m</dd>' +
+        '<dt>Estribos</dt><dd>' + (rc.precisa && !rc.esmagamento ? (o ? 'Φ' + phiTxt(o.phi) + ' c/ ' + o.s + ' cm' : '–') : 'dispensados') + '</dd></dl>');
+      else html += card('cisalhamento', 'Cisalhamento', pill(rc.apenasMinima ? 'ok' : 'warn', rc.apenasMinima ? 'Armadura mínima' : 'Armadura calculada'),
+        '<div class="big">' + f(rc.Asw, 2) + '<small>cm²/m de Asw</small></div><dl>' +
+        '<dt>Estribos</dt><dd>' + (ci.est ? 'Φ' + phiTxt(ci.est.phi) + ' c/ ' + f(ci.est.s, 0) + ' · ' + ci.est.ramos + ' ramos' : (o ? 'Φ' + phiTxt(o.phi) + ' c/ ' + o.s + ' · ' + rc.ramos + ' ramos' : '–')) + '</dd>' +
+        '<dt>Vsd / VRd2</dt><dd>' + f(rc.razao, 3) + '</dd><dt>smáx</dt><dd>' + rc.smax + ' cm</dd></dl>');
+    }
+    // torção
+    if (isLaje()) html += card('torcao', 'Torção', pill('info', 'Não se aplica'), '<span class="fixed">A torção é verificada só em vigas.</span>');
+    else if (t.errs.length) html += card('torcao', 'Torção', pill('warn', 'Dados incompletos'), '<span class="fixed">' + esc(t.errs[0]) + '</span>');
+    else if (t.r.esmagamento) html += card('torcao', 'Torção', pill('bad', 'Esmagamento da diagonal'), '<span class="fixed">Vsd/VRd2 + Tsd/TRd2 maior que 1.</span>');
+    else {
+      var rt = t.r, ot = rt.opcoes[0];
+      html += card('torcao', 'Torção', pill('ok', 'Atende'),
+        '<div class="big">' + f(rt.aswPerna, 2) + '<small>cm²/m por ramo</small></div><dl>' +
+        '<dt>Estribos</dt><dd>' + (t.est ? t.est.groups.map(function (x) { return 'Φ' + phiTxt(x.phi) + ' c/ ' + f(x.sUse, 0); }).join(' + ') + ' · ' + t.est.legsTot + ' pernas' : (ot ? 'Φ' + phiTxt(ot.phi) + ' c/ ' + ot.s + ' · ' + rt.ramos + ' ramos' : '–')) + '</dd>' +
+        '<dt>Vsd/VRd2 + Tsd/TRd2</dt><dd>' + f(rt.inter, 3) + '</dd>' +
+        '<dt>Asinf · Assup</dt><dd>' + f(rt.AsInf, 1) + ' · ' + f(rt.AsSup, 1) + ' cm²</dd></dl>');
+    }
+    html += '</div>';
+    var tf = g.bf > 0 && g.hf > 0;
+    var geoTxt = isLaje() ? 'Laje · faixa de 1 m · h ' + f(g.h, 0) + ' cm' : (tf ? 'Seção T' : 'Seção retangular') + ' · bw ' + f(g.bw, 0) + ' × h ' + f(g.h, 0) + ' cm' + (tf ? ' · bf ' + f(g.bf, 0) + ' · hf ' + f(g.hf, 0) : '');
+    html += '<div class="card flat"><h2>Dados ' + (isLaje() ? 'da laje' : 'da viga') + '</h2><p class="fixed" style="margin:0">' + geoTxt +
+      ' · d ' + f(g.d, 1) + ' cm · C' + g.fck + ' · CA-' + (g.fyk / 10) + ' · Mk⁺ ' + f(num(state.Mk), 1) + ' ' + uM() + (isLaje() ? '/m' : '') + (state.Mkn !== '' ? ' · Mk⁻ ' + f(num(state.Mkn), 1) + ' ' + uM() : '') + ' · Vk ' + f(num(state.Vk), 1) + ' ' + uF() + (isLaje() ? '/m' : ' · Tk ' + f(num(state.Tk), 1) + ' ' + uM()) + '</p></div>';
+    $('p-resumo').innerHTML = html;
+  }
+
+  /* ---------- Memorial de cálculo (.docx, gerado no navegador) ---------- */
+  var Docx = (function () {
+    var enc = new TextEncoder();
+    var CRC = (function () { var t = [], n, k, c; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+    function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+    function zip(files) { // armazenamento sem compressão
+      var parts = [], cen = [], off = 0;
+      function u16(v) { return [v & 255, (v >>> 8) & 255]; }
+      function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+      files.forEach(function (fl) {
+        var nm = enc.encode(fl.name), data = typeof fl.data === 'string' ? enc.encode(fl.data) : fl.data, crc = crc32(data);
+        var hdr = [0x50, 0x4b, 3, 4].concat(u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(nm.length), u16(0));
+        parts.push(new Uint8Array(hdr), nm, data);
+        cen.push({ nm: nm, crc: crc, len: data.length, off: off });
+        off += hdr.length + nm.length + data.length;
+      });
+      var cs = off, cparts = [];
+      cen.forEach(function (e) {
+        var h = [0x50, 0x4b, 1, 2].concat(u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(e.crc), u32(e.len), u32(e.len), u16(e.nm.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(e.off));
+        cparts.push(new Uint8Array(h), e.nm); off += h.length + e.nm.length;
+      });
+      var end = new Uint8Array([0x50, 0x4b, 5, 6].concat(u16(0), u16(0), u16(files.length), u16(files.length), u32(off - cs), u32(cs), u16(0)));
+      return new Blob(parts.concat(cparts, [end]), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    }
+    function x(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+    function run(t, o) {
+      o = o || {};
+      return '<w:r><w:rPr>' + (o.b ? '<w:b/>' : '') + (o.i ? '<w:i/>' : '') + (o.sz ? '<w:sz w:val="' + o.sz + '"/>' : '') + (o.color ? '<w:color w:val="' + o.color + '"/>' : '') +
+        '</w:rPr><w:t xml:space="preserve">' + x(t) + '</w:t></w:r>';
+    }
+    function p(t, o) {
+      o = o || {};
+      return '<w:p><w:pPr>' + (o.style ? '<w:pStyle w:val="' + o.style + '"/>' : '') + (o.keep ? '<w:keepNext/>' : '') +
+        (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : '') + '</w:pPr>' + (t === '' ? '' : run(t, o)) + '</w:p>';
+    }
+    function cell(t, w, o) {
+      o = o || {};
+      return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' + (o.span ? '<w:gridSpan w:val="' + o.span + '"/>' : '') +
+        (o.fill ? '<w:shd w:val="clear" w:color="auto" w:fill="' + o.fill + '"/>' : '') + '</w:tcPr>' +
+        '<w:p><w:pPr><w:spacing w:before="20" w:after="20"/>' + (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : '') + '</w:pPr>' + run(t, { b: o.b, sz: 20 }) + '</w:p></w:tc>';
+    }
+    // rows: [titulo] = subtítulo; [rótulo, valor, unidade]
+    function tabelaMem(rows) {
+      var W = [5300, 2300, 2038], out = '<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="9638" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>' +
+        W.map(function (w) { return '<w:gridCol w:w="' + w + '"/>'; }).join('') + '</w:tblGrid>';
+      rows.forEach(function (r) {
+        if (r.length === 1) out += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + cell(r[0], 9638, { span: 3, fill: 'E7ECF3', b: true }) + '</w:tr>';
+        else out += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + cell(r[0], W[0]) + cell(r[1], W[1], { jc: 'right' }) + cell(r[2] || '', W[2]) + '</w:tr>';
+      });
+      return out + '</w:tbl>' + p('');
+    }
+    function tabelaGrade(head, rows, W) {
+      var tot = W.reduce(function (a, b) { return a + b; }, 0);
+      var out = '<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="' + tot + '" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>' +
+        W.map(function (w) { return '<w:gridCol w:w="' + w + '"/>'; }).join('') + '</w:tblGrid>';
+      if (head) out += '<w:tr><w:trPr><w:tblHeader/></w:trPr>' + head.map(function (h, i) { return cell(h, W[i], { fill: 'E7ECF3', b: true }); }).join('') + '</w:tr>';
+      rows.forEach(function (r) { out += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + r.map(function (v, i) { return cell(v, W[i], { jc: i ? 'right' : '' }); }).join('') + '</w:tr>'; });
+      return out + '</w:tbl>' + p('');
+    }
+    var NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+    function build(body, rodape, imgs) {
+      imgs = imgs || [];
+      var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ' + NS + '><w:body>' + body +
+        '<w:sectPr><w:footerReference w:type="default" r:id="rId2"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>';
+      var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ' + NS + '>' +
+        '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+        '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
+        '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="60"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/><w:color w:val="1F3A5F"/></w:rPr></w:style>' +
+        '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="1F3A5F"/></w:pBdr><w:spacing w:before="320" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="1F3A5F"/></w:rPr></w:style>' +
+        '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="80"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="333333"/></w:rPr></w:style>' +
+        '<w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>' +
+        '<w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:tblPr><w:tblBorders>' +
+        ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(function (b) { return '<w:' + b + ' w:val="single" w:sz="4" w:space="0" w:color="B8C0CC"/>'; }).join('') + '</w:tblBorders></w:tblPr></w:style></w:styles>';
+      var foot = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ' + NS + '><w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="4" w:space="4" w:color="B8C0CC"/></w:pBdr><w:tabs><w:tab w:val="right" w:pos="9638"/></w:tabs></w:pPr>' +
+        run(rodape, { sz: 16, color: '666666' }) + '<w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:tab/><w:t xml:space="preserve">Página </w:t></w:r>' +
+        '<w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:t>1</w:t></w:r><w:r><w:rPr><w:sz w:val="16"/><w:color w:val="666666"/></w:rPr><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>';
+      var H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+      var R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+      return zip([
+        { name: '[Content_Types].xml', data: H + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>' +
+          '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>' },
+        { name: '_rels/.rels', data: H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/officeDocument" Target="word/document.xml"/></Relationships>' },
+        { name: 'word/_rels/document.xml.rels', data: H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/styles" Target="styles.xml"/><Relationship Id="rId2" Type="' + R + '/footer" Target="footer1.xml"/>' + imgs.map(function (m, i) { return '<Relationship Id="rIdImg' + (i + 1) + '" Type="' + R + '/image" Target="media/' + m.name + '"/>'; }).join('') + '</Relationships>' },
+        { name: 'word/document.xml', data: doc }, { name: 'word/styles.xml', data: styles }, { name: 'word/footer1.xml', data: foot }
+      ].concat(imgs.map(function (m) { return { name: 'word/media/' + m.name, data: m.bytes }; })));
+    }
+    function img(m, leg) {
+      return '<w:p><w:pPr><w:keepNext/><w:jc w:val="center"/><w:spacing w:before="60" w:after="20"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="' + m.cx + '" cy="' + m.cy + '"/><wp:docPr id="' + m.n + '" name="Figura ' + m.n + '"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="' + m.n + '" name="' + m.name + '"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg' + m.n + '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + m.cx + '" cy="' + m.cy + '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>' + p(leg, { jc: 'center', i: true, sz: 18, color: '444444' });
+    }
+    return { img: img, p: p, h1: function (t) { return p(t, { style: 'Heading1' }); }, h2: function (t) { return p(t, { style: 'Heading2' }); }, tabelaMem: tabelaMem, tabelaGrade: tabelaGrade, build: build };
+  })();
+
+  function memorialCorpo(c, im) {
+    im = im || {};
+    var fig = function (k, leg) { return im[k] ? Docx.img(im[k], leg) : ''; };
+    var D = Docx, g = c.geo.g, lj = isLaje(), b = '';
+    var tf = g.bf > 0 && g.hf > 0, fx = c.flexao, ci = c.cis, t = c.tor;
+    var porM = lj ? '/m' : '';
+    var Tk = state.Tk === '' ? 0 : num(state.Tk);
+    var comTorcao = !lj && Tk > 0;
+    var okTxt = function (v) { return v ? 'Atende' : 'Não atende'; };
+    var erros = function (errs) { return errs.map(function (e) { return D.p('• ' + e); }).join(''); };
+    var n = 0, tit = function (s) { n++; return D.h1(n + '. ' + s); };
+
+    b += D.p('Memorial de cálculo', { style: 'Title' });
+    b += D.p((lj ? 'Laje de concreto armado (faixa de 1 m)' : 'Viga de concreto armado') + ' · dimensionamento conforme ABNT NBR 6118', { color: '555555' });
+    b += D.p('Emitido em ' + new Date().toLocaleDateString('pt-BR'), { color: '555555', sz: 20 });
+
+    // 1. Geometria e materiais
+    b += tit('Geometria e materiais');
+    var geo = [['Dimensões da seção']];
+    if (lj) geo.push(['Faixa considerada (b)', f(g.bw, 0), 'cm'], ['Espessura h', f(g.h, 1), 'cm']);
+    else {
+      geo.push(['Seção', tf ? 'T' : 'Retangular', ''], ['Largura da alma bw', f(g.bw, 1), 'cm'], ['Altura h', f(g.h, 1), 'cm']);
+      if (tf) geo.push(['Largura da mesa bf', f(g.bf, 1), 'cm'], ['Espessura da mesa hf', f(g.hf, 1), 'cm']);
+    }
+    geo.push(['Altura útil d', f(g.d, 1), 'cm'], ['Cobrimento nominal', f(g.cob, 1), 'cm']);
+    if (!lj) geo.push(['Diâmetro do estribo Φt', f(g.phiT, 1), 'mm']);
+    geo.push(['Dimensão máxima do agregado (brita)', String(state.brita), '']);
+    geo.push(['Materiais'], ['Resistência do concreto fck', f(g.fck, 0), 'MPa'], ['Aço', 'CA-' + (g.fyk / 10), ''], ['Resistência de escoamento fyk', f(g.fyk, 0), 'MPa']);
+    b += D.tabelaMem(geo);
+
+    // 2. Esforços
+    b += tit('Esforços solicitantes');
+    var ef = [['Valores característicos (informados)']];
+    if (num(state.Mk) > 0 || state.Mk !== '') ef.push(['Momento fletor positivo Mk⁺', f(num(state.Mk) || 0, 2), uM() + porM]);
+    if (state.Mkn !== '' && num(state.Mkn) > 0) ef.push(['Momento fletor negativo Mk⁻', f(num(state.Mkn), 2), uM() + porM]);
+    ef.push(['Força cortante Vk', f(num(state.Vk) || 0, 2), uF() + porM]);
+    if (!lj) ef.push(['Momento torçor Tk', f(Tk || 0, 2), uM()]);
+    ef.push(['Valores de cálculo (γf = 1,4)']);
+    if (num(state.Mk) > 0) ef.push(['Md⁺ = 1,4·Mk⁺', f(1.4 * num(state.Mk), 2), uM() + porM]);
+    if (state.Mkn !== '' && num(state.Mkn) > 0) ef.push(['Md⁻ = 1,4·Mk⁻', f(1.4 * num(state.Mkn), 2), uM() + porM]);
+    ef.push(['Vsd = 1,4·Vk', f(1.4 * (num(state.Vk) || 0), 2), uF() + porM]);
+    if (comTorcao) ef.push(['Tsd = 1,4·Tk', f(1.4 * Tk, 2), uM()]);
+    b += D.tabelaMem(ef);
+
+    // 3. Flexão
+    b += tit('Flexão simples');
+    if (fx.errs.length) b += D.p('Cálculo não realizado:', { b: true }) + erros(fx.errs);
+    else if (fx.esm) b += D.p('Há esmagamento do concreto na flexão: a armadura não foi determinada. Aumente a seção ou o fck.', { b: true });
+    else {
+      b += D.p('Hipóteses: diagrama retangular de tensões com 0,85·fcd e λ = 0,8, limite x/d ≤ 0,45, γc = 1,4 e γs = 1,15' + (tf ? ', seção T' : '') + '.');
+      if (fx.pos) { fx.pos.d = g.d; b += D.h2('Momento positivo (Mk⁺, tração embaixo)') + D.p(fx.pos.nomeCaso + (fx.pos.dupla ? ' (armadura dupla)' : ''), { i: true }) + D.tabelaMem(memFlex('Parâmetros e resultados', fx.pos).slice(1)); }
+      if (fx.neg) { fx.neg.d = fx.dSup; b += D.h2('Momento negativo (Mk⁻, tração em cima)') + D.p(fx.neg.nomeCaso + (fx.neg.dupla ? ' (armadura dupla)' : ''), { i: true }) + D.tabelaMem(memFlex('Parâmetros e resultados', fx.neg).slice(1)); }
+      var I = fx.inf, S = fx.sup, ad = [];
+      b += D.h2('Armadura adotada');
+      b += fig('flex', lj ? 'Corte da laje (faixa de 1 m)' + (I.face ? ': armadura inferior Φ' + phiTxt(I.face.phi) + ' c/ ' + I.face.s + ' cm' : '') + (S.face ? '; superior Φ' + phiTxt(S.face.phi) + ' c/ ' + S.face.s + ' cm' : '') + '.'
+        : 'Corte da viga: armadura inferior ' + layTxt(I.face) + '; superior ' + layTxt(S.face) + '; estribo Φ' + phiTxt(g.phiT) + ' mm; cobrimento ' + f(g.cob, 1) + ' cm.');
+      if (lj) {
+        var fa = function (nm, x) { return x.face ? [nm, 'Φ' + phiTxt(x.face.phi) + ' c/ ' + x.face.s + ' cm', f(x.face.As, 2), f(x.req, 2), okTxt(x.face.As + 1e-9 >= x.req)] : [nm, '–', '–', f(x.req, 2), x.req > 0 ? 'Não atende' : 'Dispensada']; };
+        b += D.tabelaGrade(['Face', 'Barras', 'As,ef (cm²/m)', 'As nec. (cm²/m)', 'Verificação'], [fa('Inferior', I), fa('Superior', S)], [1500, 2600, 1800, 1900, 1838]);
+        b += D.p('Espaçamento máximo: ' + f(fx.smax, 0) + ' cm (menor entre 20 cm e 2h).');
+      } else {
+        var fv = function (nm, x) { return [nm, layTxt(x.face), f(x.face.As, 2), f(x.req, 2), x.face.excede ? 'Largura excedida' : okTxt(x.face.As + 1e-9 >= x.req)]; };
+        b += D.tabelaGrade(['Face', 'Barras', 'As,ef (cm²)', 'As nec. (cm²)', 'Verificação'], [fv('Inferior', I), fv('Superior', S)], [1500, 2900, 1700, 1700, 1838]);
+        b += D.p('Centro de gravidade da armadura inferior a ' + f(I.face.cg, 2) + ' cm da face e da superior a ' + f(S.face.cg, 2) + ' cm da face.');
+        var pe = fx.pele;
+        if (pe) b += D.p(pe.necessaria ? 'Armadura de pele: 2 faces × ' + pe.n + ' Φ' + phiTxt(pe.phi) + ' c/ ' + f(pe.s, 0) + ' cm (As,pele = ' + f(pe.As, 2) + ' cm² por face; necessária ' + f(pe.Asp, 2) + ' cm², 0,10 % de bw·h).' : 'Armadura de pele dispensada (h menor que 60 cm).');
+      }
+      var fis = calcFis(c);
+      if (fis && fis.length) {
+        b += D.h2('Fissuração (ELS-W)') + D.p('Verificação da abertura de fissuras (NBR 6118, 17.3.3.2) com o Mk como momento de serviço, sem minoração. Classe de agressividade ' + ['I', 'II', 'III', 'IV'][(parseInt(state.caa, 10) || 2) - 1] + '.');
+        fis.forEach(function (it) {
+          if (it.erro) b += D.p(it.titulo + ': ' + it.erro);
+          else b += D.tabelaMem(fisRows(it)) + D.p(it.r.fissurado ? 'Tensão no aço σs = ' + f(it.r.sigma, 1) + ' MPa; abertura wk = ' + f(it.r.wk, 3) + ' mm ' + (it.r.ok ? '≤' : '>') + ' ' + f(it.r.wlim, 2) + ' mm: ' + okTxt(it.r.ok) + '.' : 'Seção não fissurada (σs = ' + f(it.r.sigma, 1) + ' MPa no estádio I): atende.', { b: true });
+        });
+      }
+      var asT = (I.face ? I.face.As : 0) + (S.face ? S.face.As : 0), Ac = lj ? 100 * g.h : g.bw * g.h + (tf ? (g.bf - g.bw) * g.hf : 0);
+      var lm = limite4(asT, Ac);
+      b += D.p('Armadura máxima (NBR 6118, 17.3.5.2.4): As + As′ = ' + f(asT, 2) + ' cm²' + porM + ' = ' + f(lm.pct, 2) + ' % de Ac, limite de 4 %. ' + okTxt(!lm.excede) + '.');
+    }
+
+    // 4. Cisalhamento
+    b += tit('Cisalhamento');
+    if (ci.errs.length) b += D.p('Cálculo não realizado:', { b: true }) + erros(ci.errs);
+    else {
+      var r = ci.r;
+      if (lj) {
+        b += D.p('Verificação da laje (NBR 6118, 19.4.1): Vsd comparado com VRd1 e VRd2.');
+        b += D.tabelaMem([['Resistências'], ['τRd = 0,25·fctd', f(r.tauRd * 10, 3), 'MPa'], ['k', f(r.k, 3), ''], ['As1 (armadura inferior adotada)', f(r.As1, 2), 'cm²/m'],
+          ['ρ1 = As1/(bw·d) ≤ 0,02', f(r.rho1 * 100, 3), '%'], ['VRd1 = τRd·k·(1,2 + 40·ρ1)·bw·d', f(toF(r.VRd1), 2), uF() + '/m'],
+          ['VRd2 = 0,27·αv2·fcd·bw·d', f(toF(r.VRd2), 2), uF() + '/m'], ['Vsd', f(toF(r.Vsd), 2), uF() + '/m'], ['Vsd / VRd1', f(r.razao1, 3), '']]);
+        if (!r.precisa) b += D.p('Vsd ≤ VRd1: a laje resiste ao cortante sem armadura transversal.', { b: true });
+        else if (r.esmagamento) b += D.p('Vsd > VRd2: há esmagamento da diagonal comprimida. Aumente a espessura ou o fck.', { b: true });
+        else {
+          b += D.p('Vsd > VRd1: é necessária armadura de cisalhamento (Modelo I, θ = 45°).', { b: true });
+          b += D.tabelaMem([['Armadura transversal'], ['Vc = 0,6·fctd·bw·d', f(toF(r.Vc), 2), uF() + '/m'], ['Vsw = Vsd − Vc', f(toF(r.Vsw), 2), uF() + '/m'], ['fywd (limitado pela espessura)', f(r.fywd * 10, 0), 'MPa'],
+            ['Asw calculada', f(r.AswCalc, 3), 'cm²/m'], ['Asw,mín = 100·bw·ρmín', f(r.Aswmin, 3), 'cm²/m'], ['Espaçamento máximo smáx', String(r.smax), 'cm']]);
+          if (ci.est) b += fig('cis', 'Seção da laje com estribo Φ' + phiTxt(ci.est.phi) + ' c/ ' + f(ci.est.s, 0) + ' cm.') + D.p('Estribo adotado: Φ' + phiTxt(ci.est.phi) + ' c/ ' + f(ci.est.s, 0) + ' cm, ' + ci.est.ramos + ' ramos por metro (Asw,ef = ' + f(ci.est.AswEf, 2) + ' cm²/m, necessária ' + f(ci.est.AswNec, 2) + ' cm²/m). ' + okTxt(ci.est.ok) + '.');
+        }
+      } else {
+        b += D.p('Modelo de cálculo I (NBR 6118, 17.4.2.2), com θ = 45° e Vc constante.');
+        if (r.esmagamento) b += D.p('Vsd = ' + f(toF(r.Vsd), 2) + ' ' + uF() + ' é maior que VRd2 = ' + f(toF(r.VRd2), 2) + ' ' + uF() + ': há esmagamento da diagonal comprimida. Aumente a seção ou o fck.', { b: true });
+        else {
+          b += D.tabelaMem([['Materiais'], ['fcd', f(r.mat.fcd * 10, 2), 'MPa'], ['fctd', f(r.mat.fctd * 10, 3), 'MPa'], ['fctm', f(r.mat.fctm * 10, 3), 'MPa'], ['fywd', f(r.mat.fywd * 10, 1), 'MPa'], ['αv2 = 1 − fck/250', f(r.mat.av2, 3), ''],
+            ['Verificações'], ['VRd2 = 0,27·αv2·fcd·bw·d', f(toF(r.VRd2), 2), uF()], ['Vsd', f(toF(r.Vsd), 2), uF()], ['Vsd / VRd2', f(r.razao, 3), ''],
+            ['Vc = 0,6·fctd·bw·d', f(toF(r.Vc), 2), uF()], ['Vsw = Vsd − Vc', f(toF(r.Vsw), 2), uF()], ['ρmín = 0,2·fctm/fywk', f(r.rhoMin * 100, 4), '%'],
+            ['Armadura transversal'], ['Asw calculada = 100·Vsw/(0,9·d·fywd)', f(r.AswCalc, 3), 'cm²/m'], ['Asw,mín = 100·bw·ρmín', f(r.Aswmin, 3), 'cm²/m'], ['Asw adotada (maior valor)', f(r.Asw, 3), 'cm²/m'],
+            ['Detalhamento'], ['Φ mínimo / máximo (bw/10)', f(r.phiMin, 0) + ' / ' + phiTxt(r.phiMax), 'mm'], ['smáx', String(r.smax), 'cm'], ['st,máx', String(r.stmax), 'cm'], ['Ramos mínimos', String(r.nMin), '']]);
+          if (ci.est) {
+            var e = ci.est;
+            b += fig('cis', 'Seção transversal com estribo Φ' + phiTxt(e.phi) + ' c/ ' + f(e.s, 0) + ' cm, ' + e.ramos + ' ramos.');
+            b += D.p('Estribo adotado: Φ' + phiTxt(e.phi) + ' c/ ' + f(e.s, 0) + ' cm, ' + e.ramos + ' ramos. Asw,ef = ' + f(e.AswEf, 2) + ' cm²/m, necessária ' + f(e.AswNec, 2) + ' cm²/m: ' + okTxt(e.ok) + '.', { b: true });
+          }
+        }
+      }
+    }
+
+    // 5. Torção (somente com Tk > 0)
+    if (comTorcao) {
+      b += tit('Torção');
+      if (t.errs.length) b += D.p('Cálculo não realizado:', { b: true }) + erros(t.errs);
+      else {
+        var q = t.r;
+        b += D.p('Seção vazada equivalente (NBR 6118, 17.5.1), treliça com θ = 45° e verificação de interação com o cisalhamento.');
+        var rowsT = [['Seção vazada equivalente'], ['A = bw·h', f(q.A, 0), 'cm²'], ['u = 2(bw + h)', f(q.u, 0), 'cm'], ['A/u', f(q.Au, 2), 'cm'], ['c1 (eixo da barra à face)', f(t.inp.c1, 2), 'cm'],
+          ['he = máx(A/u; 2·c1)', f(q.he, 2), 'cm'], ['Ae = bnúcleo·hnúcleo', f(q.Ae, 0), 'cm²'],
+          ['Esmagamento da diagonal'], ['VRd2', f(toF(q.VRd2), 2), uF()], ['TRd2 = 0,5·αv2·fcd·Ae·he', f(toM(q.TRd2), 2), uM()],
+          ['Vsd / VRd2', f(q.rV, 4), ''], ['Tsd / TRd2', f(q.rT, 4), ''], ['Vsd/VRd2 + Tsd/TRd2 ≤ 1', f(q.inter, 4), '']];
+        b += D.tabelaMem(rowsT);
+        if (!q.esmagamento) b += fig('tor', 'Seção com parede equivalente he = ' + f(q.he, 1) + ' cm' + (t.est ? ' e ' + t.est.legsTot + ' pernas de estribo' : '') + '.');
+        if (q.esmagamento) b += D.p('A soma é maior que 1: há esmagamento da diagonal comprimida. A armadura não foi determinada.', { b: true });
+        else {
+          b += D.tabelaMem([['Armadura transversal'], ['Aswc (cisalhamento)', f(q.Aswc, 3), 'cm²/m'], ['Aswt = 100·Tsd/(2·Ae·fywd)', f(q.AswtCalc, 3), 'cm²/m'], ['Asw,mín', f(q.Aswmin, 3), 'cm²/m'],
+            ['Asw por ramo = Aswt + Aswc/n', f(q.AswTot, 3), 'cm²/m'],
+            ['Armadura longitudinal'], ['Asl = 0,02·Aswt·(bnúcleo + hnúcleo)', f(q.Asl, 3), 'cm²']]);
+          b += D.p('Armadura longitudinal total (flexão + torção):', { b: true });
+          b += D.tabelaGrade(['Posição', 'Flexão (cm²)', 'Torção (cm²)', 'Total (cm²)', 'As,mín (cm²)'], [
+            ['Inferior', f(t.inp.AsInfF, 2), f(q.AsInfTors, 2), f(q.AsInf, 2), f(q.AsInfMin, 2)],
+            ['Superior', f(t.inp.AsSupF, 2), f(q.AsInfTors, 2), f(q.AsSup, 2), f(q.AsSupMin, 2)],
+            ['Lateral, por face', '–', f(q.AsLat, 2), f(q.AsLat, 2), '–']], [2100, 1900, 1900, 1900, 1838]);
+          var te = t.est;
+          if (te) {
+            b += D.p('Estribos adotados (ramos):', { b: true });
+            b += D.tabelaGrade(['Ramo', 'Tipo', 'Na torção', 'Qtd.', 'Φ (mm)', 's (cm)'], te.groups.map(function (x, k) {
+              return [String(k + 1), x.tipo === 'f' ? 'Estribo fechado' : 'Perna simples', x.tor ? 'Participa' : 'Só cisalhamento', String(x.qtd), phiTxt(x.phi), f(x.sUse, 0)];
+            }), [800, 2300, 2100, 1100, 1600, 1738]);
+            b += D.p('Total de ' + te.legsTot + ' pernas (mínimo ' + te.nMin + '); Asw total = ' + f(te.Atot, 2) + ' cm²/m. ' + (te.ok ? 'Todas as verificações atendem.' : 'Há verificações pendentes: reveja os estribos.'), { b: true });
+          }
+        }
+      }
+    }
+
+    b += D.h1('Observações');
+    b += D.p('Memorial gerado por esta calculadora com base na NBR 6118. Os resultados devem ser conferidos por profissional habilitado, que responde pelo projeto. Trechos não cobertos: armadura de ancoragem, decalagem do diagrama de momentos e redução do cortante junto ao apoio.', { sz: 20 });
+    return b;
+  }
+
+  var PRINT_CSS = '<style>.s-conc{fill:#f2f2f2;stroke:#000;stroke-width:1.4}.s-hi{fill:#cfcfcf}.s-wall{fill:#777;opacity:.25}.s-wallc{fill:none;stroke:#444;stroke-width:1.2;stroke-dasharray:5 3}.s-st{fill:none;stroke:#000}.s-bar{fill:#000}.s-barc{fill:#555}.s-na{stroke:#333;stroke-width:1.4;stroke-dasharray:6 4}.s-dim{stroke:#555;stroke-width:1;fill:none}.s-txt{fill:#222;font-family:Arial,sans-serif;font-size:10px}.s-txt-i{fill:#000;font-family:Arial,sans-serif;font-size:10px}</style>';
+  function rasterSvg(svg, wCm) {
+    return new Promise(function (ok, no) {
+      var m = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+      if (!m) { no(new Error('viewBox')); return; }
+      var vw = parseFloat(m[1]), vh = parseFloat(m[2]), k = 4;
+      var s2 = svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="' + vw * k + '" height="' + vh * k + '" ').replace(/(<svg[^>]*>)/, '$1' + PRINT_CSS);
+      var im = new Image(), url = URL.createObjectURL(new Blob([s2], { type: 'image/svg+xml' }));
+      im.onload = function () {
+        var cv = document.createElement('canvas'); cv.width = Math.round(vw * k); cv.height = Math.round(vh * k);
+        var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function (bl) {
+          if (!bl) { no(new Error('png')); return; }
+          var fr = new FileReader();
+          fr.onload = function () { var emu = Math.round(wCm * 360000); ok({ bytes: new Uint8Array(fr.result), cx: emu, cy: Math.round(emu * vh / vw) }); };
+          fr.readAsArrayBuffer(bl);
+        }, 'image/png');
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); no(new Error('svg')); };
+      im.src = url;
+    });
+  }
+  function figuras() {
+    var ult = {}; secLog.forEach(function (e) { if (e.tag) ult[e.tag] = e; });
+    var tags = Object.keys(ult), imgs = [], im = {};
+    return Promise.all(tags.map(function (tg) {
+      return rasterSvg(ult[tg].svg, ult[tg].laje ? 16 : 9).then(function (r) { return { tg: tg, r: r }; }, function () { return null; });
+    })).then(function (rs) {
+      rs.forEach(function (x) {
+        if (!x) return;
+        var n = imgs.length + 1, name = 'fig' + n + '.png';
+        imgs.push({ name: name, bytes: x.r.bytes }); im[x.tg] = { n: n, name: name, cx: x.r.cx, cy: x.r.cy };
+      });
+      return { imgs: imgs, im: im };
+    });
+  }
+  function gerarMemorial() {
+    var c = compute(), msg = $('memMsg');
+    msg.textContent = 'Gerando…';
+    figuras().then(function (fg) {
+      var blob = Docx.build(memorialCorpo(c, fg.im), 'Calculadora de Concreto · ' + (isLaje() ? 'Laje' : 'Viga') + ' · memorial de cálculo', fg.imgs);
+      var nome = 'Memorial_' + (isLaje() ? 'laje' : 'viga') + '_' + new Date().toISOString().slice(0, 10) + '.docx';
+      function fallback() {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+        return 'Memorial gerado.';
+      }
+      var cl = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null);
+      return cl.then(function (dl) {
+        if (!dl) return fallback();
+        return dl.save({ filename: nome, data: blob }).then(function () { return 'Memorial salvo.'; }, function (e) {
+          return e && e.code === 'declined' ? 'Download cancelado.' : 'Não foi possível salvar o arquivo neste ambiente.';
+        });
+      });
+    }).then(function (t) { msg.textContent = t; setTimeout(function () { msg.textContent = ''; }, 4000); },
+      function () { msg.textContent = 'Erro ao gerar o memorial.'; });
+  }
+  window.__memorial = { corpo: memorialCorpo, gerar: gerarMemorial };
+
+
+  /* ---------- Salvar, exportar e importar cálculos ---------- */
+  var SALVOS = 'dimis-vigas-salvos';
+  function lerSalvos() { try { var a = JSON.parse(localStorage.getItem(SALVOS) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function gravarSalvos(a) { try { localStorage.setItem(SALVOS, JSON.stringify(a)); return true; } catch (e) { return false; } }
+  function pacote(nome) {
+    var est = {}; KEYS.forEach(function (k) { est[k] = String(state[k]); });
+    return { app: 'Calculadora-Concreto', versao: 1, nome: nome, data: new Date().toISOString(), estado: est };
+  }
+  function aplicarPacote(p) {
+    if (!p || (p.app !== 'Calculadora-Concreto' && p.app !== 'DIMI-S') || !p.estado || typeof p.estado !== 'object') throw new Error('Arquivo não é um cálculo desta calculadora.');
+    var n = 0;
+    KEYS.forEach(function (k) { if (typeof p.estado[k] === 'string' || typeof p.estado[k] === 'number') { state[k] = String(p.estado[k]); n++; } });
+    if (!n) throw new Error('O arquivo não tem dados de cálculo.');
+    if (state.tipo !== 'laje') state.tipo = 'viga';
+    if (state.unid !== 'tf') state.unid = 'kN';
+    save(); fillInputs(); syncTipo(); refresh();
+  }
+  function nomeArq(s) { return (String(s || 'calculo').trim().replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_').slice(0, 60) || 'calculo') + '.dimis.json'; }
+  function entregar(blob, nome) {
+    function viaLink() {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+      document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      return 'Arquivo baixado: ' + nome;
+    }
+    var cl = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null);
+    return cl.then(function (dl) {
+      if (!dl) return viaLink();
+      return dl.save({ filename: nome, data: blob }).then(function () { return 'Arquivo salvo: ' + nome; }, function (e) {
+        return e && e.code === 'declined' ? 'Download cancelado.' : 'Não foi possível salvar o arquivo neste ambiente.';
+      });
+    });
+  }
+  function msgCalc(t) { $('calc-msg').textContent = t; }
+  function listarCalcs() {
+    var ul = $('calc-lista'), a = lerSalvos();
+    ul.innerHTML = a.length ? '' : '<li><span class="nm"><small>Nenhum cálculo salvo ainda.</small></span></li>';
+    a.forEach(function (it) {
+      var li = document.createElement('li');
+      var d = new Date(it.data), tp = it.estado && it.estado.tipo === 'laje' ? 'Laje' : 'Viga';
+      li.innerHTML = '<span class="nm"><b></b><small>' + tp + ' · ' + (isFinite(d) ? d.toLocaleString('pt-BR') : '') + '</small></span>' +
+        '<button type="button" class="btn sm" data-a="abrir">Abrir</button><button type="button" class="btn sm" data-a="baixar">Baixar</button><button type="button" class="btn sm" data-a="excluir">Excluir</button>';
+      li.querySelector('b').textContent = it.nome || 'Sem nome';
+      li.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('button[data-a]') : null; if (!b) return;
+        var ac = b.getAttribute('data-a');
+        if (ac === 'abrir') { try { aplicarPacote(it); msgCalc('Aberto: ' + (it.nome || 'Sem nome')); } catch (er) { msgCalc(er.message); } }
+        else if (ac === 'baixar') entregar(new Blob([JSON.stringify(it, null, 1)], { type: 'application/json' }), nomeArq(it.nome)).then(msgCalc);
+        else { gravarSalvos(lerSalvos().filter(function (x) { return x.id !== it.id; })); listarCalcs(); msgCalc('Excluído.'); }
+      });
+      ul.appendChild(li);
+    });
+  }
+  function initCalcs() {
+    var dlg = $('dlg-calcs');
+    $('calcs').addEventListener('click', function () {
+      $('calc-nome').value = ''; msgCalc(''); listarCalcs();
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    });
+    $('calc-fechar').addEventListener('click', function () { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg && dlg.close) dlg.close(); });
+    $('calc-salvar').addEventListener('click', function () {
+      var nome = $('calc-nome').value.trim() || ((isLaje() ? 'Laje' : 'Viga') + ' ' + new Date().toLocaleString('pt-BR'));
+      var p = pacote(nome); p.id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
+      var a = lerSalvos(); a.unshift(p);
+      if (gravarSalvos(a)) { listarCalcs(); msgCalc('Salvo neste navegador: ' + nome + '. Use "Baixar arquivo" para guardar uma cópia.'); }
+      else msgCalc('Este navegador não permite guardar dados. Use "Baixar arquivo".');
+    });
+    $('calc-baixar').addEventListener('click', function () {
+      var nome = $('calc-nome').value.trim() || (isLaje() ? 'Laje' : 'Viga');
+      entregar(new Blob([JSON.stringify(pacote(nome), null, 1)], { type: 'application/json' }), nomeArq(nome)).then(msgCalc);
+    });
+    $('calc-arq').addEventListener('change', function () {
+      var fl = this.files && this.files[0], inp = this; if (!fl) return;
+      if (fl.size > 1e6) { msgCalc('Arquivo grande demais para ser um cálculo.'); return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        try { var p = JSON.parse(fr.result); aplicarPacote(p); msgCalc('Aberto: ' + (p.nome || fl.name)); }
+        catch (er) { msgCalc(er instanceof SyntaxError ? 'Arquivo inválido: não é um JSON.' : er.message); }
+        inp.value = '';
+      };
+      fr.readAsText(fl);
+    });
+  }
+
+  /* ---------- atualização ---------- */
+  function setStatus(id, kind) { var el = $('st-' + id); el.className = 'st ' + kind; }
+  function statusOf(errs, r, warn) {
+    if (errs.length) return 'warn';
+    if (r.esmagamento) return 'bad';
+    return warn ? 'warn' : 'ok';
+  }
+
+  function refresh() {
+    syncTipo();
+    var c = compute();
+    $('phiT').value = state.phiT; $('phiT2').value = state.phiT;
+    secLog = []; secTag = 'flex'; renderFlexao(c); renderFis(c); secTag = 'cis'; renderCis(c); secTag = 'tor'; renderTor(c); secTag = '';
+    renderResumo(c); setLayerInfo(c); adotCis(c); adotTor(c); setGroupInfo(c);
+    setStatus('flexao', c.flexao.errs.length ? 'warn' : statusOf([], c.flexao.r, false));
+    setStatus('cisalhamento', c.cis.errs.length ? 'warn' : statusOf([], c.cis.r, false));
+    setStatus('torcao', isLaje() ? '' : c.tor.errs.length ? 'warn' : statusOf([], c.tor.r, false));
+    // campos automáticos da torção
+    [['asInfF', c.auto.asInf], ['asSupF', c.auto.asSup], ['c1', c.auto.c1]].forEach(function (p) {
+      var el = $(p[0]);
+      var auto = state[p[0]] === '';
+      el.classList.toggle('auto', auto);
+      if (auto && document.activeElement !== el) el.value = isFinite(p[1]) ? f(p[1], 2).replace(/\./g, '') : '';
+    });
+    // dica de d
+    var g = c.geo.g, ph = num(state.phiTr);
+    var fi = c.flexao.inf && c.flexao.inf.face;
+    var dsug = !isLaje() && fi && isFinite(fi.cg) ? g.h - fi.cg : g.h - g.cob - g.phiT / 10 - ph / 20;
+    if (isLaje()) dsug = g.h - g.cob - ph / 20;
+    var dsupTxt = c.flexao.dSup && c.flexao.pos !== undefined && state.dSup === '' ? ' d superior automático: ' + f(c.flexao.dSup, 1) + ' cm.' : '';
+    $('dhint').innerHTML = isFinite(dsug) ? (isLaje() ? 'Com Φ' + phiTxt(ph) + ' inferior: d ≈ ' : 'Pelas camadas inferiores: d ≈ ') + f(dsug, 1) + ' cm. <button type="button" id="usad">Usar</button>' + dsupTxt : '';
+    var ub = $('usad'); if (ub) ub.onclick = function () { state.d = String(Math.round(dsug * 10) / 10).replace('.', ','); $('d').value = state.d; save(); refresh(); };
+    // validação visual
+    var dBad = c.geo.errs.some(function (e) { return e.indexOf('d ') === 0 || e.indexOf('d deve') === 0; });
+    $('d').setAttribute('aria-invalid', dBad ? 'true' : 'false');
+    ['bw', 'h'].forEach(function (k) { $(k).setAttribute('aria-invalid', num(state[k]) > 0 ? 'false' : 'true'); });
+    var tPart = (state.bf === '') !== (state.hf === '');
+    ['bf', 'hf'].forEach(function (k) { $(k).setAttribute('aria-invalid', tPart ? 'true' : 'false'); });
+    save();
+  }
+
+  var PHIS = ['5', '6.3', '8', '10', '12.5', '16', '20', '25'];
+  function buildLayers(face) {
+    var key = face === 'inf' ? 'layInf' : 'laySup', def = face === 'inf' ? 20 : 16;
+    var arr = parseLay(state[key], def), box = $('lay-' + face);
+    var h = '<div class="lhd"><span></span><span>Diâmetro</span><span>Quantidade</span><span>Área da camada</span><span></span></div>';
+    arr.forEach(function (l, k) {
+      h += '<div class="lrow"><span class="n">Camada ' + (k + 1) + '</span><select class="lphi" aria-label="Diâmetro da camada ' + (k + 1) + '">' +
+        PHIS.map(function (p) { return '<option' + (num(p) === l.phi ? ' selected' : '') + '>' + p + '</option>'; }).join('') + '</select>' +
+        '<input class="ln" inputmode="numeric" aria-label="Quantidade de barras da camada ' + (k + 1) + '" value="' + esc(l.n) + '" placeholder="' + (k === 0 ? 'automático' : 'quantidade') + '">' +
+        '<span class="las" id="las-' + face + '-' + k + '"></span>' +
+        (k > 0 ? '<button type="button" class="lx" aria-label="Remover camada ' + (k + 1) + '">×</button>' : '<span></span>') + '</div>';
+    });
+    h += '<button type="button" class="ladd">+ Adicionar camada ' + (face === 'inf' ? 'inferior' : 'superior') + '</button><div class="ltot" id="ltot-' + face + '"></div>';
+    box.innerHTML = h;
+    function read() {
+      var out = [];
+      Array.prototype.forEach.call(box.querySelectorAll('.lrow'), function (row) {
+        out.push({ phi: num(row.querySelector('.lphi').value), n: row.querySelector('.ln').value.trim() });
+      });
+      return out;
+    }
+    Array.prototype.forEach.call(box.querySelectorAll('.lrow'), function (row, k) {
+      var upd = function () { state[key] = serLay(read()); refresh(); };
+      row.querySelector('.lphi').addEventListener('change', upd);
+      row.querySelector('.ln').addEventListener('input', upd);
+      var x = row.querySelector('.lx');
+      if (x) x.addEventListener('click', function () { var a = read(); a.splice(k, 1); state[key] = serLay(a); buildLayers(face); refresh(); });
+    });
+    box.querySelector('.ladd').addEventListener('click', function () {
+      var a = read(); a.push({ phi: a[a.length - 1].phi, n: '' }); state[key] = serLay(a); buildLayers(face); refresh();
+    });
+  }
+  function setLayerInfo(c) {
+    var fx = c.flexao, g = c.geo.g;
+    ['inf', 'sup'].forEach(function (face) {
+      var x = fx && !fx.errs.length && !fx.esm ? fx[face] : null;
+      var tot = $('ltot-' + face), rq = $('req-' + face);
+      if (!tot) return;
+      if (!x || !x.face || isLaje()) { tot.innerHTML = ''; rq.textContent = ''; var cnt = parseLay(state[face === 'inf' ? 'layInf' : 'laySup'], 20).length; for (var k = 0; k < cnt; k++) { var e = $('las-' + face + '-' + k); if (e) e.textContent = ''; } return; }
+      rq.textContent = reqTxt(x, 'cm²');
+      var cntL = parseLay(state[face === 'inf' ? 'layInf' : 'laySup'], 20).length;
+      for (var k2 = 0; k2 < cntL; k2++) {
+        var el = $('las-' + face + '-' + k2), l = x.face.layers[k2];
+        if (el) el.textContent = l ? l.n + ' Φ' + phiTxt(l.phi) + ' = ' + f(l.As, 2) + ' cm² · máx. ' + l.max + ' por camada' + (l.excede ? ' · excedido' : '') : (x.face.auto ? '' : 'informe a quantidade');
+      }
+      tot.innerHTML = '<span>As,ef total = ' + f(x.face.As, 2) + ' cm² · CG a ' + f(x.face.cg, 2) + ' cm da face · d real = ' + f(g.h - x.face.cg, 1) + ' cm</span>' + facePill(x.face.As, x.req, x.face.excede ? 'largura excedida' : '');
+    });
+  }
+  var bak = {};
+  var TIPO_KEYS = ['bw', 'h', 'bf', 'hf', 'cob', 'd', 'phiT', 'ramos', 'Mk', 'Vk', 'Tk', 'phiTr', 'phiCo', 'nPele', 'sTr', 'sCo', 'Mkn', 'dSup', 'layInf', 'laySup', 'sEst'];
+  var LAJE_DEF = { bw: '100', h: '12', bf: '', hf: '', cob: '2.5', d: '9', phiT: '5', ramos: '2', Mk: '10', Vk: '20', Tk: '0', phiTr: '8', phiCo: '5', nPele: '', sTr: '', sCo: '', Mkn: '', dSup: '', layInf: '8:', laySup: '5:', sEst: '' };
+  function setTipo(t) {
+    if (t === state.tipo) return;
+    bak[state.tipo] = {}; TIPO_KEYS.forEach(function (k) { bak[state.tipo][k] = state[k]; });
+    var src = bak[t];
+    if (!src) {
+      if (t === 'laje') {
+        src = {}; TIPO_KEYS.forEach(function (k) { src[k] = LAJE_DEF[k]; });
+        if (isTf()) ['Mk', 'Vk', 'Tk'].forEach(function (k) { src[k] = String(Math.round(parseFloat(src[k]) * 0.1 * 1000) / 1000).replace('.', ','); });
+      } else { src = {}; TIPO_KEYS.forEach(function (k) { src[k] = DEFAULTS[k]; }); }
+    }
+    TIPO_KEYS.forEach(function (k) { state[k] = src[k]; });
+    state.tipo = t;
+    fillInputs(); refresh();
+  }
+  function syncTipo() {
+    var l = isLaje();
+    $('t-viga').setAttribute('aria-pressed', l ? 'false' : 'true');
+    $('t-laje').setAttribute('aria-pressed', l ? 'true' : 'false');
+    Array.prototype.forEach.call(document.querySelectorAll('.onlyviga'), function (el) { el.hidden = l; });
+    Array.prototype.forEach.call(document.querySelectorAll('.onlylaje'), function (el) { el.hidden = !l; });
+    $('lphiT').hidden = l;
+    $('bw').disabled = l; if (l) { state.bw = '100'; $('bw').value = '100'; }
+    $('lbw').firstChild.nodeValue = l ? 'Largura da faixa ' : 'bw ';
+    $('lramos').textContent = l ? 'Ramos por metro (se armar ao cisalhamento)' : 'Ramos do estribo';
+    $('hef').textContent = l ? 'Esforços por metro' : 'Esforços';
+    $('efhint').textContent = l ? 'Mk e Vk são os esforços característicos por metro de largura. Os esforços de cálculo são majorados por γf = 1,4.' : 'Os esforços de cálculo são majorados por γf = 1,4. Tk só é usado no módulo Torção.';
+    $('tipohint').textContent = l ? 'Laje maciça em faixa de 100 cm. Verifica Vsd contra VRd1 e não desenha estribos na seção.' : 'Viga com estribos, seção retangular ou T.';
+    $('cis-laje-opts').hidden = !l;
+    $('tor-laje').hidden = !l; $('tor-viga').hidden = l;
+    $('tor-laje').innerHTML = l ? '<div class="card"><h2>Torção</h2><p class="hint" style="margin:0">A torção é verificada só em vigas. Mude o elemento para Viga para usar este módulo.</p></div>' : '';
+    document.querySelector('.brand span').textContent = (l ? 'Lajes' : 'Vigas') + ' de concreto armado · NBR 6118';
+  }
+
+  function setTab(t) {
+    tab = t;
+    ['resumo', 'flexao', 'cisalhamento', 'torcao'].forEach(function (id) {
+      $('p-' + id).hidden = id !== t;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+      b.setAttribute('aria-selected', b.getAttribute('data-tab') === t ? 'true' : 'false');
+    });
+    try { history.replaceState(null, '', '#' + t); } catch (e) { /* ignora */ }
+  }
+
+  function setUnits(u) {
+    if (u === state.unid) return;
+    var factF = u === 'tf' ? 0.1 : 10, factM = u === 'tf' ? 0.1 : 10; // tf = 10 kN, tf·m = 10 kN·m
+    ['Mk', 'Mkn', 'Vk', 'Tk'].forEach(function (k) {
+      var v = num(state[k]);
+      if (isFinite(v)) { state[k] = String(Math.round(v * (k === 'Vk' ? factF : factM) * 1000) / 1000).replace('.', ','); $(k).value = state[k]; }
+    });
+    state.unid = u;
+    syncUnits();
+    refresh();
+  }
+  function syncUnits() {
+    $('u-kn').setAttribute('aria-pressed', isTf() ? 'false' : 'true');
+    $('u-tf').setAttribute('aria-pressed', isTf() ? 'true' : 'false');
+    $('lm').textContent = uM() + ' · tração embaixo'; $('lmn').textContent = uM() + ' · tração em cima'; $('lv').textContent = uF(); $('lt').textContent = uM();
+  }
+
+  function fillInputs() {
+    KEYS.forEach(function (k) {
+      var el = $(k);
+      if (el && el.getAttribute('data-k')) el.value = state[k];
+    });
+    buildLayers('inf'); buildLayers('sup'); buildGroups();
+    $('phiT2').value = state.phiT;
+    syncUnits();
+  }
+
+  function init() {
+    load();
+    fillInputs();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-k]'), function (el) {
+      var h = function () { state[el.getAttribute('data-k')] = el.value; refresh(); };
+      el.addEventListener('input', h);
+      el.addEventListener('change', h);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+      b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); });
+    });
+    $('p-resumo').addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('[data-go]') : null;
+      if (t) setTab(t.getAttribute('data-go'));
+    });
+    $('t-viga').addEventListener('click', function () { setTipo('viga'); });
+    $('t-laje').addEventListener('click', function () { setTipo('laje'); });
+    $('u-kn').addEventListener('click', function () { setUnits('kN'); });
+    $('u-tf').addEventListener('click', function () { setUnits('tf'); });
+    $('relink').addEventListener('click', function () {
+      state.asInfF = ''; state.asSupF = ''; state.c1 = ''; ['asInfF', 'asSupF', 'c1'].forEach(function (k) { $(k).value = ''; }); refresh();
+    });
+    $('memorial').addEventListener('click', gerarMemorial);
+    initCalcs();
+    var hash = (location.hash || '').replace('#', '');
+    setTab(['resumo', 'flexao', 'cisalhamento', 'torcao'].indexOf(hash) >= 0 ? hash : 'resumo');
+    refresh();
+  }
+  init();
+})();
+</script>
+
+<!--tema-suite--><style>html:root:not(#tema-suite),html:root:not(#tema-suite)[data-theme]{--bg:#f4f6f8;--panel:#ffffff;--panel-2:#f8fafb;--ink:#1f2b37;--muted:#5e6b78;--line:#d9e0e7;--accent:#2b6cb0;--accent-ink:#ffffff;--accent-soft:#e7f0f9;--rebar:#b8433a;--ok:#2e7d50;--warn:#8c5d08;--bad:#b83a2e;--conc:#cfd6dc;--conc-hi:#a9c3dc;color-scheme:light}</style><!--/tema-suite--></body></html>
