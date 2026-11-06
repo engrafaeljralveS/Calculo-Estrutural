@@ -17,4 +17,11 @@ Cada programa fica em `apps/` como um arquivo HTML independente. Os dados digita
 
 Abra um programa direto pelo endereço com `#` e o nome do arquivo, por exemplo `#muro-vedacao` ou `#bloco-ancoragem`.
 
+## Motores
+
+A pasta `motores/` guarda o código reaproveitável entre os programas, com a documentação em [`motores/LEIAME.md`](motores/LEIAME.md):
+
+- `motor-elementos-finitos.js`: análise de caixas de concreto por elementos finitos de casca (retangular em 1/4 ou circular axissimétrica), com molas de Winkler só de compressão.
+- `visualizador-3d.js`: visualizador 3D de estruturas e resultados (mapa de cores, deformada, corte, zoom e leitura do valor no clique).
+
 Resultados preliminares: confira o dimensionamento conforme as normas e o projeto.

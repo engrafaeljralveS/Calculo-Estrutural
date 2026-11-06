@@ -416,6 +416,38 @@ td .pill { font-size: 11.5px; padding: 2px 8px; }
         <div id="esf-table"></div>
       </section>
 
+      <section class="panel" aria-label="Esforços em 3D" id="e3-panel">
+        <div class="panel-head">
+          <h2><span class="n">3D</span>Esforços em 3D</h2>
+          <div class="v3zoom">
+            <button class="btn" type="button" id="e3-in" aria-label="Aproximar" title="Aproximar">+</button>
+            <button class="btn" type="button" id="e3-out" aria-label="Afastar" title="Afastar">−</button>
+            <button class="btn" type="button" id="e3-fit">Ajustar vista</button>
+          </div>
+        </div>
+        <div class="e3ctrls">
+          <label>Combinação<select id="e3-k"></select></label>
+          <label>Esforço<select id="e3-c"></select></label>
+        </div>
+        <div class="v3opts">
+          <fieldset><legend>Mostrar</legend>
+            <label><input type="checkbox" id="e3-def"> Deformada</label>
+            <label class="e3fat">ampliação <input type="range" id="e3-fat" min="0.25" max="4" step="0.25" value="1" aria-label="Ampliação da deformada"> <output id="e3-fatv">×1</output></label>
+            <label><input type="checkbox" id="e3-corte"> Cortar ao meio</label>
+            <label><input type="checkbox" id="e3-mal"> Malha</label>
+          </fieldset>
+        </div>
+        <div class="v3box" id="e3-box"><p class="v3msg" id="e3-msg">A vista 3D aparece quando os esforços terminam de calcular.</p></div>
+        <div class="e3foot">
+          <div id="e3-leg"></div>
+          <div class="e3read">
+            <p id="e3-ext"></p>
+            <p id="e3-pick">Clique na estrutura para ler o valor no ponto.</p>
+          </div>
+        </div>
+        <p class="v3hint" id="e3-note"></p>
+      </section>
+
       <section class="panel" aria-label="Mapa de esforços" id="map-panel">
         <div class="panel-head"><h2><span class="n">E</span>Mapa de esforços</h2></div>
         <div class="ctrls">
@@ -3478,6 +3510,7 @@ if (typeof document !== 'undefined') {
     fillCases(r.cases || []);
     const caseName = (curCases.find(c => c[0] === view.mk) || [0, ''])[1];
     if (!fe.busyKey && !fe.err) setStatus('', `Esforços calculados: ${fmt(r.stats.nElem, 0)} elementos, ${fmt(r.stats.nEq, 0)} equações, ${fmt(r.stats.ms / 1000, 1)} s.`);
+    if (window.E3) { try { E3.update(r, m); } catch (err) { console.error('Esforços 3D', err); } }
     const A = Arm.post(m, r, fe.aux, { pp: { on: reinf.pp.on, len: reinf.pp.len }, lp: { on: reinf.lp.on, len: reinf.lp.len } });
     A.p = p; A.Hc = fe.aux.Hc;
     // aba Esforços
@@ -3590,6 +3623,229 @@ if (typeof document !== 'undefined') {
 }
 </script>
 
+<!--e3d--><script src="../motores/visualizador-3d.js"></script>
+<style>
+.e3ctrls{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.3fr);gap:8px 14px;margin:10px 0}
+.e3ctrls label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.e3ctrls select{font:500 13px var(--f-body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:6px;min-width:0;width:100%}
+@media (max-width:640px){.e3ctrls{grid-template-columns:minmax(0,1fr)}}
+#e3-panel .v3opts{margin-bottom:10px}
+#e3-panel .v3box{height:min(66vh,560px)}
+.e3fat input{width:110px}
+.e3fat output{font:500 12px var(--f-mono);color:var(--muted);min-width:32px}
+.e3fat.off{opacity:.45}
+.e3foot{display:grid;grid-template-columns:minmax(220px,340px) minmax(0,1fr);gap:10px 24px;align-items:start;margin-top:10px}
+@media (max-width:720px){.e3foot{grid-template-columns:minmax(0,1fr)}}
+.e3read p{margin:0 0 4px;font-size:13px}
+#e3-pick{color:var(--muted)}
+#e3-pick b,#e3-ext b{font-family:var(--f-mono);font-weight:500;color:var(--ink)}
+.m3-leg{display:grid;gap:3px}
+.m3-bar{height:12px;border-radius:3px;border:1px solid var(--line)}
+.m3-ticks{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--ink)}
+.m3-un{font-size:11.5px;color:var(--muted)}
+</style>
+<script>
+/* Esforços em 3D: liga os resultados do motor de elementos finitos (modelo de 1/4 ou axissimétrico) ao Motor 3D. */
+window.E3 = (function () {
+  const $ = id => document.getElementById(id);
+  const SNAME = { top: 'Laje de topo', bot: 'Laje de fundo e aba', wx: 'Parede longa', wy: 'Parede curta' };
+  const ST = { vazia: 'Caixa vazia', cheia: 'Caixa cheia', teste: 'Teste de estanqueidade', constr: 'Etapa construtiva' };
+  const TT = { elu: 'ELU', els: 'ELS frequente', car: 'característica', lin: 'linear' };
+  const SYM = ['G', 'E', 'Qv', 'Qh', 'U', 'A'];
+  // índice local da direção 1 (paredes: horizontal/anelar · lajes: paralela a B/radial) em [M1, M2, ...]
+  const D1 = { top: 0, bot: 1, wx: 0, wy: 1 };
+  const MIR4 = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
+  let NM = SNAME;
+  let V = null, failed = false, starting = null, data = null, dirty = false, fitKey = '', lastPick = null;
+  const st = { k: 'emax', c: 'M2', def: false, fat: 1, corte: false, mal: false };
+  try { const o = JSON.parse(localStorage.getItem('flutuacao-e3-view') || 'null'); if (o) Object.keys(st).forEach(k => { if (k in o && typeof o[k] === typeof st[k]) st[k] = o[k]; }); } catch (e) {}
+  const save = () => { try { localStorage.setItem('flutuacao-e3-view', JSON.stringify(st)); } catch (e) {} };
+  const f2 = (v, d) => fmt(v, d == null ? 2 : d);
+  const nf = v => fmt(v, Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2);
+
+  function comps(circ) {
+    const d1 = circ ? 'paredes: anelar · lajes: radial' : 'paredes: horizontal · lajes: paralela a B';
+    const d2 = circ ? 'paredes: vertical · lajes: tangencial' : 'paredes: vertical · lajes: paralela a L';
+    const L = [
+      ['M1', `Momento fletor, direção 1 (${d1})`, 'kN·m/m'], ['M2', `Momento fletor, direção 2 (${d2})`, 'kN·m/m']];
+    if (!circ) L.push(['M12', 'Momento volvente m₁₂', 'kN·m/m']);
+    L.push(
+      ['WE1', 'Dimensionamento (Wood-Armer), face externa, direção 1', 'kN·m/m'], ['WE2', 'Dimensionamento (Wood-Armer), face externa, direção 2', 'kN·m/m'],
+      ['WI1', 'Dimensionamento (Wood-Armer), face interna, direção 1', 'kN·m/m'], ['WI2', 'Dimensionamento (Wood-Armer), face interna, direção 2', 'kN·m/m'],
+      ['Q1', 'Esforço cortante, direção 1', 'kN/m'], ['Q2', 'Esforço cortante, direção 2', 'kN/m'],
+      ['N1', 'Esforço normal, direção 1 (+ tração)', 'kN/m'], ['N2', 'Esforço normal, direção 2 (+ tração)', 'kN/m'],
+      ['w', 'Deslocamento normal à superfície', 'mm'], ['p', 'Pressão no solo (molas da laje de fundo)', 'kPa']);
+    return L;
+  }
+  // valor bruto no nó j da superfície s, na combinação k (sem espelhamento)
+  function raw(r, k, s, j, c) {
+    const R = r.results[k], o = 8 * j, A = R.res[s];
+    if (c === 'w') { const i = r.surfNodes[s][j], T = { top: [0, 0, 1], bot: [0, 0, -1], wx: [1, 0, 0], wy: [0, 1, 0] }[s]; return 1000 * (T[0] * R.disp[3 * i] + T[1] * R.disp[3 * i + 1] + T[2] * R.disp[3 * i + 2]); }
+    if (c === 'p') return R.press[r.surfNodes[s][j]];
+    const i1 = D1[s], i2 = 1 - i1;
+    if (c === 'M1') return A[o + i1]; if (c === 'M2') return A[o + i2]; if (c === 'M12') return A[o + 2];
+    if (c === 'Q1') return A[o + 3 + i1]; if (c === 'Q2') return A[o + 3 + i2];
+    if (c === 'N1') return A[o + 5 + i1]; if (c === 'N2') return A[o + 5 + i2];
+    const wa = Arm.woodArmer(A[o], A[o + 1], A[o + 2]), side = c[1] === 'E' ? wa.e : wa.i;
+    return side[c[2] === '1' ? i1 : i2];
+  }
+  // a componente troca de sinal ao espelhar em x (ex) ou em y (ey)?
+  function flips(s, c, ex, ey) {
+    const loc = { M12: 2, Q1: 3 + D1[s], Q2: 4 - D1[s] }[c];
+    if (loc == null) return false;
+    const fx = ex && (s === 'wx' ? false : (s === 'wy' ? FLIP.wy.h : FLIP[s].h).includes(loc));
+    const fy = ey && (s === 'wy' ? false : (s === 'wx' ? FLIP.wx.h : FLIP[s].v).includes(loc));
+    return fx !== fy;
+  }
+
+  // nomes das combinações, com os fatores de cada ação
+  function caseList(r, m) {
+    let F = [];
+    try { const fi = Arm.feInput(m); fi.inp.forEach(x => x.combos.forEach(c => F.push(c.f))); } catch (e) { F = []; }
+    if (F.length !== r.tags.length) F = [];
+    const groups = {};
+    r.tags.forEach((t, i) => {
+      const f = F[i], terms = f ? f.map((v, k) => v ? `${String(fmt(v, 2)).replace(/(,\d)0$/, '$1')}·${SYM[k]}` : '').filter(Boolean).join(' + ') : '';
+      const name = t.lab ? t.lab.replace(/^(Caixa vazia|Caixa cheia|Teste de estanqueidade|Etapa construtiva): /, '') : `${TT[t.t]}${terms ? ' · ' + terms : ''}`;
+      (groups[t.st] = groups[t.st] || []).push([i, `${i + 1}. ${name}${t.lab && terms ? ' · ' + terms : ''}${r.results[i].floated ? ' (flutua)' : ''}`]);
+    });
+    let h = '<optgroup label="Envoltória ELU"><option value="emax">Envoltória ELU: máximos</option><option value="emin">Envoltória ELU: mínimos</option></optgroup>';
+    Object.keys(ST).forEach(g => { if (groups[g]) h += `<optgroup label="${ST[g]}">${groups[g].map(([i, n]) => `<option value="${i}">${n}</option>`).join('')}</optgroup>`; });
+    return h;
+  }
+
+  function ensure() {
+    if (V || failed) return Promise.resolve(V);
+    if (!starting) starting = (window.Motor3D ? Motor3D.carregar() : Promise.reject(new Error('motor')))
+      .then(() => { V = Motor3D.criar($('e3-box')); const msg = $('e3-msg'); if (msg) msg.remove(); V.aoClicar(pick); return V; })
+      .catch(e => { failed = true; $('e3-msg').textContent = e && e.message === 'motor' ? 'O motor 3D (motores/visualizador-3d.js) não foi encontrado junto do programa.' : 'Não foi possível abrir a vista 3D: ' + (e && e.message || e) + '.'; return null; });
+    return starting;
+  }
+
+  // monta a malha completa de cada superfície e os valores por nó
+  function build() {
+    if (!data || !V) return;
+    dirty = false;
+    const { r, m } = data, p = m.p, circ = !!r.circ, G = r.geo, Hc = p.H + (p.es + p.ei) / 2;
+    NM = circ ? Object.assign({}, SNAME, { wx: 'Parede' }) : SNAME;
+    const env = st.k === 'emax' || st.k === 'emin', k = env ? null : +st.k;
+    const tag = env ? null : r.tags[k];
+    const noTop = tag && tag.st === 'constr';
+    const c = st.c, cdef = comps(circ).find(x => x[0] === c) || comps(circ)[1], unit = cdef[2];
+    const surfs = Object.keys(r.surfNodes).filter(s => !(noTop && s === 'top'));
+    // envoltória (sem as combinações da etapa construtiva na laje de topo, que não existe nela)
+    const envOf = (s, j, mode) => { let b = mode > 0 ? -Infinity : Infinity; r.eluIdx.forEach(i => { if (s === 'top' && r.tags[i].st === 'constr') return; const v = raw(r, i, s, j, c); b = mode > 0 ? Math.max(b, v) : Math.min(b, v); }); return b; };
+    const showDef = st.def && !env;
+    const parts = [];
+    let lo = Infinity, hi = -Infinity, best = null, worst = null, dmax = 0;
+    surfs.forEach(s => {
+      const list = r.surfNodes[s], loc = new Map(list.map((i, j) => [i, j]));
+      const els = r.elems.filter(e => e.s === s);
+      let mesh;
+      if (circ) {
+        mesh = Motor3D.revolver({ nos: r.nodes, segs: els.map(e => e.n) }, 64);
+        mesh.img = mesh.origem.map(() => [1, 1]);
+      } else {
+        const q = Motor3D.espelhar({ nos: list.map(i => r.nodes[i]), quads: els.map(e => e.n.map(i => loc.get(i))) }, MIR4);
+        mesh = { nos: q.nos, quads: q.quads, origem: q.origem.map(j => list[j]), img: q.imagem };
+      }
+      const usesVal = !(c === 'p' && s !== 'bot');
+      let base = null;
+      if (usesVal) {
+        if (env) { base = { mx: list.map((_, j) => envOf(s, j, 1)), mn: list.map((_, j) => envOf(s, j, -1)) }; }
+        else base = { v: list.map((_, j) => raw(r, k, s, j, c)) };
+      }
+      const vals = usesVal ? mesh.origem.map((gi, n) => {
+        const j = loc.get(gi), [sx, sy] = mesh.img[n], fl = flips(s, c, sx < 0, sy < 0);
+        if (!env) return fl ? -base.v[j] : base.v[j];
+        return st.k === 'emax' ? (fl ? -base.mn[j] : base.mx[j]) : (fl ? -base.mx[j] : base.mn[j]);
+      }) : null;
+      let desl = null;
+      if (showDef) {
+        const D = r.results[k].disp;
+        desl = mesh.origem.map((gi, n) => {
+          if (circ) { const t = mesh.ang[n], ur = D[3 * gi]; return [ur * Math.cos(t), ur * Math.sin(t), D[3 * gi + 2]]; }
+          const [sx, sy] = mesh.img[n]; return [sx * D[3 * gi], sy * D[3 * gi + 1], D[3 * gi + 2]];
+        });
+        desl.forEach(d => { dmax = Math.max(dmax, Math.hypot(d[0], d[1], d[2])); });
+      }
+      if (vals) mesh.nos.forEach((q, n) => {
+        const v = vals[n]; if (!Number.isFinite(v)) return;
+        if (!circ && !inDesign(s, q, G, p, Hc)) return;
+        if (v < lo) lo = v; if (v > hi) hi = v;
+        if (!best || v > best.v) best = { v, q, s }; if (!worst || v < worst.v) worst = { v, q, s };
+      });
+      parts.push({ s, mesh, vals, desl });
+    });
+    if (!Number.isFinite(lo)) { lo = 0; hi = 0; }
+    const signed = !/^W[EI]|^p$/.test(c);
+    const esc = Motor3D.escala([], { limites: [Math.min(lo, 0), Math.max(hi, 0)], tipo: signed ? 'divergente' : 'sequencial' });
+    const size = Math.max(G.Bc || 0, G.Lc || G.Bc || 0, Hc, 1);
+    const fator = showDef && dmax > 1e-12 ? st.fat * 0.06 * size / dmax : 0;
+    V.limpar();
+    parts.forEach(({ s, mesh, vals, desl }) => {
+      V.superficie({ nos: mesh.nos, quads: mesh.quads, valores: vals || undefined, escala: vals ? esc : undefined, cor: vals ? undefined : '--concrete',
+        opacidade: vals ? 1 : 0.55, desloc: desl || undefined, fator, arestas: st.mal, info: { s, nos: mesh.nos } });
+      if (showDef && st.mal === false) V.superficie({ nos: mesh.nos, quads: mesh.quads, cor: '--muted', opacidade: 0.08, arestas: false });
+    });
+    V.corte(st.corte);
+    if (best && hi > 0) V.ponto(best.q, '--pos', size * 0.012);
+    if (worst && lo < 0) V.ponto(worst.q, '--neg', size * 0.012);
+    const key = [circ, f2(G.Bc), f2(G.Lc || 0), f2(Hc)].join('|');
+    if (key !== fitKey) { V.ajustar(); fitKey = key; }
+    $('e3-leg').innerHTML = Motor3D.legendaHTML(esc, unit, nf);
+    const where = b => b ? ` em ${NM[b.s] || b.s}` : '';
+    const zc = z => m.z.base + p.ei / 2 + z;
+    $('e3-ext').innerHTML = (hi > 0 || !signed ? `Máximo <b>${nf(hi)}</b> ${unit}${where(best)}` : '') + (signed && lo < 0 ? `${hi > 0 ? ' · ' : ''}Mínimo <b>${nf(lo)}</b> ${unit}${where(worst)}` : '') + (circ ? '' : ' <span style="color:var(--muted)">(fora dos nós parede-laje)</span>');
+    const nm = env ? (st.k === 'emax' ? 'Envoltória ELU (máximos)' : 'Envoltória ELU (mínimos)') : ($('e3-k').selectedOptions[0] || {}).textContent;
+    const defTxt = showDef ? ` Deformada ampliada ${fmt(fator, 0)} vezes.` : (st.def && env ? ' A deformada não existe para a envoltória: escolha uma combinação.' : '');
+    $('e3-note').innerHTML = `${nm}. ${cdef[1]}. ${signed && c[0] === 'M' ? 'M > 0 traciona a face externa. ' : ''}${noTop ? 'Etapa construtiva: sem a laje de topo. ' : ''}${c === 'p' ? 'Pressão só sob a laje de fundo; as outras peças aparecem em cinza. ' : ''}Arraste para girar · roda do mouse, pinça ou + e − para o zoom · botão direito ou dois dedos para mover.${defTxt}`;
+    $('e3-fat').closest('.e3fat').classList.toggle('off', !showDef);
+    lastPick = { unit, zc, c };
+    $('e3-pick').innerHTML = 'Clique na estrutura para ler o valor no ponto.';
+  }
+  function pick(h) {
+    if (!h || !lastPick) { $('e3-pick').innerHTML = 'Clique na estrutura para ler o valor no ponto.'; return; }
+    const q = h.info.nos[h.no];
+    $('e3-pick').innerHTML = `${NM[h.info.s] || ''} · x = ${fmt(q[0], 2)} m, y = ${fmt(q[1], 2)} m, cota ${fmt(lastPick.zc(q[2]), 2)} m: <b>${nf(h.valor)}</b> ${lastPick.unit}`;
+  }
+
+  function visible() { const b = $('e3-box'); return b && b.offsetParent !== null && b.clientWidth > 0; }
+  function refresh() {
+    if (!data) return;
+    if (!visible()) { dirty = true; return; }
+    ensure().then(v => { if (v) { v.tamanho(); build(); } });
+  }
+  function update(r, m) {
+    const circ = !!r.circ, cs = comps(circ);
+    if (!cs.some(x => x[0] === st.c)) st.c = 'M2';
+    const kh = caseList(r, m), sel = $('e3-k');
+    if (sel.dataset.h !== kh) { sel.innerHTML = kh; sel.dataset.h = kh; }
+    if (![...sel.options].some(o => o.value === st.k)) st.k = 'emax';
+    sel.value = st.k;
+    const ch = cs.map(([k2, n]) => `<option value="${k2}">${n}</option>`).join(''), cse = $('e3-c');
+    if (cse.dataset.h !== ch) { cse.innerHTML = ch; cse.dataset.h = ch; }
+    cse.value = st.c;
+    data = { r, m };
+    refresh();
+  }
+  // controles
+  const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
+  on('e3-k', 'change', e => { st.k = e.target.value; save(); refresh(); });
+  on('e3-c', 'change', e => { st.c = e.target.value; save(); refresh(); });
+  on('e3-def', 'change', e => { st.def = e.target.checked; save(); refresh(); });
+  on('e3-fat', 'input', e => { st.fat = +e.target.value; $('e3-fatv').textContent = '×' + fmt(st.fat, st.fat % 1 ? 2 : 0); save(); refresh(); });
+  on('e3-corte', 'change', e => { st.corte = e.target.checked; save(); if (V) V.corte(st.corte); });
+  on('e3-mal', 'change', e => { st.mal = e.target.checked; save(); refresh(); });
+  on('e3-in', 'click', () => V && V.zoom(0.8));
+  on('e3-out', 'click', () => V && V.zoom(1.25));
+  on('e3-fit', 'click', () => V && V.ajustar());
+  $('e3-def').checked = st.def; $('e3-corte').checked = st.corte; $('e3-mal').checked = st.mal; $('e3-fat').value = st.fat; $('e3-fatv').textContent = '×' + fmt(st.fat, st.fat % 1 ? 2 : 0);
+  // a aba Esforços pode estar escondida quando o cálculo termina: desenha ao aparecer
+  try { new ResizeObserver(() => { if (dirty && visible()) refresh(); }).observe($('e3-box')); } catch (e) {}
+  return { update };
+})();
+</script><!--/e3d-->
 <!--v3d--><style>
 .v3{display:grid;gap:10px}
 .v3bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
