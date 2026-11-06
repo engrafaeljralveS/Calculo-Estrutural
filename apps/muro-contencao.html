@@ -1,0 +1,1063 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body><script>/* ponte da suíte: downloads pela página principal (troca de mensagens); demais recursos repassados */(function(){try{if(window.claude||window.parent===window)return;var n=0,pend={};window.addEventListener("message",function(e){var d=e.data;if(!d||d.tipo!=="suite-claude-r"||!pend[d.id])return;var f=pend[d.id];delete pend[d.id];f(d);});function ask(m,ms){return new Promise(function(res){var id="c"+(++n)+Math.random().toString(36).slice(2);var t=setTimeout(function(){if(pend[id]){delete pend[id];res({nulo:true});}},ms);pend[id]=function(d){clearTimeout(t);res(d);};m.tipo="suite-claude";m.id=id;window.parent.postMessage(m,"*");});}function erro(x){var e=new Error(x.message||"erro");e.code=x.code;return e;}window.claude={use:function(cap){if(cap==="downloads")return ask({cap:cap,op:"probe"},6000).then(function(d){if(!d.ok)return null;return Object.freeze({save:function(a){return ask({cap:cap,op:"save",args:{filename:a.filename,data:a.data}},900000).then(function(d){if(d.erro)throw erro(d.erro);if(!d.ok)throw erro({code:"unavailable",message:"Download indisponível"});return d.r;});}});});try{var p=window.parent.claude;return p&&p.use?p.use(cap):Promise.resolve(null);}catch(e){return Promise.resolve(null);}}};}catch(e){}})();</script><title>Muro de Contenção</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: painel de dados à esquerda; à direita veredito, corte em escala e memória de cálculo. Paleta clara da suíte. */
+:root {
+  --bg: #f4f6f8; --surface: #ffffff; --field: #ffffff; --ink: #1f2b37; --muted: #5e6b78; --line: #d9e0e7; --soft: #eef2f5;
+  --accent: #2b6cb0; --accent-ink: #ffffff; --accent-soft: #e7f0f9;
+  --concrete: #cfd6dc; --concrete-line: #6b7884; --soil: #e6d5b1; --soil-line: #8c6c3c; --found: #ead9b8;
+  --ativo: #c0612a; --passivo: #2b6cb0; --q: #7a4fb0; --sig: #2e7d50;
+  --ok: #2e7d50; --ok-bg: #e6f4ec; --bad: #b83a2e; --bad-bg: #fbe8e5; --warn: #8c5d08; --warn-bg: #fbf1dc;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14.5px; line-height: 1.5;
+  padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1340px; margin: 0 auto; display: grid; gap: 14px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+h1 { font-family: var(--f-display); font-weight: 600; font-size: clamp(32px, 5vw, 44px); line-height: 1; margin: 0 0 6px; text-wrap: balance; }
+.sub { margin: 0; color: var(--muted); max-width: 78ch; }
+.notice { margin: 0; padding: 8px 12px; background: var(--warn-bg); color: var(--warn); border-radius: 4px; font-size: 13px; }
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); flex-wrap: wrap; align-items: end; }
+.tabs [role=tab] { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 8px 16px 7px; font: 600 20px var(--f-display); letter-spacing: .03em; color: var(--muted); cursor: pointer; }
+.tabs [role=tab]:hover { color: var(--ink); }
+.tabs [role=tab][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .sp { flex: 1; }
+.app { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } .inputs { position: static !important; max-height: none !important; } }
+.inputs { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 12px; font-size: 13px; }
+.inputs section + section { border-top: 1px solid var(--line); padding-top: 10px; }
+.inputs h2 { font-family: var(--f-display); font-weight: 600; font-size: 17px; margin: 0 0 6px; display: flex; gap: 6px; align-items: baseline; }
+.inputs h2 .n { color: var(--accent); font: 500 12px var(--f-mono); }
+.g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 8px; }
+.g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px 8px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: flex-end; }
+.field label { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+.field label sub { font-size: 8.5px; }
+.inp { display: flex; border: 1px solid var(--line); background: var(--field); border-radius: 4px; }
+.inp:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.inp input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); padding: 4px 7px; font: 500 12.5px var(--f-mono); text-align: right; outline: none; }
+.inp .u { padding: 4px 6px; color: var(--muted); font-size: 10.5px; border-left: 1px solid var(--line); white-space: nowrap; display: flex; align-items: center; }
+.field.bad .inp { border-color: var(--bad); }
+.check { display: flex; gap: 7px; align-items: flex-start; font-size: 12px; color: var(--ink); margin: 2px 0 6px; cursor: pointer; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+.gnote { margin: 4px 0 0; font-size: 10.5px; line-height: 1.35; color: var(--muted); }
+.off { opacity: .45; pointer-events: none; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 6px 12px; font: 500 13px var(--f-body); cursor: pointer; }
+.btn:hover { background: var(--accent); color: var(--accent-ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .55; cursor: wait; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.results { display: grid; gap: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.panel h2 { font-family: var(--f-display); font-weight: 600; font-size: 21px; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.panel h2 .n { color: var(--accent); font: 500 13px var(--f-mono); }
+.panel h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
+.card.bad { border-left-color: var(--bad); } .card.warn { border-left-color: var(--warn); }
+.card .t { font-size: 12.5px; color: var(--muted); }
+.card .v { font: 500 26px var(--f-mono); line-height: 1.1; }
+.card.bad .v { color: var(--bad); } .card .s { font-size: 12px; color: var(--muted); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.bad { background: var(--bad-bg); color: var(--bad); } .pill.warn { background: var(--warn-bg); color: var(--warn); }
+.warns { display: grid; gap: 6px; } .warns p { margin: 0; padding: 7px 11px; background: var(--warn-bg); color: var(--warn); border-radius: 4px; font-size: 13px; }
+.figscroll { overflow-x: auto; } .figscroll svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 6px; } .sw { width: 13px; height: 13px; display: inline-block; border: 1px solid var(--concrete-line); }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 7px; text-align: right; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th:first-child, td:first-child, .l { text-align: left; }
+th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; }
+td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+tr.grp td { background: var(--soft); font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: left; }
+tr.tot td { font-weight: 600; border-top: 2px solid var(--ink); }
+.eq { font: 12.5px var(--f-mono); color: var(--ink); margin: 2px 0; }
+.note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; max-width: 95ch; }
+.lim { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+.barsel { display: flex; gap: 3px; align-items: center; justify-content: flex-end; white-space: nowrap; color: var(--muted); font-size: 12px; }
+.barsel select { font: 500 12px var(--f-mono); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 2px; }
+.tagman { font-size: 10px; color: var(--accent); font-weight: 600; margin-left: 4px; }
+.cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
+@media (max-width: 760px) { .cols2 { grid-template-columns: minmax(0, 1fr); } }
+.maps svg { display: block; width: 100%; height: auto; }
+.halo { paint-order: stroke; stroke: #ffffff; stroke-width: 3.5px; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Aplicativo v1.0 · NBR 6118 · NBR 11682 · NBR 6122 · verificação preliminar</p>
+    <h1>Muro de Contenção</h1>
+    <p class="sub">Muro de flexão em concreto armado, com dente sob a base e contrafortes opcionais: empuxos, estabilidade (tombamento, deslizamento e tensões no solo) e dimensionamento das armaduras.</p>
+  </header>
+  <p class="notice">Cálculo preliminar: confira as hipóteses e os resultados antes de usar em projeto executivo.</p>
+
+  <nav class="tabs" role="tablist" aria-label="Etapas do cálculo">
+    <button type="button" role="tab" id="tb-est" aria-controls="tab-est" aria-selected="true">Estabilidade</button>
+    <button type="button" role="tab" id="tb-arm" aria-controls="tab-arm" aria-selected="false">Armaduras</button>
+    <span class="sp"></span>
+    <div class="btnrow" style="padding-bottom:6px"><button class="btn primary" type="button" id="memo">Gerar memorial de cálculo (Word)</button></div>
+  </nav>
+  <p class="gnote" id="memo-msg" role="status" style="margin:-6px 0 0;text-align:right"></p>
+
+  <div class="app">
+    <aside class="inputs" aria-label="Dados de entrada">
+      <section><h2><span class="n">1</span>Muro e base</h2>
+        <div class="g3">
+          <div class="field" data-k="H"><label>Altura do muro, H</label><div class="inp"><input id="in-H"><span class="u">m</span></div></div>
+          <div class="field" data-k="tt"><label>Espessura no topo</label><div class="inp"><input id="in-tt"><span class="u">m</span></div></div>
+          <div class="field" data-k="tb"><label>Espessura na base</label><div class="inp"><input id="in-tb"><span class="u">m</span></div></div>
+          <div class="field" data-k="B1"><label>Ponta, B<sub>1</sub></label><div class="inp"><input id="in-B1"><span class="u">m</span></div></div>
+          <div class="field" data-k="B3"><label>Talão, B<sub>3</sub></label><div class="inp"><input id="in-B3"><span class="u">m</span></div></div>
+          <div class="field"><label>Largura da base, B</label><div class="inp"><input id="out-B" disabled><span class="u">m</span></div></div>
+          <div class="field" data-k="hs"><label>Base junto ao muro</label><div class="inp"><input id="in-hs"><span class="u">m</span></div></div>
+          <div class="field" data-k="he"><label>Base nas pontas</label><div class="inp"><input id="in-he"><span class="u">m</span></div></div>
+        </div>
+        <p class="gnote">H vai da face superior da base ao topo do muro; o aterro chega ao topo. A face da frente é vertical; a de trás se inclina da espessura da base à do topo.</p>
+      </section>
+      <section><h2><span class="n">2</span>Dente sob a base</h2>
+        <label class="check"><input type="checkbox" id="in-dOn"> Com dente (chaveta) contra o deslizamento</label>
+        <div class="g3" id="grp-dente">
+          <div class="field" data-k="bd"><label>Largura</label><div class="inp"><input id="in-bd"><span class="u">m</span></div></div>
+          <div class="field" data-k="hd"><label>Altura</label><div class="inp"><input id="in-hd"><span class="u">m</span></div></div>
+          <div class="field" data-k="xd"><label>Eixo a partir da ponta</label><div class="inp"><input id="in-xd"><span class="u">m</span></div></div>
+        </div>
+      </section>
+      <section><h2><span class="n">3</span>Contrafortes</h2>
+        <label class="check"><input type="checkbox" id="in-cOn"> Com contrafortes (do lado do aterro)</label>
+        <div class="g2" id="grp-cont">
+          <div class="field" data-k="s"><label>Espaçamento entre eixos</label><div class="inp"><input id="in-s"><span class="u">m</span></div></div>
+          <div class="field" data-k="ec"><label>Espessura</label><div class="inp"><input id="in-ec"><span class="u">m</span></div></div>
+          <div class="field" data-k="bc"><label>Comprimento na base</label><div class="inp"><input id="in-bc"><span class="u">m</span></div></div>
+          <div class="field" data-k="hc"><label>Altura</label><div class="inp"><input id="in-hc"><span class="u">m</span></div></div>
+        </div>
+        <p class="gnote">A parede trabalha como placa engastada nos contrafortes e na base (elementos finitos); o contraforte, como viga T em balanço; o talão, como laje contínua entre contrafortes.</p>
+      </section>
+      <section><h2><span class="n">4</span>Aterro e sobrecarga</h2>
+        <div class="g2">
+          <div class="field" data-k="ga"><label>Peso específico, γ</label><div class="inp"><input id="in-ga"><span class="u">kN/m³</span></div></div>
+          <div class="field" data-k="fa"><label>Ângulo de atrito, φ</label><div class="inp"><input id="in-fa"><span class="u">°</span></div></div>
+          <div class="field" data-k="ca"><label>Coesão, c</label><div class="inp"><input id="in-ca"><span class="u">kPa</span></div></div>
+          <div class="field" data-k="q"><label>Sobrecarga, q</label><div class="inp"><input id="in-q"><span class="u">kN/m²</span></div></div>
+        </div>
+      </section>
+      <section><h2><span class="n">5</span>Solo da base e da frente</h2>
+        <div class="g2">
+          <div class="field" data-k="gb"><label>Peso específico, γ</label><div class="inp"><input id="in-gb"><span class="u">kN/m³</span></div></div>
+          <div class="field" data-k="fb"><label>Ângulo de atrito, φ</label><div class="inp"><input id="in-fb"><span class="u">°</span></div></div>
+          <div class="field" data-k="cb"><label>Coesão, c</label><div class="inp"><input id="in-cb"><span class="u">kPa</span></div></div>
+          <div class="field" data-k="sadm"><label>Tensão admissível, σ<sub>adm</sub></label><div class="inp"><input id="in-sadm"><span class="u">kPa</span></div></div>
+          <div class="field" data-k="hf"><label>Solo na frente (da face inferior da base)</label><div class="inp"><input id="in-hf"><span class="u">m</span></div></div>
+          <div class="field" data-k="pRed"><label>Fator do passivo</label><div class="inp"><input id="in-pRed"><span class="u">×</span></div></div>
+        </div>
+        <label class="check" style="margin-top:6px"><input type="checkbox" id="in-pOn"> Considerar o empuxo passivo na frente (no deslizamento)</label>
+      </section>
+      <section><h2><span class="n">6</span>Critérios de segurança</h2>
+        <div class="g2">
+          <div class="field" data-k="FSTmin"><label>FS tombamento mínimo</label><div class="inp"><input id="in-FSTmin"><span class="u">≥</span></div></div>
+          <div class="field" data-k="FSDmin"><label>FS deslizamento mínimo</label><div class="inp"><input id="in-FSDmin"><span class="u">≥</span></div></div>
+          <div class="field" data-k="gphi"><label>Divisor de tg φ</label><div class="inp"><input id="in-gphi"><span class="u">÷</span></div></div>
+          <div class="field" data-k="gcoh"><label>Divisor da coesão</label><div class="inp"><input id="in-gcoh"><span class="u">÷</span></div></div>
+        </div>
+        <label class="check" style="margin-top:6px"><input type="checkbox" id="in-qEst"> Contar a sobrecarga sobre o talão a favor (tombamento e deslizamento)</label>
+        <label class="check"><input type="checkbox" id="in-pTomb"> Contar o passivo a favor no tombamento</label>
+        <p class="gnote">Padrão (NBR 11682): a sobrecarga é ação variável e, onde ajuda, não entra; o passivo não entra no tombamento. Marque as duas opções para reproduzir a planilha original.</p>
+      </section>
+      <section><h2><span class="n">7</span>Materiais e combinações</h2>
+        <div class="g3">
+          <div class="field" data-k="gc"><label>Concreto, γ</label><div class="inp"><input id="in-gc"><span class="u">kN/m³</span></div></div>
+          <div class="field" data-k="fck"><label>f<sub>ck</sub></label><div class="inp"><input id="in-fck"><span class="u">MPa</span></div></div>
+          <div class="field" data-k="fyk"><label>Aço, f<sub>yk</sub></label><div class="inp"><input id="in-fyk"><span class="u">MPa</span></div></div>
+          <div class="field" data-k="cob"><label>Cobrimento</label><div class="inp"><input id="in-cob"><span class="u">cm</span></div></div>
+          <div class="field" data-k="wlim"><label>w<sub>k,lim</sub></label><div class="inp"><input id="in-wlim"><span class="u">mm</span></div></div>
+          <div class="field" data-k="gf"><label>γ<sub>f</sub> (ELU)</label><div class="inp"><input id="in-gf"><span class="u">×</span></div></div>
+          <div class="field" data-k="psi1"><label>ψ<sub>1</sub> sobrecarga</label><div class="inp"><input id="in-psi1"><span class="u">×</span></div></div>
+          <div class="field" data-k="psi2"><label>ψ<sub>2</sub> sobrecarga</label><div class="inp"><input id="in-psi2"><span class="u">×</span></div></div>
+        </div>
+        <p class="gnote">ELU: todas as ações × γ<sub>f</sub>. Fissuração: g + ψ<sub>1</sub>q (frequente). Flecha: g + ψ<sub>2</sub>q (quase permanente), com fluência α<sub>f</sub> = 1,32.</p>
+      </section>
+      <div class="btnrow"><button class="btn" type="button" id="reset">Restaurar o exemplo da planilha</button></div>
+    </aside>
+
+    <main class="results">
+      <div class="warns" id="warns" aria-live="polite"></div>
+      <div id="tab-est" role="tabpanel" aria-labelledby="tb-est" class="results">
+        <section class="verdicts" id="verdicts" aria-label="Verificações"></section>
+        <section class="panel"><h2><span class="n">A</span>Corte em escala</h2>
+          <div class="figscroll" id="fig"></div>
+          <ul class="legend">
+            <li><span class="sw" style="background:var(--concrete)"></span>Concreto</li>
+            <li><span class="sw" style="background:var(--soil)"></span>Aterro e solo</li>
+            <li><span class="sw" style="background:var(--ativo);opacity:.6"></span>Empuxo ativo (solo + sobrecarga)</li>
+            <li><span class="sw" style="background:var(--passivo);opacity:.6"></span>Empuxo passivo</li>
+            <li><span class="sw" style="background:var(--sig);opacity:.6"></span>Tensão no solo sob a base</li>
+          </ul>
+        </section>
+        <section class="panel"><h2><span class="n">B</span>Empuxos</h2><div id="emp"></div></section>
+        <section class="panel"><h2><span class="n">C</span>Forças verticais e momentos em relação à ponta</h2><div class="tw" id="forcas"></div></section>
+        <section class="panel"><h2><span class="n">D</span>Verificações de estabilidade</h2><div id="verif"></div></section>
+        <details class="panel"><summary style="cursor:pointer;font-weight:600">Hipóteses e diferenças em relação à planilha original</summary>
+          <ul class="lim" style="margin-top:8px" id="hip"></ul>
+        </details>
+      </div>
+      <div id="tab-arm" role="tabpanel" aria-labelledby="tb-arm" class="results" hidden>
+        <section class="panel"><h2><span class="n">E</span>Resumo das armaduras</h2><div class="tw" id="arm"></div>
+          <div class="btnrow" style="margin-top:8px"><button class="btn" type="button" id="arm-sug">Voltar às barras sugeridas</button></div>
+          <p class="note">Barras sugeridas: a menor área que atende a flexão (ELU), a armadura mínima e a abertura de fissuras (combinação frequente). Escolha outra bitola ou espaçamento na linha para conferir.</p>
+        </section>
+        <section class="panel" id="p-secs"><h2><span class="n">F</span>Muro: esforços ao longo da altura</h2><div class="tw" id="secs"></div></section>
+        <section class="panel" id="p-placa" hidden><h2><span class="n">F</span>Parede entre contrafortes: momentos (ELU)</h2>
+          <div class="cols2 maps" id="maps"></div>
+          <p class="note">Placa de Kirchhoff por elementos finitos, entre os eixos de dois contrafortes (engastada neles e na base, livre no topo). Positivo: traciona a face da frente; negativo: a face do aterro.</p>
+        </section>
+        <section class="panel" id="p-cont" hidden><h2><span class="n">G</span>Contraforte</h2><div id="cont"></div></section>
+        <section class="panel"><h2><span class="n">H</span>Flecha no topo do muro</h2><div id="flecha"></div></section>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+/* ===================== Motor de cálculo: Muro de Contenção (funções puras, sem DOM) =====================
+   Muro de flexão em L (ou T invertido) com dente opcional sob a base e contrafortes opcionais.
+   Eixos: x a partir da borda da ponta (frente), crescendo para o talão (aterro); y a partir da face inferior da base, para cima.
+   Unidades: kN, m, kPa (kN/m²). Esforços por metro de muro. */
+const MC = (function () {
+  const rad = d => d * Math.PI / 180;
+  // área e centroide de polígono (lista de [x, y])
+  function poly(P) {
+    let A = 0, cx = 0, cy = 0;
+    for (let i = 0; i < P.length; i++) {
+      const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length], c = x1 * y2 - x2 * y1;
+      A += c; cx += (x1 + x2) * c; cy += (y1 + y2) * c;
+    }
+    A /= 2; if (Math.abs(A) < 1e-12) return { A: 0, x: 0, y: 0 };
+    return { A: Math.abs(A), x: cx / (6 * A), y: cy / (6 * A) };
+  }
+  // empuxo de Rankine com coesão: tensão na profundidade d (abaixo do topo do maciço)
+  const Ka = phi => Math.pow(Math.tan(rad(45 - phi / 2)), 2);
+  const Kp = phi => Math.pow(Math.tan(rad(45 + phi / 2)), 2);
+  // integra uma distribuição de tensão sigma(d), d de 0 a h: resultante e profundidade do ponto de aplicação
+  function integ(sig, h, n = 400) {
+    let R = 0, Md = 0; const dd = h / n;
+    for (let i = 0; i < n; i++) { const d = (i + 0.5) * dd, s = sig(d); R += s * dd; Md += s * dd * d; }
+    return { R, d: R > 1e-12 ? Md / R : h * 2 / 3 };
+  }
+
+  function compute(p) {
+    const B2 = p.tb, B = p.B1 + p.tb + p.B3;
+    const xf = p.B1, xb = p.B1 + p.tb, xbt = p.B1 + p.tt;     // face da frente, face de trás na base e no topo
+    const yT = p.hs + p.H;                                      // topo do muro = nível do aterro
+    const dOn = !!p.dOn && p.bd > 0 && p.hd > 0, yb = dOn ? -p.hd : 0;
+    // ---- polígonos
+    const base = [[0, 0], [B, 0], [B, p.he], [xb, p.hs], [xf, p.hs], [0, p.he]];
+    const stem = [[xf, p.hs], [xb, p.hs], [xbt, yT], [xf, yT]];
+    const dente = dOn ? [[p.xd - p.bd / 2, -p.hd], [p.xd + p.bd / 2, -p.hd], [p.xd + p.bd / 2, 0], [p.xd - p.bd / 2, 0]] : null;
+    const cOn = !!p.cOn && p.s > 0 && p.ec > 0 && p.bc > 0 && p.hc > 0;
+    // contraforte: triângulo junto à face de trás, base bc sobre o talão, altura hc
+    const xBackAt = y => xb + (xbt - xb) * (y - p.hs) / p.H;
+    const cont = cOn ? [[xb, p.hs], [Math.min(B, xb + p.bc), p.hs + (p.he - p.hs) * Math.min(1, p.bc / p.B3)], [xBackAt(p.hs + p.hc), p.hs + p.hc]] : null;
+    const fillP = [[xb, p.hs], [B, p.he], [B, yT], [xbt, yT]];
+    const gB = poly(base), gS = poly(stem), gD = dente ? poly(dente) : { A: 0, x: 0, y: 0 }, gC = cont ? poly(cont) : { A: 0, x: 0, y: 0 }, gF = poly(fillP);
+    const fc = cOn ? p.ec / p.s : 0;      // fração do comprimento ocupada pelos contrafortes
+    // ---- parâmetros de cálculo do solo (divisores de segurança nas resistências)
+    const fa = Math.atan(Math.tan(rad(p.fa)) / p.gphi) * 180 / Math.PI, ca = p.ca / p.gcoh;
+    const fb = Math.atan(Math.tan(rad(p.fb)) / p.gphi) * 180 / Math.PI, cb = p.cb / p.gcoh;
+    const ka = Ka(fa), kp = Kp(fb);
+    // ---- forças verticais (por metro), braços em relação à ponta (x = 0)
+    const V = [
+      { k: 'base', lab: 'Base (sapata)', W: gB.A * p.gc, x: gB.x, perm: true },
+      { k: 'muro', lab: 'Muro (haste)', W: gS.A * p.gc, x: gS.x, perm: true },
+    ];
+    if (dOn) V.push({ k: 'dente', lab: 'Dente', W: gD.A * p.gc, x: gD.x, perm: true });
+    if (cOn) V.push({ k: 'contraforte', lab: `Contrafortes (${fmtN(p.ec)} m a cada ${fmtN(p.s)} m)`, W: gC.A * p.gc * fc, x: gC.x, perm: true });
+    V.push({ k: 'solo', lab: 'Solo sobre o talão', W: (gF.A - gC.A * fc) * p.ga, x: (gF.A * gF.x - gC.A * fc * gC.x) / Math.max(1e-9, gF.A - gC.A * fc), perm: true });
+    const wq = B - xbt;
+    if (p.q > 0 && wq > 0) V.push({ k: 'q', lab: 'Sobrecarga sobre o talão', W: p.q * wq, x: xbt + wq / 2, perm: false });
+    // ---- empuxo ativo: plano vertical na extremidade do talão, do topo do aterro até a face inferior da base (ou do dente)
+    const Ha = yT - yb;
+    const sigA = (d, qq) => Math.max(0, ka * (p.ga * d + qq) - 2 * ca * Math.sqrt(ka));
+    const zc = Math.max(0, (2 * ca * Math.sqrt(ka) / ka - p.q) / p.ga);   // profundidade da fenda de tração
+    const EA = integ(d => sigA(d, p.q), Ha), EAs = integ(d => sigA(d, 0), Ha);
+    const Ea = { R: EA.R, y: yT - EA.d, soil: EAs.R, q: EA.R - EAs.R };
+    // ---- empuxo passivo na frente: do nível do solo da frente até a face inferior da base (ou do dente)
+    const hp = p.pOn ? Math.max(0, p.hf - yb) : 0;
+    const sigP = d => kp * p.gb * d + 2 * cb * Math.sqrt(kp);
+    const EP = hp > 0 ? integ(sigP, hp) : { R: 0, d: 0 };
+    const Ep = { R: EP.R * p.pRed, Rfull: EP.R, y: p.hf - EP.d, h: hp };
+    // ---- estabilidade
+    const Nperm = V.filter(v => v.perm).reduce((s, v) => s + v.W, 0), Ntot = V.reduce((s, v) => s + v.W, 0);
+    // sobrecarga sobre o talão (variável favorável) e passivo: fora do tombamento, salvo se o usuário pedir
+    const Vest = V.filter(v => v.perm || p.qEst);
+    const MestV = Vest.reduce((s, v) => s + v.W * v.x, 0);
+    const Mtomb = Ea.R * (Ea.y - 0);   // em torno da aresta da ponta, na face inferior da base
+    const MEp = p.pTomb ? Ep.R * Ep.y : 0, Mest = MestV + MEp;
+    const FST = Mtomb > 1e-9 ? Mest / Mtomb : Infinity;
+    const Nres = p.qEst ? Ntot : Nperm;
+    const Rf = Nres * Math.tan(rad(fb)), Rc = cb * B, Rd = Rf + Rc + Ep.R;
+    const FSD = Ea.R > 1e-9 ? Rd / Ea.R : Infinity;
+    // ---- tensões na base (característica, com a sobrecarga; sem o passivo, a favor da segurança)
+    const Mtot = V.reduce((s, v) => s + v.W * v.x, 0) - Mtomb;
+    const xR = Mtot / Ntot, e = B / 2 - xR;
+    let sMax, sMin, cont3 = B, tri = false;
+    if (Math.abs(e) <= B / 6) { sMax = Ntot / B * (1 + 6 * Math.abs(e) / B); sMin = Ntot / B * (1 - 6 * Math.abs(e) / B); }
+    else { tri = true; const a = B / 2 - Math.abs(e); cont3 = Math.max(0, 3 * a); sMax = a > 0 ? 2 * Ntot / (3 * a) : Infinity; sMin = 0; }
+    // tensão de contato em x (linear; zero onde descola). e > 0: resultante mais perto da ponta (σ maior na ponta)
+    const sigma = x => {
+      const u = e >= 0 ? x : B - x;   // distância da borda mais comprimida
+      if (!tri) return sMax + (sMin - sMax) * u / B;
+      return Number.isFinite(sMax) && u <= cont3 ? sMax * (1 - u / cont3) : 0;
+    };
+    return {
+      p, B, B2, xf, xb, xbt, yT, yb, dOn, cOn, fc, base, stem, dente, cont, fillP, gB, gS, gD, gC, gF, xBackAt,
+      fa, fb, ca, cb, ka, kp, sigA, sigP, zc, Ha, Ea, Ep, V, Nperm, Ntot, Nres, MestV, MEp, Mest, Mtomb, FST, Rf, Rc, Rd, FSD,
+      xR, e, tri, cont3, sMax, sMin, sigma, wq,
+      ok: { FST: FST >= p.FSTmin, FSD: FSD >= p.FSDmin, sig: sMax <= p.sadm, e: Math.abs(e) <= B / 6 }
+    };
+  }
+  const fmtN = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  return { compute, Ka, Kp, poly, integ };
+})();
+
+/* ===================== Concreto armado (NBR 6118) ===================== */
+const CA = (function () {
+  const BARS = [8, 10, 12.5, 16, 20, 25], SPAC = [10, 12.5, 15, 17.5, 20];
+  const barA = phi => Math.PI * phi * phi / 400;          // cm²
+  const asOf = (phi, s) => barA(phi) * 100 / s;           // cm²/m
+  // ρmín (NBR 6118, Tabela 17.3) para seção retangular
+  const RHO = { 20: 0.150, 25: 0.150, 30: 0.150, 35: 0.164, 40: 0.179, 45: 0.194, 50: 0.208 };
+  const rhoMin = fck => (RHO[Math.min(50, Math.max(20, Math.round(fck / 5) * 5))] || 0.15) / 100;
+  function mat(p) {
+    const fcd = p.fck / 1.4, fyd = p.fyk / 1.15, fctm = 0.3 * Math.pow(p.fck, 2 / 3);
+    const Ecs = 0.85 * 5600 * Math.sqrt(p.fck);  // MPa
+    return { fcd, fyd, fctm, fctd: 0.7 * fctm / 1.4, Ecs, Es: 210000 };
+  }
+  // flexão simples, b = 100 cm. Md em kN·m/m, h e d em m. Retorna As (cm²/m) e x/d
+  function flex(Md, h, d, P) {
+    const fcd = P.fcd * 1000, fyd = P.fyd * 1000;   // kPa
+    if (Md <= 1e-9) return { As: 0, xd: 0, ok: true };
+    const k = Md / (0.85 * fcd * 1 * d * d);
+    const disc = 1 - 2 * k;
+    if (disc < 0) return { As: Infinity, xd: Infinity, ok: false };
+    const xd = (1 - Math.sqrt(disc)) / 0.8, z = d * (1 - 0.4 * xd);
+    return { As: Md / (fyd * z) * 1e4, xd, ok: xd <= 0.45 };
+  }
+  // tensão no aço no estádio II (seção retangular b = 1 m), M em kN·m/m, As cm²/m
+  function sigmaS(M, As, d, P) {
+    if (M <= 0 || As <= 0) return 0;
+    const ae = 15, b = 100, A = As, dd = d * 100;   // NBR 6118, 17.3.3.2: αe = 15
+    const x = (-ae * A + Math.sqrt(Math.pow(ae * A, 2) + 2 * b * ae * A * dd)) / b;
+    return M * 100 / (A * (dd - x / 3)) * 10;   // kN·cm → MPa (kN/cm² × 10)
+  }
+  // abertura de fissuras (NBR 6118, 17.3.3.2)
+  function crack(Mser, As, phi, h, d, P) {
+    const ss = sigmaS(Mser, As, d, P);
+    if (ss <= 0) return { wk: 0, ss: 0 };
+    const eta = 2.25, Es = P.Es;
+    const c = (h - d) * 100;    // centro da barra à face (cm)
+    const acr = 100 * Math.min(c + 7.5 * phi / 10, h * 100 / 2);   // cm²/m
+    const rr = As / acr;
+    const w1 = phi / (12.5 * eta) * ss / Es * 3 * ss / P.fctm;
+    const w2 = phi / (12.5 * eta) * ss / Es * (4 / rr + 45);
+    return { wk: Math.min(w1, w2), ss };
+  }
+  // cortante sem armadura transversal (NBR 6118, 19.4.1). V em kN/m, d em m, As cm²/m
+  function vrd1(d, As, P) {
+    const tRd = 0.25 * P.fctd * 1000, k = Math.max(1, 1.6 - d), r1 = Math.min(0.02, As / (100 * d * 100));
+    return tRd * k * (1.2 + 40 * r1) * 1 * d;
+  }
+  // escolhe barras: menor área que atende As,nec e wk
+  function choose(Asreq, Mser, h, cov, P, wlim, fixed) {
+    const tries = fixed ? [fixed] : [];
+    if (!fixed) BARS.slice(0, 5).forEach(phi => SPAC.forEach(s => tries.push({ phi, s })));
+    let best = null;
+    tries.forEach(t => {
+      const d = h - cov / 100 - t.phi / 2000, As = asOf(t.phi, t.s), cr = crack(Mser, As, t.phi, h, d, P);
+      const okA = As >= Asreq - 1e-9, okW = cr.wk <= wlim + 1e-9;
+      const cand = Object.assign({ As, d, wk: cr.wk, ss: cr.ss, okA, okW }, t);
+      if (fixed) { best = cand; return; }
+      if (okA && okW && (!best || As < best.As - 1e-9 || (Math.abs(As - best.As) < 1e-9 && t.s > best.s))) best = cand;
+    });
+    return best || Object.assign({ found: false }, (() => { const t = { phi: 20, s: 10 }; const d = h - cov / 100 - 0.01, As = asOf(20, 10); return Object.assign({ As, d, wk: crack(Mser, As, 20, h, d, P).wk, okA: As >= Asreq, okW: false }, t); })());
+  }
+  return { BARS, SPAC, barA, asOf, rhoMin, mat, flex, sigmaS, crack, vrd1, choose };
+})();
+
+/* ===================== Placa de Kirchhoff (elemento retangular ACM, 12 gl) =====================
+   Parede entre dois contrafortes: x horizontal (0 a s, entre eixos), y vertical (0 na base, até H no topo).
+   Bordas x = 0 e x = s engastadas (continuidade sobre os contrafortes), base engastada, topo livre.
+   Carga p(y) normal à placa (kPa). Espessura t(y). Devolve momentos nos nós: mx (horizontal) e my (vertical),
+   com sinal positivo = tração na face da frente (livre) e negativo = tração na face do aterro. */
+const PLACA = (function () {
+  const G3 = [[-Math.sqrt(0.6), 5 / 9], [0, 8 / 9], [Math.sqrt(0.6), 5 / 9]];
+  const poly = (x, y) => [1, x, y, x * x, x * y, y * y, x * x * x, x * x * y, x * y * y, y * y * y, x * x * x * y, x * y * y * y];
+  const pdx = (x, y) => [0, 1, 0, 2 * x, y, 0, 3 * x * x, 2 * x * y, y * y, 0, 3 * x * x * y, y * y * y];
+  const pdy = (x, y) => [0, 0, 1, 0, x, 2 * y, 0, x * x, 2 * x * y, 3 * y * y, x * x * x, 3 * x * y * y];
+  const pxx = (x, y) => [0, 0, 0, 2, 0, 0, 6 * x, 2 * y, 0, 0, 6 * x * y, 0];
+  const pyy = (x, y) => [0, 0, 0, 0, 0, 2, 0, 0, 2 * x, 6 * y, 0, 6 * x * y];
+  const pxy = (x, y) => [0, 0, 0, 0, 1, 0, 0, 2 * x, 2 * y, 0, 3 * x * x, 3 * y * y];
+  function inv(M) {
+    const n = M.length, A = M.map((r, i) => r.concat(Array.from({ length: n }, (_, j) => i === j ? 1 : 0)));
+    for (let c = 0; c < n; c++) {
+      let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]]; const d = A[c][c];
+      for (let j = 0; j < 2 * n; j++) A[c][j] /= d;
+      for (let r = 0; r < n; r++) if (r !== c) { const f = A[r][c]; if (f) for (let j = 0; j < 2 * n; j++) A[r][j] -= f * A[c][j]; }
+    }
+    return A.map(r => r.slice(n));
+  }
+  // gl por nó: w, θx = ∂w/∂y, θy = −∂w/∂x
+  function Cinv(a, b) {
+    const N = [[0, 0], [a, 0], [a, b], [0, b]], C = [];
+    N.forEach(([x, y]) => { C.push(poly(x, y)); C.push(pdy(x, y)); C.push(pdx(x, y).map(v => -v)); });
+    return inv(C);
+  }
+  const mulRow = (row, Ci) => Ci[0].map((_, j) => row.reduce((s, v, k) => s + v * Ci[k][j], 0));
+  function elem(a, b, D, nu, Ci) {
+    const K = Array.from({ length: 12 }, () => new Float64Array(12)), Fu = new Float64Array(12);
+    G3.forEach(([gx, wx]) => G3.forEach(([gy, wy]) => {
+      const x = a * (gx + 1) / 2, y = b * (gy + 1) / 2, w = wx * wy * a * b / 4;
+      const Bxx = mulRow(pxx(x, y), Ci), Byy = mulRow(pyy(x, y), Ci), Bxy = mulRow(pxy(x, y), Ci);
+      for (let i = 0; i < 12; i++) for (let j = 0; j < 12; j++)
+        K[i][j] += w * D * (Bxx[i] * Bxx[j] + Byy[i] * Byy[j] + nu * (Bxx[i] * Byy[j] + Byy[i] * Bxx[j]) + 2 * (1 - nu) * Bxy[i] * Bxy[j]);
+      const Nw = mulRow(poly(x, y), Ci); for (let i = 0; i < 12; i++) Fu[i] += w * Nw[i];
+    }));
+    return { K, Fu };
+  }
+  // malha nx × ny; t(yc) espessura no centro do elemento; p(y) carga; E em kPa
+  function solve(s, H, nx, ny, tOf, pList, E, nu = 0.2) {
+    const a = s / nx, b = H / ny, nn = (nx + 1) * (ny + 1), ndof = 3 * nn, Ci = Cinv(a, b);
+    const id = (i, j) => j * (nx + 1) + i;
+    const fixed = new Uint8Array(ndof);
+    for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) if (i === 0 || i === nx || j === 0) for (let k = 0; k < 3; k++) fixed[3 * id(i, j) + k] = 1;
+    const K = Array.from({ length: ndof }, () => new Float64Array(ndof)), F = pList.map(() => new Float64Array(ndof));
+    const els = [];
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const yc = (j + 0.5) * b, t = tOf(yc), D = E * t * t * t / (12 * (1 - nu * nu));
+      const { K: ke, Fu } = elem(a, b, D, nu, Ci);
+      const nodes = [id(i, j), id(i + 1, j), id(i + 1, j + 1), id(i, j + 1)], dofs = [];
+      nodes.forEach(n => { dofs.push(3 * n, 3 * n + 1, 3 * n + 2); });
+      for (let r = 0; r < 12; r++) for (let c = 0; c < 12; c++) K[dofs[r]][dofs[c]] += ke[r][c];
+      pList.forEach((pf, L) => { const pv = pf(yc); for (let r = 0; r < 12; r++) F[L][dofs[r]] += pv * Fu[r]; });
+      els.push({ i, j, nodes, dofs, D, t });
+    }
+    // condições de contorno e solução (eliminação de Gauss com pivô parcial nos graus livres)
+    const free = []; for (let k = 0; k < ndof; k++) if (!fixed[k]) free.push(k);
+    const n = free.length, A = free.map(r => Float64Array.from(free.map(c => K[r][c]))), R = pList.map((_, L) => Float64Array.from(free.map(r => F[L][r])));
+    for (let c = 0; c < n; c++) {
+      let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      if (piv !== c) { [A[c], A[piv]] = [A[piv], A[c]]; R.forEach(v => { const t = v[c]; v[c] = v[piv]; v[piv] = t; }); }
+      const d = A[c][c];
+      for (let r = c + 1; r < n; r++) { const f = A[r][c] / d; if (!f) continue; const Ar = A[r], Ac = A[c]; for (let j = c; j < n; j++) Ar[j] -= f * Ac[j]; R.forEach(v => { v[r] -= f * v[c]; }); }
+    }
+    const U = R.map(v => { const x = new Float64Array(n); for (let r = n - 1; r >= 0; r--) { let s2 = v[r]; for (let j = r + 1; j < n; j++) s2 -= A[r][j] * x[j]; x[r] = s2 / A[r][r]; } const u = new Float64Array(ndof); free.forEach((k, i) => { u[k] = x[i]; }); return u; });
+    // momentos nos nós (média dos elementos vizinhos); mx = −D(w,xx + ν w,yy), my = −D(w,yy + ν w,xx)
+    const res = U.map(u => {
+      const mx = new Float64Array(nn), my = new Float64Array(nn), cnt = new Float64Array(nn), w = new Float64Array(nn);
+      for (let k = 0; k < nn; k++) w[k] = u[3 * k];
+      els.forEach(e => {
+        const de = e.dofs.map(k => u[k]), al = Ci.map(row => row.reduce((s2, v, k) => s2 + v * de[k], 0));
+        [[0, 0], [a, 0], [a, b], [0, b]].forEach(([x, y], q) => {
+          const wxx = pxx(x, y).reduce((s2, v, k) => s2 + v * al[k], 0), wyy = pyy(x, y).reduce((s2, v, k) => s2 + v * al[k], 0);
+          const nd = e.nodes[q];
+          // sinal: carga positiva (do aterro para a frente) traciona a face da frente no meio do vão
+          mx[nd] += e.D * (wxx + nu * wyy) * -1; my[nd] += e.D * (wyy + nu * wxx) * -1; cnt[nd]++;
+        });
+      });
+      for (let k = 0; k < nn; k++) { mx[k] /= cnt[k]; my[k] /= cnt[k]; }
+      return { mx, my, w };
+    });
+    const X = [], Y = []; for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { X.push(i * a); Y.push(j * b); }
+    return { nx, ny, a, b, X, Y, res };
+  }
+  return { solve, Cinv };
+})();
+
+/* ===================== Dimensionamento ===================== */
+const DIM = (function () {
+  // momento e cortante no muro (haste) na profundidade z abaixo do topo, para sobrecarga qq
+  function stemMV(r, z, qq) {
+    const n = 200, dz = z / n; let V = 0, M = 0;
+    for (let i = 0; i < n; i++) { const zz = (i + 0.5) * dz, s = r.sigA(zz, qq); V += s * dz; M += s * dz * (z - zz); }
+    return { V, M };
+  }
+  // linha de dimensionamento
+  function row(o, P, p, ov) {
+    const h = o.h, cov = p.cob, asMin = CA.rhoMin(p.fck) * 100 * h * 100 * (o.minF || 1);
+    const d0 = h - cov / 100 - 0.00625;
+    const fl = CA.flex(o.Md, h, d0, P);
+    const Asnec = Math.max(fl.As, asMin, o.asExtra || 0);
+    const ch = CA.choose(Asnec, o.Mser || 0, h, cov, P, p.wlim, ov && ov[o.key]);
+    const flc = CA.flex(o.Md, h, ch.d, P);
+    const Vrd = o.Vd != null ? CA.vrd1(ch.d, ch.As, P) : null;
+    return Object.assign({}, o, {
+      asMin, Ascalc: flc.As, Asnec: Math.max(flc.As, asMin, o.asExtra || 0), xd: flc.xd, ch, d: ch.d, Vrd,
+      okFlex: flc.ok && ch.As >= Math.max(flc.As, asMin, o.asExtra || 0) - 1e-9, okW: ch.wk <= p.wlim + 1e-9, okV: Vrd == null || o.Vd <= Vrd + 1e-9,
+      manual: !!(ov && ov[o.key])
+    });
+  }
+  function run(r, rS, p, ov) {
+    const P = CA.mat(p), gf = p.gf, rows = [];
+    const H = p.H, tOf = z => p.tt + (p.tb - p.tt) * z / H;    // espessura do muro na profundidade z (do topo)
+    const qS = p.q * p.psi1;
+    // ---------- muro (haste)
+    const secs = [];
+    let plate = null;
+    if (!r.cOn) {
+      for (let k = 1; k <= 5; k++) {
+        const z = H * k / 5, mu = stemMV(r, z, p.q), ms = stemMV(r, z, qS);
+        secs.push({ z, h: tOf(z), Mk: mu.M, Vk: mu.V, Mser: ms.M });
+      }
+      const b = secs[secs.length - 1];
+      rows.push(row({ key: 'mv', grp: 'Muro', name: 'Vertical, face do aterro (na base)', h: b.h, Md: gf * b.Mk, Mser: b.Mser, Vd: gf * stemMV(r, Math.max(0, H - (b.h - p.cob / 100)), p.q).V }, P, p, ov));
+      const asp = rows[rows.length - 1].ch.As;
+      rows.push(row({ key: 'mf', grp: 'Muro', name: 'Vertical, face da frente (construtiva)', h: b.h, Md: 0, Mser: 0, minF: 0.5 }, P, p, ov));
+      rows.push(row({ key: 'mh', grp: 'Muro', name: 'Horizontal (distribuição), cada face', h: b.h, Md: 0, Mser: 0, minF: 0.5, asExtra: Math.max(0.2 * asp, 0.9) }, P, p, ov));
+    } else {
+      // ---------- parede como placa entre contrafortes (elementos finitos), carga ELU e de serviço
+      const ny = 16, nx = 12, Ec = CA.mat(p).Ecs * 1000;
+      const pU = y => gf * r.sigA(H - y, p.q), pS = y => r.sigA(H - y, qS);
+      plate = PLACA.solve(p.s, H, nx, ny, y => tOf(H - y), [pU, pS], Ec, 0.2);
+      plate.H = H;
+      const U = plate.res[0], S = plate.res[1];
+      const ext = (arr, sign) => { let best = 0, k0 = 0; arr.forEach((v, k) => { if (sign * v > best) { best = sign * v; k0 = k; } }); return { v: best, k: k0 }; };
+      const hAt = k => tOf(H - plate.Y[k]);
+      const mk = (key, name, arrU, arrS, sign) => { const e = ext(arrU, sign); const hs = hAt(e.k); rows.push(row({ key, grp: 'Parede entre contrafortes', name, h: hs, Md: e.v, Mser: Math.max(0, sign * arrS[e.k]), at: { x: plate.X[e.k], y: plate.Y[e.k] } }, P, p, ov)); };
+      mk('pha', 'Horizontal, face do aterro (sobre os contrafortes)', U.mx, S.mx, -1);
+      mk('phf', 'Horizontal, face da frente (meio do vão)', U.mx, S.mx, 1);
+      mk('pva', 'Vertical, face do aterro (junto à base)', U.my, S.my, -1);
+      mk('pvf', 'Vertical, face da frente', U.my, S.my, 1);
+      // contraforte (viga T em balanço, engastada na base): toda a carga da faixa s
+      const mu = stemMV(r, H, p.q), vu = mu.V;
+      const dC = p.tb + p.bc - p.cob / 100 - 0.0125, alpha = Math.atan2(p.hc, p.bc), fyd = P.fyd * 1000;
+      const MdC = gf * mu.M * p.s, VdC = gf * vu * p.s;
+      const AsInc = MdC / (0.9 * dC * fyd * Math.sin(alpha)) * 1e4;
+      // cortante (NBR 6118, 17.4.2.2, modelo I): biela VRd2, parcela do concreto Vc e estribos
+      const fcdk = P.fcd * 1000, bw = p.ec, fctd = P.fctd * 1000;
+      const VRd2 = 0.27 * (1 - p.fck / 250) * fcdk * bw * dC, Vc = 0.6 * fctd * bw * dC;
+      const AswS = Math.max((VdC - Vc) / (0.9 * dC * fyd), 0) * 1e4;                 // cm²/m
+      const AswMin = 0.2 * P.fctm / p.fyk * bw * 100 * 100;                         // cm²/m
+      const tieH = gf * r.sigA(H, p.q) * p.s / fyd * 1e4;   // cm²/m de altura (parede → contraforte)
+      rows.cont = { MdC, VdC, dC, alpha, AsInc, VRd2, Vc, AswS, AswMin, Asw: Math.max(AswS, AswMin), okV: VdC <= VRd2, tieH };
+    }
+    // ---------- sapata: ponta e talão (balanços a partir das faces do muro)
+    const integ = (x0, x1, f, n = 200) => { let s = 0; const dx = (x1 - x0) / n; for (let i = 0; i < n; i++) s += f(x0 + (i + 0.5) * dx) * dx; return s; };
+    const hBase = x => x <= r.xf ? p.he + (p.hs - p.he) * (r.xf > 0 ? x / r.xf : 1) : x >= r.xb ? p.hs + (p.he - p.hs) * (x - r.xb) / Math.max(1e-9, p.B3) : p.hs;
+    if (p.B1 > 0.01) {
+      const net = (rr, x) => rr.sigma(x) - p.gc * hBase(x);
+      const Mk = integ(0, r.xf, x => net(r, x) * (r.xf - x)), Ms = integ(0, r.xf, x => net(rS, x) * (r.xf - x));
+      const dv = p.hs - p.cob / 100 - 0.00625, xv = Math.max(0, r.xf - dv);
+      const Vk = integ(0, xv, x => net(r, x));
+      rows.push(row({ key: 'pt', grp: 'Sapata', name: 'Ponta: face inferior', h: p.hs, Md: gf * Math.max(0, Mk), Mser: Math.max(0, Ms), Vd: gf * Math.max(0, Vk) }, P, p, ov));
+    }
+    // talão: carga para baixo (solo + sobrecarga + peso) menos a reação do solo
+    const yTop = x => hBase(x);
+    const down = (qq, x) => p.ga * (r.yT - yTop(x)) + (x >= r.xbt ? qq : 0) + p.gc * hBase(x);
+    const netT = (rr, qq, x) => down(qq, x) - rr.sigma(x);
+    if (!r.cOn) {
+      const Mk = integ(r.xb, r.B, x => netT(r, p.q, x) * (x - r.xb)), Ms = integ(r.xb, r.B, x => netT(rS, qS, x) * (x - r.xb));
+      const dv = p.hs - p.cob / 100 - 0.00625, Vk = integ(r.xb + dv, r.B, x => netT(r, p.q, x));
+      rows.push(row({ key: 'tl', grp: 'Sapata', name: 'Talão: face superior', h: p.hs, Md: gf * Math.max(0, Mk), Mser: Math.max(0, Ms), Vd: gf * Math.max(0, Vk) }, P, p, ov));
+      if (Mk < 0) rows.push(row({ key: 'tli', grp: 'Sapata', name: 'Talão: face inferior', h: p.hs, Md: gf * -Mk, Mser: Math.max(0, -Ms) }, P, p, ov));
+    } else {
+      // talão como laje contínua entre contrafortes (faixa paralela ao muro), com a maior carga líquida
+      let qk = 0, qs = 0; for (let i = 0; i <= 40; i++) { const x = r.xb + (r.B - r.xb) * i / 40; qk = Math.max(qk, netT(r, p.q, x)); qs = Math.max(qs, netT(rS, qS, x)); }
+      rows.push(row({ key: 'tla', grp: 'Talão entre contrafortes', name: 'Paralela ao muro, face superior (sobre os contrafortes)', h: p.he, Md: gf * qk * p.s * p.s / 12, Mser: qs * p.s * p.s / 12, Vd: gf * qk * p.s / 2 }, P, p, ov));
+      rows.push(row({ key: 'tlv', grp: 'Talão entre contrafortes', name: 'Paralela ao muro, face inferior (meio do vão)', h: p.he, Md: gf * qk * p.s * p.s / 24, Mser: qs * p.s * p.s / 24 }, P, p, ov));
+      rows.cont.tieV = gf * qk * p.s / (P.fyd * 1000) * 1e4;   // cm²/m ao longo do talão
+    }
+    const asBase = Math.max(...rows.filter(x => x.grp !== 'Muro' && x.grp !== 'Parede entre contrafortes').map(x => x.ch.As), 0);
+    rows.push(row({ key: 'sd', grp: 'Sapata', name: 'Distribuição (perpendicular à principal), cada face', h: p.hs, Md: 0, Mser: 0, minF: 0.5, asExtra: Math.max(0.2 * asBase, 0.9) }, P, p, ov));
+    // ---------- dente: balanço para baixo, carregado pelo passivo
+    if (r.dOn) {
+      const n = 100, hdd = p.hd; let Mk = 0, Vk = 0;
+      for (let i = 0; i < n; i++) { const yy = -(i + 0.5) * hdd / n, d = p.hf - yy, s = r.sigP(d) * p.pRed, dy = hdd / n; Vk += s * dy; Mk += s * dy * (-yy); }
+      rows.push(row({ key: 'dt', grp: 'Dente', name: 'Vertical, face da frente', h: p.bd, Md: gf * Mk, Mser: Mk, Vd: gf * Vk }, P, p, ov));
+    }
+    // ---------- flecha no topo (sem contrafortes): Branson com a armadura adotada; com contrafortes, da placa
+    let fl = null;
+    if (!r.cOn) {
+      const mv = rows.find(x => x.key === 'mv'), As = mv.ch.As, Ec = P.Ecs * 1000, n = 100, ae = P.Es / P.Ecs;
+      let dI = 0;
+      for (let i = 0; i < n; i++) {
+        const z = (i + 0.5) * H / n, h = tOf(z), Ma = stemMV(r, z, p.q * p.psi2).M, Ic = h * h * h / 12;
+        const Mr = 1.5 * P.fctm * 1000 * Ic / (h / 2);
+        const d = h - p.cob / 100 - mv.ch.phi / 2000, A = As / 1e4, x = (-ae * A + Math.sqrt(Math.pow(ae * A, 2) + 2 * ae * A * d)) / 1;
+        const I2 = x * x * x / 3 + ae * A * Math.pow(d - x, 2);
+        const Ie = Ma <= Mr ? Ic : Math.min(Ic, Math.pow(Mr / Ma, 3) * Ic + (1 - Math.pow(Mr / Ma, 3)) * I2);
+        dI += Ma / (Ec * Ie) * z * (H / n);
+      }
+      const af = 1.32, tot = dI * (1 + af), lim = 2 * H / 250;
+      fl = { imed: dI, af, tot, lim, ok: tot <= lim };
+    } else {
+      let wmax = 0; plate.res[1].w.forEach(v => { wmax = Math.max(wmax, Math.abs(v)); });
+      const af = 1.32, tot = wmax * (1 + af), lim = Math.min(p.s, 2 * H) / 250;
+      fl = { imed: wmax, af, tot, lim, ok: tot <= lim, placa: true };
+    }
+    return { rows, secs, plate, fl, P };
+  }
+  return { run, stemMV };
+})();
+
+/* ===================== Interface ===================== */
+const fmt = (n, d = 2) => (n == null || !Number.isFinite(n)) ? '–' : n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fz = n => (Math.abs(n) < 0.005 ? '0,00' : (n > 0 ? '+' : '') + fmt(n, 2));
+const DEFAULTS = {   // exemplo da planilha "Muro contraforte"
+  H: 1.45, tt: 0.25, tb: 0.25, B1: 0, B3: 1.20, hs: 0.25, he: 0.25,
+  dOn: false, bd: 0.30, hd: 0.30, xd: 1.30,
+  cOn: false, s: 2.50, ec: 0.20, bc: 1.20, hc: 1.45,
+  ga: 18, fa: 20, ca: 0, q: 20,
+  gb: 18, fb: 20, cb: 5, sadm: 150, hf: 1.00, pOn: true, pRed: 1,
+  FSTmin: 2, FSDmin: 1.5, gphi: 1, gcoh: 1, qEst: false, pTomb: false,
+  gc: 25, fck: 25, fyk: 500, cob: 4, wlim: 0.3, gf: 1.4, psi1: 0.4, psi2: 0.3
+};
+const LIM = {   // validação: [mín, máx]
+  H: [0.3, 12], tt: [0.1, 2], tb: [0.1, 3], B1: [0, 10], B3: [0, 15], hs: [0.1, 3], he: [0.1, 3], bd: [0.1, 3], hd: [0.05, 3], xd: [0, 30],
+  s: [0.5, 15], ec: [0.1, 2], bc: [0.1, 15], hc: [0.1, 12], ga: [5, 30], fa: [0, 50], ca: [0, 500], q: [0, 500], gb: [5, 30], fb: [0, 50], cb: [0, 500],
+  sadm: [1, 5000], hf: [0, 12], pRed: [0, 1], FSTmin: [1, 5], FSDmin: [1, 5], gphi: [1, 3], gcoh: [1, 5], gc: [15, 30], fck: [20, 50], fyk: [250, 600],
+  cob: [1.5, 10], wlim: [0.05, 0.5], gf: [1, 2], psi1: [0, 1], psi2: [0, 1]
+};
+const KEY = 'muro-contencao-v1', OVKEY = 'muro-contencao-v1-ov', TABKEY = 'muro-contencao-v1-tab';
+let state = Object.assign({}, DEFAULTS), armOv = {};
+try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o) Object.keys(DEFAULTS).forEach(k => { if (k in o && typeof o[k] === typeof DEFAULTS[k]) state[k] = o[k]; }); } catch (e) {}
+try { const o = JSON.parse(localStorage.getItem(OVKEY) || 'null'); if (o && typeof o === 'object') armOv = o; } catch (e) {}
+const el = id => document.getElementById(id);
+const invalid = new Set();
+const parseNum = s => { const t = String(s).trim().replace(/\s/g, '').replace(',', '.'); return t === '' || isNaN(+t) ? NaN : +t; };
+let last = null;
+
+function bind() {
+  Object.keys(DEFAULTS).forEach(k => {
+    const i = el('in-' + k); if (!i) return;
+    if (typeof DEFAULTS[k] === 'boolean') {
+      i.checked = !!state[k];
+      i.addEventListener('change', () => { state[k] = i.checked; render(); });
+    } else {
+      i.setAttribute('inputmode', 'decimal'); i.autocomplete = 'off';
+      i.value = fmt(state[k], k === 'fa' || k === 'fb' || k === 'ga' || k === 'gb' || k === 'gc' ? 1 : k === 'sadm' || k === 'fck' || k === 'fyk' || k === 'q' || k === 'ca' || k === 'cb' ? 0 : 2);
+      i.addEventListener('input', () => {
+        const v = parseNum(i.value), L = LIM[k], f = i.closest('.field');
+        const bad = !Number.isFinite(v) || (L && (v < L[0] || v > L[1]));
+        if (f) f.classList.toggle('bad', bad);
+        if (bad) invalid.add(k); else { invalid.delete(k); state[k] = v; }
+        render();
+      });
+    }
+  });
+}
+function setTab(t) {
+  ['est', 'arm'].forEach(x => { el('tb-' + x).setAttribute('aria-selected', String(x === t)); el('tab-' + x).hidden = x !== t; });
+  try { localStorage.setItem(TABKEY, t); } catch (e) {}
+}
+
+/* ---------- desenho do corte (SVG). pal: cores; tela usa var(--x), memorial usa hex ---------- */
+const PRINT = { concrete: '#cfd6dc', 'concrete-line': '#5f6b77', soil: '#e6d5b1', 'soil-line': '#8c6c3c', found: '#ead9b8', ativo: '#c0612a', passivo: '#2b6cb0', q: '#7a4fb0', sig: '#2e7d50', ink: '#1f2b37', muted: '#5e6b78', surface: '#ffffff', line: '#d9e0e7' };
+function drawCorte(r, print) {
+  const C = k => print ? PRINT[k] : `var(--${k})`;
+  const p = r.p, B = r.B;
+  const sMaxP = Math.max(...Array.from({ length: 41 }, (_, i) => r.sigA(r.Ha * i / 40, p.q)), 1);
+  const sigPmax = r.Ep.h > 0 ? r.sigP(r.Ep.h) * p.pRed : 0;
+  const sMx = Number.isFinite(r.sMax) ? r.sMax : 1;
+  const kA = 0.9 / Math.max(sMaxP, 1), kP = sigPmax > 0 ? 0.7 / sigPmax : 0, kS = 0.55 / Math.max(sMx, 1);   // m de desenho por kPa
+  // margens laterais com espaço para os rótulos dos empuxos (em m de desenho, proporcional à altura do muro)
+  const lab = Math.max(0.9, 0.55 * (r.yT - r.yb));
+  const Xmin = -Math.max(0.9, sigPmax * kP + 0.35 + (p.pOn && r.Ep.h > 0 ? lab : 0)), Xmax = B + Math.max(1.1, sMaxP * kA + 0.45 + lab);
+  const Ymin = r.yb - Math.max(0.45, sMx * kS + 0.3), Ymax = r.yT + 0.75;
+  const W = 900, pad = 46, sc = (W - 2 * pad) / (Xmax - Xmin), Hh = (Ymax - Ymin) * sc + 2 * pad;
+  const X = x => pad + (x - Xmin) * sc, Y = y => pad + (Ymax - y) * sc;
+  const pts = P => P.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(' ');
+  const T = (x, y, t, o = {}) => `<text x="${X(x).toFixed(1)}" y="${Y(y).toFixed(1)}" font-size="${o.fs || 12}" text-anchor="${o.a || 'middle'}" fill="${o.c || C('ink')}"${o.b ? ' font-weight="600"' : ''} class="halo">${t}</text>`;
+  let s = `<svg viewBox="0 0 ${W} ${Hh.toFixed(0)}" role="img" aria-label="Corte do muro com empuxos e tensões no solo">`;
+  s += `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C('ink')}"/></marker></defs>`;
+  // solo: fundação, aterro, frente
+  s += `<rect x="${X(Xmin)}" y="${Y(0)}" width="${(Xmax - Xmin) * sc}" height="${(0 - (r.yb - 0.25)) * sc}" fill="${C('found')}" opacity=".55"/>`;
+  s += `<polygon points="${pts([[r.xbt, r.yT], [Xmax, r.yT], [Xmax, 0], [B, 0], [B, p.he], [r.xb, p.hs]])}" fill="${C('soil')}" opacity=".75"/>`;
+  s += `<line x1="${X(r.xbt)}" y1="${Y(r.yT)}" x2="${X(Xmax)}" y2="${Y(r.yT)}" stroke="${C('soil-line')}" stroke-width="1.5"/>`;
+  if (p.hf > 0) {
+    // solo na frente: de x mínimo até a face da frente do muro, da face inferior da base ao nível do terreno (o concreto cobre a sobreposição)
+    s += `<polygon points="${pts([[Xmin, 0], [r.xf, 0], [r.xf, p.hf], [Xmin, p.hf]])}" fill="${C('soil')}" opacity=".75"/>`;
+    s += `<line x1="${X(Xmin)}" y1="${Y(p.hf)}" x2="${X(r.xf)}" y2="${Y(p.hf)}" stroke="${C('soil-line')}" stroke-width="1.5"/>`;
+  }
+  // contraforte (atrás do plano do corte)
+  if (r.cOn) s += `<polygon points="${pts(r.cont)}" fill="${C('concrete')}" opacity=".55" stroke="${C('concrete-line')}" stroke-dasharray="5 4" stroke-width="1.2"/>`;
+  // concreto
+  [r.base, r.stem, r.dente].filter(Boolean).forEach(P => { s += `<polygon points="${pts(P)}" fill="${C('concrete')}" stroke="${C('concrete-line')}" stroke-width="1.6"/>`; });
+  // sobrecarga
+  if (p.q > 0) {
+    const n = Math.max(3, Math.round((Xmax - r.xbt) / 0.3));
+    for (let i = 0; i <= n; i++) { const x = r.xbt + (Xmax - 0.05 - r.xbt) * i / n; s += `<line x1="${X(x)}" y1="${Y(r.yT + 0.42)}" x2="${X(x)}" y2="${Y(r.yT + 0.04)}" stroke="${C('q')}" stroke-width="1.3" marker-end="url(#arr)"/>`; }
+    s += `<line x1="${X(r.xbt)}" y1="${Y(r.yT + 0.42)}" x2="${X(Xmax - 0.05)}" y2="${Y(r.yT + 0.42)}" stroke="${C('q')}" stroke-width="1.3"/>`;
+    s += T((r.xbt + Xmax) / 2, r.yT + 0.52, `q = ${fmt(p.q, 1)} kN/m²`, { c: C('q'), b: true });
+  }
+  // empuxo ativo: diagrama no plano vertical da extremidade do talão
+  const nA = 40, Pa = [[B, r.yT]];
+  for (let i = 0; i <= nA; i++) { const d = r.Ha * i / nA; Pa.push([B + r.sigA(d, p.q) * kA, r.yT - d]); }
+  Pa.push([B, r.yb]);
+  s += `<polygon points="${pts(Pa)}" fill="${C('ativo')}" opacity=".32" stroke="${C('ativo')}" stroke-width="1.3"/>`;
+  s += `<line x1="${X(B)}" y1="${Y(r.yT)}" x2="${X(B)}" y2="${Y(r.yb)}" stroke="${C('ativo')}" stroke-width="1" stroke-dasharray="4 3"/>`;
+  const xa = B + sMaxP * kA + 0.35;
+  s += `<line x1="${X(xa)}" y1="${Y(r.Ea.y)}" x2="${X(B + 0.04)}" y2="${Y(r.Ea.y)}" stroke="${C('ativo')}" stroke-width="2.6" marker-end="url(#arr)"/>`;
+  s += T(xa + 0.02, r.Ea.y + 0.09, `E<tspan font-size="9" dy="3">a</tspan><tspan dy="-3"> = ${fmt(r.Ea.R, 1)} kN/m</tspan>`, { a: 'start', c: C('ativo'), b: true });
+  s += T(B + r.sigA(r.Ha, p.q) * kA + 0.04, r.yb + 0.05, `${fmt(r.sigA(r.Ha, p.q), 1)} kPa`, { a: 'start', fs: 11, c: C('ativo') });
+  // passivo
+  if (r.Ep.h > 0 && p.pOn) {
+    const Pp = [[0, p.hf]]; for (let i = 0; i <= 30; i++) { const d = r.Ep.h * i / 30; Pp.push([-(r.sigP(d) * p.pRed) * kP, p.hf - d]); } Pp.push([0, r.yb]);
+    s += `<polygon points="${pts(Pp)}" fill="${C('passivo')}" opacity=".28" stroke="${C('passivo')}" stroke-width="1.3"/>`;
+    const xp = -(sigPmax * kP) - 0.3;
+    s += `<line x1="${X(xp)}" y1="${Y(r.Ep.y)}" x2="${X(-0.04)}" y2="${Y(r.Ep.y)}" stroke="${C('passivo')}" stroke-width="2.6" marker-end="url(#arr)"/>`;
+    s += T(xp - 0.02, r.Ep.y + 0.09, `E<tspan font-size="9" dy="3">p</tspan><tspan dy="-3"> = ${fmt(r.Ep.R, 1)} kN/m</tspan>`, { a: 'end', c: C('passivo'), b: true });
+  }
+  // tensões no solo sob a base
+  const nS = 40, Ps = [[0, r.yb - 0.02]];
+  for (let i = 0; i <= nS; i++) { const x = B * i / nS; Ps.push([x, r.yb - 0.02 - r.sigma(x) * kS]); }
+  Ps.push([B, r.yb - 0.02]);
+  s += `<polygon points="${pts(Ps)}" fill="${C('sig')}" opacity=".25" stroke="${C('sig')}" stroke-width="1.3"/>`;
+  const sA = r.sigma(0), sB = r.sigma(B);
+  s += T(0, r.yb - 0.06 - sA * kS - 0.12, `${fmt(sA, 1)} kPa`, { a: 'start', fs: 11, c: C('sig'), b: true });
+  s += T(B, r.yb - 0.06 - sB * kS - 0.12, `${fmt(sB, 1)} kPa`, { a: 'end', fs: 11, c: C('sig'), b: true });
+  if (r.tri && Number.isFinite(r.sMax)) s += T(B / 2, r.yb - 0.06 - sMx * kS - 0.3, `trecho descolado: contato em ${fmt(r.cont3, 2)} m`, { fs: 11, c: C('sig') });
+  // resultante vertical
+  s += `<line x1="${X(r.xR)}" y1="${Y(r.yb - 0.02 - r.sigma(r.xR) * kS - 0.05)}" x2="${X(r.xR)}" y2="${Y(r.yb + 0.02)}" stroke="${C('ink')}" stroke-width="1.4" marker-end="url(#arr)"/>`;
+  // cotas
+  const dimH = (x1, x2, y, t) => `<line x1="${X(x1)}" y1="${Y(y)}" x2="${X(x2)}" y2="${Y(y)}" stroke="${C('muted')}" stroke-width="1"/><line x1="${X(x1)}" y1="${Y(y) - 4}" x2="${X(x1)}" y2="${Y(y) + 4}" stroke="${C('muted')}"/><line x1="${X(x2)}" y1="${Y(y) - 4}" x2="${X(x2)}" y2="${Y(y) + 4}" stroke="${C('muted')}"/>` + T((x1 + x2) / 2, y + 0.05, t, { fs: 11, c: C('muted') });
+  const dimV = (y1, y2, x, t) => `<line x1="${X(x)}" y1="${Y(y1)}" x2="${X(x)}" y2="${Y(y2)}" stroke="${C('muted')}" stroke-width="1"/><line x1="${X(x) - 4}" y1="${Y(y1)}" x2="${X(x) + 4}" y2="${Y(y1)}" stroke="${C('muted')}"/><line x1="${X(x) - 4}" y1="${Y(y2)}" x2="${X(x) + 4}" y2="${Y(y2)}" stroke="${C('muted')}"/>` + `<text x="${X(x) - 6}" y="${Y((y1 + y2) / 2)}" font-size="11" fill="${C('muted')}" text-anchor="middle" transform="rotate(-90 ${X(x) - 6} ${Y((y1 + y2) / 2)})" class="halo">${t}</text>`;
+  const yd = r.yT + 0.2;
+  if (p.B1 > 0) s += dimH(0, r.xf, yd, `B₁ ${fmt(p.B1)}`);
+  s += dimH(r.xf, r.xbt, yd, fmt(p.tt));
+  s += dimH(r.xb, B, p.hs + 0.12, `B₃ ${fmt(p.B3)}`);
+  s += dimV(p.hs, r.yT, r.xf - 0.12, `H ${fmt(p.H)}`);
+  s += T(r.xf + p.tb / 2, p.hs * 0.42, fmt(p.hs), { fs: 10.5, c: C('muted') });
+  s += T(B / 2, Ymin + 0.08, `B = ${fmt(B)} m`, { fs: 11.5, c: C('muted'), b: true });
+  s += '</svg>';
+  return { svg: s, W, H: Hh };
+}
+
+/* ---------- mapa de cores da placa (arco-íris em faixas, vermelho = maior |M|) ---------- */
+const ARCO = ['#3949ab', '#1e88e5', '#29b6f6', '#26c6da', '#26a69a', '#66bb6a', '#9ccc65', '#d4e157', '#ffee58', '#ffca28', '#ffa726', '#fb8c00', '#f4511e', '#d32f2f'];
+function corFaixa(i, n) {
+  const cs = ARCO.map(h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)));
+  const t = (n > 1 ? i / (n - 1) : 0.5) * (cs.length - 1), a = Math.min(cs.length - 2, Math.floor(t)), f = t - a;
+  return 'rgb(' + cs[a].map((v, k) => Math.round(v + (cs[a + 1][k] - v) * f)).join(',') + ')';
+}
+function mapPlaca(pl, arr, title) {
+  const nx = pl.nx, ny = pl.ny, W = 520, H = 470, pad = 30, legW = 120;
+  const s = Math.min((W - legW - 2 * pad) / (nx * pl.a), (H - 2 * pad - 20) / (ny * pl.b));
+  const ox = pad, oy = H - pad;
+  let lo = Infinity, hi = -Infinity; arr.forEach(v => { lo = Math.min(lo, v); hi = Math.max(hi, v); });
+  if (hi - lo < 1e-9) hi = lo + 1;
+  const NF = 12, band = v => Math.min(NF - 1, Math.max(0, Math.floor((v - lo) / (hi - lo) * NF)));
+  const id = (i, j) => j * (nx + 1) + i;
+  let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}"><rect width="${W}" height="${H}" fill="#ffffff"/>`;
+  const N = 4;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const v = [arr[id(i, j)], arr[id(i + 1, j)], arr[id(i + 1, j + 1)], arr[id(i, j + 1)]];
+    for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) {
+      const u = (a + 0.5) / N, w = (b + 0.5) / N, val = v[0] * (1 - u) * (1 - w) + v[1] * u * (1 - w) + v[2] * u * w + v[3] * (1 - u) * w;
+      const x = ox + (i + a / N) * pl.a * s, y = oy - (j + (b + 1) / N) * pl.b * s, c = corFaixa(band(val), NF);
+      g += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(pl.a * s / N + 0.6).toFixed(1)}" height="${(pl.b * s / N + 0.6).toFixed(1)}" fill="${c}"/>`;
+    }
+  }
+  g += `<rect x="${ox}" y="${oy - ny * pl.b * s}" width="${nx * pl.a * s}" height="${ny * pl.b * s}" fill="none" stroke="#1f2b37" stroke-width="1.5"/>`;
+  g += `<text x="${ox + nx * pl.a * s / 2}" y="${oy - ny * pl.b * s - 8}" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2b37">${title}</text>`;
+  g += `<text x="${ox}" y="${oy + 16}" font-size="11" fill="#5e6b78">contraforte</text><text x="${ox + nx * pl.a * s}" y="${oy + 16}" font-size="11" text-anchor="end" fill="#5e6b78">contraforte</text>`;
+  g += `<text x="${ox + nx * pl.a * s / 2}" y="${oy + 16}" font-size="11" text-anchor="middle" fill="#5e6b78">base</text>`;
+  const lx = W - legW + 8, bh = Math.min(28, (H - 90) / NF), ly = (H - NF * bh) / 2;
+  g += `<text x="${lx}" y="${ly - 10}" font-size="12" font-weight="600" fill="#1f2b37">kN·m/m</text>`;
+  for (let i = 0; i < NF; i++) g += `<rect x="${lx}" y="${ly + i * bh}" width="16" height="${bh}" fill="${corFaixa(NF - 1 - i, NF)}"/>`;
+  for (let i = 0; i <= NF; i += 2) g += `<text x="${lx + 22}" y="${ly + i * bh + 4}" font-size="11" fill="#1f2b37" font-family="Consolas,monospace">${fmt(hi - (hi - lo) * i / NF, 1)}</text>`;
+  return g + '</svg>';
+}
+
+/* ---------- render ---------- */
+function compute() {
+  const p = Object.assign({}, state);
+  const r = MC.compute(p), rS = MC.compute(Object.assign({}, p, { q: p.q * p.psi1 }));
+  const D = DIM.run(r, rS, p, armOv);
+  return { p, r, rS, D };
+}
+const card = (t, v, s, ok, warn) => `<div class="card ${ok ? '' : (warn ? 'warn' : 'bad')}"><span class="t">${t}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
+function render() {
+  el('out-B').value = fmt(state.B1 + state.tb + state.B3);
+  el('grp-dente').classList.toggle('off', !state.dOn);
+  el('grp-cont').classList.toggle('off', !state.cOn);
+  ['in-pRed'].forEach(id => el(id).closest('.field').classList.toggle('off', !state.pOn));
+  if (invalid.size) { el('warns').innerHTML = '<p>Há campos fora do intervalo aceito (em vermelho). Os resultados mostram os últimos valores válidos.</p>'; }
+  let o; try { o = compute(); } catch (e) { console.error(e); el('warns').innerHTML = '<p>Não foi possível calcular com estes dados. Confira a geometria.</p>'; return; }
+  last = o;
+  const { p, r, D } = o;
+  try { if (!invalid.size) localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  // avisos
+  const w = [];
+  if (invalid.size) w.push('Há campos fora do intervalo aceito (em vermelho). Os resultados mostram os últimos valores válidos.');
+  if (!Number.isFinite(r.sMax)) w.push('A resultante das forças cai fora da base: o muro tomba. Aumente a base (ponta ou talão).');
+  else if (r.tri) w.push(`A resultante sai do núcleo central (e = ${fmt(Math.abs(r.e), 3)} m > B/6 = ${fmt(r.B / 6, 3)} m): parte da base descola. Aumente a base ou a ponta.`);
+  if (p.dOn && (p.xd - p.bd / 2 < -1e-6 || p.xd + p.bd / 2 > r.B + 1e-6)) w.push('O dente sai da largura da base: confira a posição do eixo.');
+  if (p.cOn && p.bc > p.B3 + 1e-6) w.push('O contraforte é mais comprido que o talão.');
+  if (p.cOn && p.hc > p.H + 1e-6) w.push('O contraforte é mais alto que o muro.');
+  if (p.tt > p.tb + 1e-6) w.push('O muro está mais espesso no topo que na base.');
+  if (r.zc > 0) w.push(`Com a coesão do aterro, até ${fmt(r.zc, 2)} m de profundidade a pressão ativa é nula (fenda de tração).`);
+  const bad = D.rows.filter(x => !(x.okFlex && x.okW && x.okV));
+  if (bad.length) w.push(`Armaduras: ${bad.length} ${bad.length > 1 ? 'itens não atendem' : 'item não atende'} (veja a aba Armaduras).`);
+  el('warns').innerHTML = w.map(t => `<p>${t}</p>`).join('');
+  // veredito
+  const fsT = r.FST, fsD = r.FSD;
+  el('verdicts').innerHTML =
+    card('Tombamento · FS<sub>T</sub>', fmt(fsT), `mínimo ${fmt(p.FSTmin, 1)} · ${r.ok.FST ? 'atende' : 'não atende'}`, r.ok.FST) +
+    card('Deslizamento · FS<sub>D</sub>', fmt(fsD), `mínimo ${fmt(p.FSDmin, 1)} · ${r.ok.FSD ? 'atende' : 'não atende'}`, r.ok.FSD) +
+    card('Tensão máxima no solo', `${fmt(r.sMax, 1)} <small style="font-size:13px">kPa</small>`, `σ<sub>adm</sub> ${fmt(p.sadm, 0)} kPa · ${fmt(r.sMax / 98.07, 2)} kgf/cm² · ${r.ok.sig ? 'atende' : 'não atende'}`, r.ok.sig) +
+    card('Excentricidade', `${fmt(Math.abs(r.e), 3)} <small style="font-size:13px">m</small>`, `B/6 = ${fmt(r.B / 6, 3)} m · ${r.ok.e ? 'base toda comprimida' : 'parte da base descola'}`, r.ok.e, true);
+  el('fig').innerHTML = drawCorte(r).svg;
+  // empuxos
+  el('emp').innerHTML = `<div class="cols2"><div>
+    <p class="eq">Aterro: φ<sub>d</sub> = ${fmt(r.fa, 1)}°, c<sub>d</sub> = ${fmt(r.ca, 1)} kPa → K<sub>a</sub> = tg²(45° − φ/2) = <b>${fmt(r.ka, 3)}</b></p>
+    <p class="eq">σ<sub>a</sub>(z) = K<sub>a</sub>(γz + q) − 2c√K<sub>a</sub> ≥ 0, de 0 a ${fmt(r.Ha, 2)} m${r.dOn ? ' (até o fundo do dente)' : ''}</p>
+    <p class="eq">E<sub>a</sub> = <b>${fmt(r.Ea.R, 2)} kN/m</b> (solo ${fmt(r.Ea.soil, 2)} + sobrecarga ${fmt(r.Ea.q, 2)}), a ${fmt(r.Ea.y, 3)} m da face inferior da base</p>
+  </div><div>
+    <p class="eq">Solo da base: φ<sub>d</sub> = ${fmt(r.fb, 1)}°, c<sub>d</sub> = ${fmt(r.cb, 1)} kPa → K<sub>p</sub> = tg²(45° + φ/2) = <b>${fmt(r.kp, 3)}</b></p>
+    <p class="eq">σ<sub>p</sub>(z) = K<sub>p</sub>γz + 2c√K<sub>p</sub>, em ${fmt(r.Ep.h, 2)} m de altura${p.pOn ? '' : ' (passivo desligado)'}</p>
+    <p class="eq">E<sub>p</sub> = ${fmt(r.Ep.Rfull, 2)} × ${fmt(p.pRed, 2)} = <b>${fmt(r.Ep.R, 2)} kN/m</b>, a ${fmt(r.Ep.y, 3)} m da face inferior da base</p>
+  </div></div>`;
+  // forças
+  let ft = '<table><thead><tr><th>Parcela</th><th>Peso (kN/m)</th><th>Braço x (m)</th><th>Momento (kN·m/m)</th><th class="l">Natureza</th></tr></thead><tbody>';
+  r.V.forEach(v => { ft += `<tr><td>${v.lab}</td><td class="num">${fmt(v.W)}</td><td class="num">${fmt(v.x, 3)}</td><td class="num">${fmt(v.W * v.x)}</td><td class="l">${v.perm ? 'permanente' : 'variável'}</td></tr>`; });
+  ft += `<tr class="tot"><td>Total vertical</td><td class="num">${fmt(r.Ntot)}</td><td></td><td class="num">${fmt(r.V.reduce((s, v) => s + v.W * v.x, 0))}</td><td></td></tr>`;
+  ft += `<tr><td>Empuxo ativo (horizontal)</td><td class="num">${fmt(r.Ea.R)}</td><td class="num">y = ${fmt(r.Ea.y, 3)}</td><td class="num">−${fmt(r.Mtomb)}</td><td class="l">tomba</td></tr>`;
+  if (p.pOn) ft += `<tr><td>Empuxo passivo (horizontal)</td><td class="num">${fmt(r.Ep.R)}</td><td class="num">y = ${fmt(r.Ep.y, 3)}</td><td class="num">${p.pTomb ? fmt(r.MEp) : '—'}</td><td class="l">${p.pTomb ? 'resiste' : 'só no deslizamento'}</td></tr>`;
+  el('forcas').innerHTML = ft + '</tbody></table>';
+  // verificações
+  const pill = ok => `<span class="pill ${ok ? 'ok' : 'bad'}">${ok ? 'atende' : 'não atende'}</span>`;
+  el('verif').innerHTML = `
+    <h3>Tombamento (em torno da aresta da ponta)</h3>
+    <p class="eq">M<sub>est</sub> = ${fmt(r.MestV)}${p.pTomb ? ` + ${fmt(r.MEp)} (passivo)` : ''} = ${fmt(r.Mest)} kN·m/m${p.qEst ? '' : ' (sem a sobrecarga)'} · M<sub>tomb</sub> = E<sub>a</sub> · y = ${fmt(r.Mtomb)} kN·m/m</p>
+    <p class="eq">FS<sub>T</sub> = ${fmt(r.Mest)} ÷ ${fmt(r.Mtomb)} = <b>${fmt(r.FST)}</b> ≥ ${fmt(p.FSTmin, 1)} ${pill(r.ok.FST)}</p>
+    <h3>Deslizamento</h3>
+    <p class="eq">R = N · tg φ<sub>d</sub> + c<sub>d</sub> · B + E<sub>p</sub> = ${fmt(r.Nres)} × ${fmt(Math.tan(r.fb * Math.PI / 180), 3)} + ${fmt(r.cb, 1)} × ${fmt(r.B)} + ${fmt(r.Ep.R)} = ${fmt(r.Rd)} kN/m</p>
+    <p class="eq">FS<sub>D</sub> = ${fmt(r.Rd)} ÷ ${fmt(r.Ea.R)} = <b>${fmt(r.FSD)}</b> ≥ ${fmt(p.FSDmin, 1)} ${pill(r.ok.FSD)}</p>
+    <h3>Tensões no solo (característica, com a sobrecarga, sem o passivo)</h3>
+    <p class="eq">N = ${fmt(r.Ntot)} kN/m · x<sub>R</sub> = ΣM ÷ N = ${fmt(r.xR, 3)} m · e = B/2 − x<sub>R</sub> = ${fmt(r.e, 3)} m (B/6 = ${fmt(r.B / 6, 3)} m)</p>
+    <p class="eq">${r.tri ? `σ<sub>máx</sub> = 2N ÷ 3a = 2 × ${fmt(r.Ntot)} ÷ (3 × ${fmt(r.B / 2 - Math.abs(r.e), 3)}) = <b>${fmt(r.sMax, 1)} kPa</b>, contato em ${fmt(r.cont3)} m` : `σ = N/B · (1 ± 6e/B): σ<sub>máx</sub> = <b>${fmt(r.sMax, 1)} kPa</b>, σ<sub>mín</sub> = ${fmt(r.sMin, 1)} kPa`}</p>
+    <p class="eq">σ<sub>máx</sub> = ${fmt(r.sMax, 1)} ≤ σ<sub>adm</sub> = ${fmt(p.sadm, 0)} kPa ${pill(r.ok.sig)}</p>`;
+  el('hip').innerHTML = [
+    'Empuxo de Rankine no plano vertical da extremidade do talão; o solo sobre o talão entra como peso. Paramento vertical na frente.',
+    'Coesão: σ<sub>a</sub> = K<sub>a</sub>(γz + q) − 2c√K<sub>a</sub>, sem tração (na planilha original o termo de coesão não multiplicava a altura).',
+    'Os divisores de segurança de tg φ e da coesão valem para o aterro e para o solo da base (na planilha, o do aterro não era usado).',
+    'Passivo com o γ, o φ e a coesão do solo da base (na planilha, com os do aterro), do nível do solo da frente até a face inferior da base ou do dente; fator de redução ajustável.',
+    'Tombamento: FS = momentos resistentes ÷ momento do empuxo ativo. Sem a sobrecarga sobre o talão e sem o passivo, salvo se marcados (a planilha considerava os dois e subtraía o passivo do momento atuante).',
+    'Tensão no solo: compara-se a tensão máxima com a admissível (a planilha comparava a mínima). Quando e > B/6, distribuição triangular com parte da base descolada.',
+    'Muro calculado na altura da haste (da face superior da base ao topo); a planilha usava a altura total do aterro. Seções a cada H/5.',
+    'Flecha com a inércia equivalente de Branson (NBR 6118, 17.3.2.1.1) e a armadura adotada; a planilha usava uma espessura sem relação com o muro.',
+    'Solo sobre a ponta desprezado (a favor da segurança). Sem água no aterro nesta versão.'
+  ].map(t => `<li>${t}</li>`).join('');
+  renderArm(o);
+}
+
+function renderArm(o) {
+  const { p, r, D } = o;
+  const optsPhi = cur => CA.BARS.slice(0, 5).map(f => `<option value="${f}"${f === cur ? ' selected' : ''}>${String(f).replace('.', ',')}</option>`).join('');
+  const optsS = cur => CA.SPAC.map(s => `<option value="${s}"${s === cur ? ' selected' : ''}>${String(s).replace('.', ',')}</option>`).join('');
+  let t = '<table><thead><tr><th>Elemento</th><th>h (cm)</th><th>M<sub>d</sub><br>(kN·m/m)</th><th>A<sub>s,nec</sub><br>(cm²/m)</th><th>Barras</th><th>A<sub>s,ef</sub><br>(cm²/m)</th><th>w<sub>k</sub><br>(mm)</th><th>V<sub>Sd</sub> / V<sub>Rd1</sub><br>(kN/m)</th><th>Situação</th></tr></thead><tbody>';
+  let g = '';
+  D.rows.forEach(x => {
+    if (x.grp !== g) { g = x.grp; t += `<tr class="grp"><td colspan="9">${g}</td></tr>`; }
+    const ok = x.okFlex && x.okW && x.okV;
+    t += `<tr data-k="${x.key}"><td>${x.name}</td><td class="num">${fmt(x.h * 100, 0)}</td><td class="num">${x.Md > 0 ? fmt(x.Md) : '—'}</td><td class="num">${fmt(x.Asnec)}</td>
+      <td><span class="barsel">ø<select data-f="phi" aria-label="Bitola">${optsPhi(x.ch.phi)}</select> c/<select data-f="s" aria-label="Espaçamento">${optsS(x.ch.s)}</select>${x.manual ? '<span class="tagman">manual</span>' : ''}</span></td>
+      <td class="num">${fmt(x.ch.As)}</td><td class="num">${x.Mser > 0 ? fmt(x.ch.wk, 3) : '—'}</td><td class="num">${x.Vd != null ? `${fmt(x.Vd, 1)} / ${fmt(x.Vrd, 1)}` : '—'}</td>
+      <td><span class="pill ${ok ? 'ok' : 'bad'}">${ok ? 'atende' : !x.okFlex ? 'flexão' : !x.okW ? 'fissura' : 'cortante'}</span></td></tr>`;
+  });
+  el('arm').innerHTML = t + '</tbody></table>';
+  // seções do muro
+  el('p-secs').hidden = !!r.cOn; el('p-placa').hidden = !r.cOn; el('p-cont').hidden = !r.cOn;
+  if (!r.cOn) {
+    const P = D.P, As = D.rows.find(x => x.key === 'mv').ch;
+    let s = '<table><thead><tr><th>Profundidade z (m)</th><th>h (cm)</th><th>V<sub>k</sub> (kN/m)</th><th>M<sub>k</sub> (kN·m/m)</th><th>M<sub>d</sub> (kN·m/m)</th><th>A<sub>s,nec</sub> (cm²/m)</th><th>A<sub>s,ef</sub> (cm²/m)</th></tr></thead><tbody>';
+    D.secs.forEach(c => { const d = c.h - p.cob / 100 - As.phi / 2000, f = CA.flex(p.gf * c.Mk, c.h, d, P), need = Math.max(f.As, CA.rhoMin(p.fck) * 100 * c.h * 100); s += `<tr><td class="num">${fmt(c.z)}</td><td class="num">${fmt(c.h * 100, 1)}</td><td class="num">${fmt(c.Vk)}</td><td class="num">${fmt(c.Mk)}</td><td class="num">${fmt(p.gf * c.Mk)}</td><td class="num">${fmt(need)}</td><td class="num">${fmt(As.As)}</td></tr>`; });
+    el('secs').innerHTML = s + '</tbody></table><p class="note">z a partir do topo do muro. A armadura vertical da face do aterro é a da base; pode ser reduzida acima, onde o momento cai, respeitando o comprimento de ancoragem.</p>';
+  } else {
+    el('maps').innerHTML = mapPlaca(D.plate, D.plate.res[0].mx, 'Momento horizontal m<tspan font-size="10" dy="3">x</tspan>') + mapPlaca(D.plate, D.plate.res[0].my, 'Momento vertical m<tspan font-size="10" dy="3">y</tspan>');
+    const c = D.rows.cont, fyd = D.P.fyd;
+    const nb = phi => Math.ceil(c.AsInc / CA.barA(phi));
+    el('cont').innerHTML = `
+      <p class="eq">Carga de uma faixa de ${fmt(p.s)} m: M<sub>d</sub> = ${fmt(c.MdC, 1)} kN·m, V<sub>d</sub> = ${fmt(c.VdC, 1)} kN na base; altura útil d = ${fmt(c.dC, 2)} m (muro + contraforte), braço z = 0,9d.</p>
+      <p class="eq">Barras inclinadas (face de trás, ângulo ${fmt(c.alpha * 180 / Math.PI, 1)}°): A<sub>s</sub> = M<sub>d</sub> ÷ (0,9d · f<sub>yd</sub> · sen α) = <b>${fmt(c.AsInc)} cm²</b> → ${nb(16)} ø 16 ou ${nb(20)} ø 20</p>
+      <p class="eq">Cortante (modelo I): V<sub>Rd2</sub> = ${fmt(c.VRd2, 1)} kN ${c.okV ? '≥' : '<'} V<sub>Sd</sub> <span class="pill ${c.okV ? 'ok' : 'bad'}">${c.okV ? 'biela atende' : 'aumente a espessura'}</span>; V<sub>c</sub> = ${fmt(c.Vc, 1)} kN → estribos A<sub>sw</sub>/s = <b>${fmt(c.Asw)} cm²/m</b> (mínimo ${fmt(c.AswMin)})</p>
+      <p class="eq">Tirantes horizontais muro–contraforte (junto à base): <b>${fmt(c.tieH)} cm²/m</b> de altura · tirantes verticais talão–contraforte: <b>${fmt(c.tieV || 0)} cm²/m</b> ao longo do talão</p>`;
+  }
+  const f = D.fl;
+  el('flecha').innerHTML = `<p class="eq">${f.placa ? 'Da placa (deslocamento máximo, combinação quase permanente, estádio I)' : 'Balanço com inércia de Branson e a armadura adotada, combinação quase permanente'}: imediata ${fmt(f.imed * 1000, 2)} mm · com fluência × (1 + ${fmt(f.af, 2)}) = <b>${fmt(f.tot * 1000, 2)} mm</b></p>
+    <p class="eq">Limite ${f.placa ? 'L/250 (menor vão)' : '2H/250 (balanço, NBR 6118 Tabela 13.3)'} = ${fmt(f.lim * 1000, 1)} mm <span class="pill ${f.ok ? 'ok' : 'bad'}">${f.ok ? 'atende' : 'não atende'}</span></p>`;
+}
+
+/* ---------- memorial (Word) ---------- */
+function plainText(s) { return String(s).replace(/<sub>/g, '').replace(/<\/sub>/g, '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'); }
+function xesc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function svgToPng(svg, W, H, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = Math.round(W * scale); c.height = Math.round(H * scale); const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); c.toBlob(b => b ? b.arrayBuffer().then(a => resolve(new Uint8Array(a))) : reject(new Error('png')), 'image/png'); };
+    img.onerror = () => reject(new Error('svg'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  const enc = new TextEncoder(), chunks = [], cd = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    chunks.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    cd.push(new Uint8Array(ch.buffer), name); off += 30 + name.length + data.length;
+  });
+  const cdSize = cd.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  const all = chunks.concat(cd, [new Uint8Array(end.buffer)]), out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
+  let q = 0; all.forEach(b => { out.set(b, q); q += b.length; }); return out;
+}
+const wPar = (runs, o = {}) => `<w:p><w:pPr>${o.keep ? '<w:keepNext/>' : ''}<w:spacing w:before="${o.before || 0}" w:after="${o.after || 0}"/><w:jc w:val="${o.al || 'left'}"/></w:pPr>${runs}</w:p>`;
+function wCell(w, content, o = {}) {
+  const bd = o.bottom ? `<w:tcBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="${o.bottom}"/></w:tcBorders>` : '';
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.span ? `<w:gridSpan w:val="${o.span}"/>` : ''}${bd}${o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : ''}<w:vAlign w:val="center"/></w:tcPr>${content}</w:tc>`;
+}
+function wTbl(widths, rows) {
+  return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="20" w:type="dxa"/><w:left w:w="50" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/><w:right w:w="50" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
+}
+const wRow = cells => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.join('')}</w:tr>`;
+
+async function buildMemorial(o) {
+  const { p, r, D } = o, C = { ink: '1f2b37', muted: '5e6b78', accent: '2b6cb0', line: 'd9e0e7', head: 'eef2f5', ok: '2e7d50', okbg: 'e6f4ec', bad: 'b83a2e', badbg: 'fbe8e5' };
+  const imgs = [];
+  const R = (t, o2 = {}) => String(t).split(/(_\{[^}]*\}|_[A-Za-zÀ-ú0-9,.]+)/).filter(x => x !== '').map(part => {
+    const sub = part.startsWith('_'), txt = sub ? part.replace(/^_\{?|\}$/g, '') : part;
+    return `<w:r><w:rPr>${o2.b ? '<w:b/>' : ''}${o2.i ? '<w:i/>' : ''}${o2.color ? `<w:color w:val="${o2.color}"/>` : ''}<w:sz w:val="${o2.sz || 18}"/>${sub ? '<w:vertAlign w:val="subscript"/>' : ''}</w:rPr><w:t xml:space="preserve">${xesc(txt)}</w:t></w:r>`;
+  }).join('');
+  const H1 = t => wPar(R(t.toUpperCase(), { b: true, sz: 24, color: C.accent }), { before: 200, after: 80, keep: true });
+  const H2 = t => wPar(R(t, { b: true, sz: 19, color: C.ink }), { before: 120, after: 40, keep: true });
+  const txt = (t, o2 = {}) => wPar(R(t, Object.assign({ sz: 18 }, o2)), { after: 60 });
+  const W0 = 10206, SZ = 16;
+  const table = (widths, head, rows) => {
+    const cell = (w, c, hd) => { const v = typeof c === 'object' && c !== null ? c : { t: c }; return wCell(w, wPar(R(v.t == null ? '' : v.t, { sz: SZ, b: hd || v.b, color: v.color || (hd ? C.ink : undefined) }), { al: v.al || 'left' }), { bottom: C.line, fill: hd ? C.head : v.fill }); };
+    const rr = [wRow(head.map((h, i) => cell(widths[i], h, true)))].concat(rows.map(rw => rw.span ? wRow([wCell(W0, wPar(R(rw.span, { sz: SZ, b: true, color: C.accent })), { span: widths.length, bottom: C.accent, fill: 'f4f7f8' })]) : wRow(rw.map((c, i) => cell(widths[i], c)))));
+    return wTbl(widths, rr) + wPar('', { after: 80 });
+  };
+  const num = (v, d = 2) => ({ t: fmt(v, d), al: 'right' });
+  const st = ok => ({ t: ok ? 'atende' : 'não atende', b: true, al: 'right', color: ok ? C.ok : C.bad, fill: ok ? C.okbg : C.badbg });
+  const imgRun = (idx, cx) => { const im = imgs[idx - 1], cy = Math.round(cx * im.H / im.W); return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idx}" name="Figura ${idx}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idx}" name="fig${idx}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`; };
+  const addSvg = async (o2, scale = 2) => { const png = await svgToPng(o2.svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif" ').replace('</defs>', '</defs><style>.halo{paint-order:stroke;stroke:#ffffff;stroke-width:3.5px;stroke-linejoin:round}</style><rect width="100%" height="100%" fill="#ffffff"/>'), o2.W, o2.H, scale); imgs.push({ png, W: o2.W, H: o2.H }); return imgs.length; };
+  const figure = (idx, cap, frac = 1) => wPar(imgRun(idx, Math.round(W0 * 635 * frac)), { al: 'center', keep: true }) + wPar(R(cap, { sz: 16, i: true, color: C.muted }), { al: 'center', after: 120 });
+  const body = [];
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  body.push(wPar(R('MEMÓRIA DE CÁLCULO', { b: true, sz: 32, color: C.ink }), { after: 20 }));
+  body.push(wPar(R('Muro de contenção em concreto armado: empuxos, estabilidade e armaduras', { sz: 22, color: C.muted }), { after: 40 }));
+  body.push(wPar(R(`Muro de ${fmt(p.H)} m sobre base de ${fmt(r.B)} m${r.dOn ? ', com dente' : ''}${r.cOn ? `, com contrafortes a cada ${fmt(p.s)} m` : ''} · ${hoje} · aplicativo Muro de Contenção v1.0`, { sz: 17, color: C.muted }), { after: 160 }));
+  // 1 dados
+  body.push(H1('1. Dados de entrada'));
+  const kv = (rows) => table([3600, 1500, 3606, 1500], ['Grandeza', 'Valor', 'Grandeza', 'Valor'], rows);
+  body.push(kv([
+    ['Altura do muro H', { t: `${fmt(p.H)} m`, al: 'right' }, 'Espessura no topo · na base', { t: `${fmt(p.tt)} · ${fmt(p.tb)} m`, al: 'right' }],
+    ['Ponta B_1 · talão B_3', { t: `${fmt(p.B1)} · ${fmt(p.B3)} m`, al: 'right' }, 'Largura da base B', { t: `${fmt(r.B)} m`, al: 'right' }],
+    ['Base junto ao muro · nas pontas', { t: `${fmt(p.hs)} · ${fmt(p.he)} m`, al: 'right' }, 'Dente (largura × altura, eixo)', { t: r.dOn ? `${fmt(p.bd)} × ${fmt(p.hd)} m, x = ${fmt(p.xd)} m` : 'sem dente', al: 'right' }],
+    ['Contrafortes', { t: r.cOn ? `${fmt(p.ec)} m a cada ${fmt(p.s)} m` : 'sem contrafortes', al: 'right' }, 'Contraforte: base × altura', { t: r.cOn ? `${fmt(p.bc)} × ${fmt(p.hc)} m` : '—', al: 'right' }],
+    ['Aterro: γ · φ · c', { t: `${fmt(p.ga, 1)} kN/m³ · ${fmt(p.fa, 1)}° · ${fmt(p.ca, 1)} kPa`, al: 'right' }, 'Sobrecarga q', { t: `${fmt(p.q, 1)} kN/m²`, al: 'right' }],
+    ['Solo da base: γ · φ · c', { t: `${fmt(p.gb, 1)} kN/m³ · ${fmt(p.fb, 1)}° · ${fmt(p.cb, 1)} kPa`, al: 'right' }, 'Tensão admissível σ_adm', { t: `${fmt(p.sadm, 0)} kPa`, al: 'right' }],
+    ['Solo na frente (acima da face inferior)', { t: `${fmt(p.hf)} m`, al: 'right' }, 'Passivo', { t: p.pOn ? `considerado, fator ${fmt(p.pRed)}` : 'não considerado', al: 'right' }],
+    ['Concreto: γ · f_ck · aço f_yk', { t: `${fmt(p.gc, 1)} kN/m³ · ${fmt(p.fck, 0)} MPa · ${fmt(p.fyk, 0)} MPa`, al: 'right' }, 'Cobrimento · w_k,lim', { t: `${fmt(p.cob, 1)} cm · ${fmt(p.wlim)} mm`, al: 'right' }],
+  ]));
+  // 2 empuxos
+  body.push(H1('2. Empuxos (Rankine)'));
+  body.push(txt(`Aterro: φ_d = ${fmt(r.fa, 1)}°, c_d = ${fmt(r.ca, 1)} kPa → K_a = tg²(45° − φ/2) = ${fmt(r.ka, 3)}. Tensão σ_a(z) = K_a(γz + q) − 2c√K_a ≥ 0, no plano vertical da extremidade do talão, de 0 a ${fmt(r.Ha)} m.`));
+  body.push(txt(`E_a = ${fmt(r.Ea.R)} kN/m (solo ${fmt(r.Ea.soil)} + sobrecarga ${fmt(r.Ea.q)}), aplicado a ${fmt(r.Ea.y, 3)} m da face inferior da base.`));
+  body.push(txt(p.pOn ? `Solo da base: K_p = tg²(45° + φ/2) = ${fmt(r.kp, 3)}; σ_p(z) = K_pγz + 2c√K_p em ${fmt(r.Ep.h)} m; E_p = ${fmt(r.Ep.Rfull)} × ${fmt(p.pRed)} = ${fmt(r.Ep.R)} kN/m a ${fmt(r.Ep.y, 3)} m da face inferior da base.` : 'Empuxo passivo não considerado.'));
+  const fig1 = await addSvg(drawCorte(r, true));
+  body.push(figure(fig1, 'Figura 1 · Corte em escala: empuxo ativo (solo e sobrecarga), passivo, tensões no solo sob a base e resultante vertical.', 0.92));
+  // 3 estabilidade
+  body.push(H1('3. Estabilidade'));
+  body.push(H2('3.1 Forças verticais e momentos em relação à ponta'));
+  body.push(table([4806, 1500, 1500, 1700, 700], ['Parcela', 'Peso (kN/m)', 'Braço (m)', 'Momento (kN·m/m)', ''], r.V.map(v => [v.lab, num(v.W), num(v.x, 3), num(v.W * v.x), { t: v.perm ? 'g' : 'q', al: 'center' }]).concat([[{ t: 'Total', b: true }, { t: fmt(r.Ntot), b: true, al: 'right' }, '', { t: fmt(r.V.reduce((s, v) => s + v.W * v.x, 0)), b: true, al: 'right' }, '']])));
+  body.push(H2('3.2 Verificações'));
+  body.push(table([5206, 2500, 2500], ['Verificação', 'Valor', 'Situação'], [
+    [`Tombamento: FS_T = ${fmt(r.Mest)} ÷ ${fmt(r.Mtomb)}${p.qEst ? '' : ' (sem sobrecarga)'}${p.pTomb ? ' (com passivo)' : ''}`, { t: `${fmt(r.FST)} ≥ ${fmt(p.FSTmin, 1)}`, al: 'right' }, st(r.ok.FST)],
+    [`Deslizamento: FS_D = (N·tgφ + c·B + E_p) ÷ E_a = ${fmt(r.Rd)} ÷ ${fmt(r.Ea.R)}`, { t: `${fmt(r.FSD)} ≥ ${fmt(p.FSDmin, 1)}`, al: 'right' }, st(r.ok.FSD)],
+    [`Tensão máxima no solo (e = ${fmt(r.e, 3)} m${r.tri ? ', base parcialmente descolada' : ''})`, { t: `${fmt(r.sMax, 1)} ≤ ${fmt(p.sadm, 0)} kPa`, al: 'right' }, st(r.ok.sig)],
+    ['Excentricidade no núcleo central (e ≤ B/6)', { t: `${fmt(Math.abs(r.e), 3)} ≤ ${fmt(r.B / 6, 3)} m`, al: 'right' }, st(r.ok.e)]
+  ]));
+  // 4 armaduras
+  body.push(H1('4. Dimensionamento das armaduras (NBR 6118)'));
+  body.push(txt(`ELU com todas as ações × γ_f = ${fmt(p.gf)}; fissuração na combinação frequente (g + ψ_1 q, ψ_1 = ${fmt(p.psi1)}), w_k,lim = ${fmt(p.wlim)} mm; seção b = 100 cm; ρ_mín pela Tabela 17.3; cortante sem armadura transversal pelo item 19.4.1.`, { color: C.muted }));
+  if (r.cOn) body.push(txt(`Parede entre contrafortes: placa de Kirchhoff por elementos finitos (${D.plate.nx} × ${D.plate.ny} elementos), engastada nos contrafortes e na base, livre no topo. Talão: laje contínua entre contrafortes (M = q·s²/12 nos apoios e q·s²/24 no vão).`, { color: C.muted }));
+  let g = ''; const rows = [];
+  D.rows.forEach(x => { if (x.grp !== g) { g = x.grp; rows.push({ span: g }); } rows.push([x.name, num(x.h * 100, 0), x.Md > 0 ? num(x.Md) : { t: '—', al: 'right' }, num(x.Asnec), { t: `ø${String(x.ch.phi).replace('.', ',')} c/${String(x.ch.s).replace('.', ',')}`, al: 'center' }, num(x.ch.As), x.Mser > 0 ? num(x.ch.wk, 3) : { t: '—', al: 'right' }, st(x.okFlex && x.okW && x.okV)]); });
+  body.push(table([3406, 700, 1000, 1000, 1300, 1000, 800, 1000], ['Elemento', 'h (cm)', 'M_d (kN·m/m)', 'A_s,nec (cm²/m)', 'Barras', 'A_s,ef (cm²/m)', 'w_k (mm)', 'Situação'], rows));
+  if (r.cOn) {
+    const c = D.rows.cont;
+    body.push(H2('4.1 Contraforte'));
+    body.push(txt(`M_d = ${fmt(c.MdC, 1)} kN·m e V_d = ${fmt(c.VdC, 1)} kN na base (faixa de ${fmt(p.s)} m); d = ${fmt(c.dC)} m. Barras inclinadas: A_s = M_d ÷ (0,9d·f_yd·sen α) = ${fmt(c.AsInc)} cm². Estribos: A_sw/s = ${fmt(c.Asw)} cm²/m (V_Rd2 = ${fmt(c.VRd2, 1)} kN). Tirantes horizontais muro–contraforte: ${fmt(c.tieH)} cm²/m; verticais talão–contraforte: ${fmt(c.tieV || 0)} cm²/m.`));
+  }
+  body.push(H2(r.cOn ? '4.2 Flecha' : '4.1 Flecha'));
+  const f = D.fl;
+  body.push(txt(`Flecha no topo (combinação quase permanente): imediata ${fmt(f.imed * 1000)} mm; com fluência ${fmt(f.tot * 1000)} mm ≤ ${fmt(f.lim * 1000, 1)} mm (${f.placa ? 'L/250' : '2H/250'}): ${f.ok ? 'atende' : 'não atende'}.`));
+  body.push(txt('Cálculo preliminar, gerado automaticamente. Hipóteses de solo, coeficientes e o detalhamento (ancoragens, emendas, juntas e drenagem do aterro) precisam ser validados pelo responsável técnico.', { i: true, color: C.muted, sz: 16 }));
+  const sect = '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850" w:header="400" w:footer="400" w:gutter="0"/></w:sectPr>';
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body.join('')}${sect}</w:body></w:document>`;
+  const NS = 'http://schemas.openxmlformats.org/';
+  const rels = imgs.map((_, i) => `<Relationship Id="rIdImg${i + 1}" Type="${NS}officeDocument/2006/relationships/image" Target="media/fig${i + 1}.png"/>`).join('');
+  return zipStore([
+    { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>` },
+    { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${NS}officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>` },
+    { name: 'word/_rels/document.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rIdSt" Type="${NS}officeDocument/2006/relationships/styles" Target="styles.xml"/>${rels}</Relationships>` },
+    { name: 'word/styles.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>` },
+    { name: 'word/document.xml', data: doc }
+  ].concat(imgs.map((im, i) => ({ name: `word/media/fig${i + 1}.png`, data: im.png }))));
+}
+
+/* ---------- eventos ---------- */
+bind();
+el('tb-est').addEventListener('click', () => setTab('est'));
+el('tb-arm').addEventListener('click', () => setTab('arm'));
+try { const t = localStorage.getItem(TABKEY); if (t === 'arm') setTab('arm'); } catch (e) {}
+el('reset').addEventListener('click', () => {
+  state = Object.assign({}, DEFAULTS); armOv = {}; invalid.clear();
+  try { localStorage.removeItem(OVKEY); } catch (e) {}
+  document.querySelectorAll('.field.bad').forEach(f => f.classList.remove('bad'));
+  bind(); render();
+});
+el('arm').addEventListener('change', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.f) return;
+  const row = t.closest('tr'), k = row.dataset.k;
+  armOv[k] = { phi: parseFloat(row.querySelector('select[data-f="phi"]').value), s: parseFloat(row.querySelector('select[data-f="s"]').value) };
+  try { localStorage.setItem(OVKEY, JSON.stringify(armOv)); } catch (e2) {}
+  render();
+});
+el('arm-sug').addEventListener('click', () => { armOv = {}; try { localStorage.removeItem(OVKEY); } catch (e) {} render(); });
+el('memo').addEventListener('click', async () => {
+  const btn = el('memo'), msg = el('memo-msg'), lab = btn.textContent;
+  if (!last) return;
+  btn.disabled = true; btn.textContent = 'Gerando memorial…'; msg.textContent = '';
+  try {
+    const bytes = await buildMemorial(last), name = 'memorial-muro-contencao-' + new Date().toISOString().slice(0, 10) + '.docx';
+    let done = false;
+    try { const dl = window.claude && await window.claude.use('downloads'); if (dl) { await dl.save({ filename: name, data: bytes }); done = true; msg.textContent = 'Memorial gerado: ' + name; } }
+    catch (e) { if (e && e.code === 'declined') { done = true; msg.textContent = 'Download cancelado.'; } }
+    if (!done) {
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+      const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000); msg.textContent = 'Memorial gerado: ' + name;
+    }
+  } catch (e) { console.error(e); msg.textContent = 'Não foi possível gerar o memorial neste navegador.'; }
+  btn.disabled = false; btn.textContent = lab;
+});
+render();
+
+</script></body></html>
