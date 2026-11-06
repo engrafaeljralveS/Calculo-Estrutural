@@ -7,7 +7,7 @@ Código reaproveitável entre os programas. Cada motor é um arquivo `.js` indep
 | `motor-elementos-finitos.js` | Análise por elementos finitos de casca de caixas de concreto (retangular em 1/4 ou circular axissimétrica), com molas de Winkler só de compressão | Flutuação em Caixas (cópia interna), Alas (versão adaptada) |
 | `visualizador-3d.js` | Visualizador 3D: superfícies com mapa de cores, deformada, sólidos, setas, corte, zoom e leitura do valor no clique | Flutuação em Caixas, aba Esforços (Esforços em 3D) |
 
-Versões: motor de elementos finitos 1.0 e visualizador 3D 1.1, novembro de 2026.
+Versões: motor de elementos finitos 1.0 e visualizador 3D 1.2, novembro de 2026.
 
 ---
 
@@ -102,10 +102,10 @@ Depende do three.js r128 e do OrbitControls, que `Motor3D.carregar()` busca sozi
 <script>
   await Motor3D.carregar();
   const v = Motor3D.criar(document.getElementById('caixa3d'));
-  const esc = Motor3D.escala(valores, { tipo: 'divergente' });
+  const esc = Motor3D.escala(valores, { tipo: 'arco-iris', faixas: 12 });
   v.superficie({ nos, quads, valores, escala: esc, arestas: true });
   v.ajustar();
-  document.getElementById('legenda').innerHTML = Motor3D.legendaHTML(esc, 'kN·m/m');
+  document.getElementById('legenda').innerHTML = Motor3D.legendaHTML(esc, 'kN·m/m', null, { vertical: true });
   v.aoClicar(h => h && console.log(h.valor, h.ponto));
 </script>
 ```
@@ -118,8 +118,8 @@ Eixos de engenharia: x e y horizontais, z vertical para cima. O motor converte p
 |---|---|
 | `Motor3D.carregar()` | Promise que carrega o three.js e os controles de órbita, se ainda não estiverem na página |
 | `Motor3D.criar(elemento, { fundo })` | Cria o visualizador dentro do elemento (que precisa ter altura). Devolve `v` |
-| `Motor3D.escala(valores, opts)` | Escala de cores. `tipo: 'divergente'` (azul · branco · laranja, simétrica no zero) ou `'sequencial'`; `limites: [mín, máx]` fixa os extremos; `cores: { neg, zero, pos }` |
-| `Motor3D.legendaHTML(esc, unidade, fmt?)` | Barra de cores com os extremos (classes `m3-leg`, `m3-bar`, `m3-ticks`, `m3-un` para estilizar) |
+| `Motor3D.escala(valores, opts)` | Escala de cores. `tipo: 'arco-iris'` (várias cores, maior valor em vermelho; `faixas: 12` dá faixas nítidas como nos programas de análise, `faixas: 0` é contínua; quando o mínimo é 0, começa num tom claro), `'divergente'` (azul · branco · laranja, simétrica no zero) ou `'sequencial'`. `limites: [mín, máx]` fixa os extremos; `cores: { neg, zero, pos }`; `paleta: [cores]` troca o arco-íris |
+| `Motor3D.legendaHTML(esc, unidade, fmt?, { vertical })` | Barra horizontal com os extremos, ou, com `vertical: true` no arco-íris, coluna de faixas com o valor de cada divisa (máximo em cima), para pôr sobre a vista. O motor injeta um estilo padrão (classes `m3-*`) |
 | `Motor3D.espelhar(malha, planos)` | Espelha uma malha de 1/4 ou 1/2. Devolve `nos`, `quads`, `origem` (nó original) e `imagem` (`[sx, sy]`), para aplicar a troca de sinal |
 | `Motor3D.revolver(perfil, n)` | Gira um perfil axissimétrico `{ nos: [[r, 0, z]], segs: [[a, b]] }` em n divisões. Devolve `nos`, `quads`, `origem`, `ang` |
 

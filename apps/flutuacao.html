@@ -428,6 +428,11 @@ td .pill { font-size: 11.5px; padding: 2px 8px; }
         <div class="e3ctrls">
           <label>Combinação<select id="e3-k"></select></label>
           <label>Esforço<select id="e3-c"></select></label>
+          <label>Cores<select id="e3-pal">
+            <option value="faixas">Arco-íris em faixas</option>
+            <option value="continuo">Arco-íris contínuo</option>
+            <option value="duas">Duas cores (+ laranja · − azul)</option>
+          </select></label>
         </div>
         <div class="v3opts">
           <fieldset><legend>Mostrar</legend>
@@ -437,7 +442,7 @@ td .pill { font-size: 11.5px; padding: 2px 8px; }
             <label><input type="checkbox" id="e3-mal"> Malha</label>
           </fieldset>
         </div>
-        <div class="v3box" id="e3-box"><p class="v3msg" id="e3-msg">A vista 3D aparece quando os esforços terminam de calcular.</p></div>
+        <div class="v3box" id="e3-box"><p class="v3msg" id="e3-msg">A vista 3D aparece quando os esforços terminam de calcular.</p><div class="e3lv" id="e3-lv" hidden></div></div>
         <div class="e3foot">
           <div id="e3-leg"></div>
           <div class="e3read">
@@ -3623,9 +3628,11 @@ if (typeof document !== 'undefined') {
 }
 </script>
 
-<!--e3d--><script src="../motores/visualizador-3d.js?v=1.1"></script>
+<!--e3d--><script src="../motores/visualizador-3d.js?v=1.2"></script>
 <style>
-.e3ctrls{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.3fr);gap:8px 14px;margin:10px 0}
+.e3ctrls{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.4fr) minmax(0,1fr);gap:8px 14px;margin:10px 0}
+.e3lv{position:absolute;top:10px;right:10px;z-index:2;background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--line);border-radius:6px;padding:8px 10px 10px;color:var(--ink);pointer-events:none}
+@media (max-width:640px){.e3lv{top:6px;right:6px;padding:6px 8px;transform:scale(.85);transform-origin:top right}}
 .e3ctrls label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
 .e3ctrls select{font:500 13px var(--f-body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:6px;min-width:0;width:100%}
 @media (max-width:640px){.e3ctrls{grid-template-columns:minmax(0,1fr)}}
@@ -3657,7 +3664,7 @@ window.E3 = (function () {
   const MIR4 = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
   let NM = SNAME;
   let V = null, failed = false, starting = null, data = null, dirty = false, fitKey = '', lastPick = null;
-  const st = { k: 'emax', c: 'M2', def: false, fat: 1, corte: false, mal: false };
+  const st = { k: 'emax', c: 'M2', def: false, fat: 1, corte: false, mal: false, pal: 'faixas' };
   try { const o = JSON.parse(localStorage.getItem('flutuacao-e3-view') || 'null'); if (o) Object.keys(st).forEach(k => { if (k in o && typeof o[k] === typeof st[k]) st[k] = o[k]; }); } catch (e) {}
   const save = () => { try { localStorage.setItem('flutuacao-e3-view', JSON.stringify(st)); } catch (e) {} };
   const f2 = (v, d) => fmt(v, d == null ? 2 : d);
@@ -3779,7 +3786,10 @@ window.E3 = (function () {
     });
     if (!Number.isFinite(lo)) { lo = 0; hi = 0; }
     const signed = !/^W[EI]|^p$/.test(c);
-    const esc = Motor3D.escala([], { limites: [Math.min(lo, 0), Math.max(hi, 0)], tipo: signed ? 'divergente' : 'sequencial' });
+    const arco = st.pal !== 'duas';
+    const esc = arco
+      ? Motor3D.escala([], { tipo: 'arco-iris', limites: hi > lo ? [lo, hi] : [Math.min(lo, 0), Math.max(hi, 0) || 1], faixas: st.pal === 'faixas' ? 12 : 0 })
+      : Motor3D.escala([], { limites: [Math.min(lo, 0), Math.max(hi, 0)], tipo: signed ? 'divergente' : 'sequencial' });
     const size = Math.max(G.Bc || 0, G.Lc || G.Bc || 0, Hc, 1);
     const fator = showDef && dmax > 1e-12 ? st.fat * 0.06 * size / dmax : 0;
     V.limpar();
@@ -3789,17 +3799,19 @@ window.E3 = (function () {
       if (showDef && st.mal === false) V.superficie({ nos: mesh.nos, quads: mesh.quads, cor: '--muted', opacidade: 0.08, arestas: false });
     });
     V.corte(st.corte);
-    if (best && hi > 0) V.ponto(best.q, '--pos', size * 0.012);
-    if (worst && lo < 0) V.ponto(worst.q, '--neg', size * 0.012);
+    if (best && hi > 0) V.ponto(best.q, arco ? '#7f0000' : '--pos', size * 0.012);
+    if (worst && lo < 0) V.ponto(worst.q, arco ? '#1a237e' : '--neg', size * 0.012);
     const key = [circ, f2(G.Bc), f2(G.Lc || 0), f2(Hc)].join('|');
     if (key !== fitKey) { V.ajustar(); fitKey = key; }
     $('e3-leg').innerHTML = Motor3D.legendaHTML(esc, unit, nf);
+    $('e3-lv').hidden = !arco;
+    if (arco) $('e3-lv').innerHTML = Motor3D.legendaHTML(esc, unit, nf, { vertical: true, altura: window.innerWidth < 640 ? 11 : 15 });
     const where = b => b ? ` em ${NM[b.s] || b.s}` : '';
     const zc = z => m.z.base + p.ei / 2 + z;
     $('e3-ext').innerHTML = (hi > 0 || !signed ? `Máximo <b>${nf(hi)}</b> ${unit}${where(best)}` : '') + (signed && lo < 0 ? `${hi > 0 ? ' · ' : ''}Mínimo <b>${nf(lo)}</b> ${unit}${where(worst)}` : '') + (circ ? '' : ' <span style="color:var(--muted)">(fora dos nós parede-laje)</span>');
     const nm = env ? (st.k === 'emax' ? 'Envoltória ELU (máximos)' : 'Envoltória ELU (mínimos)') : ($('e3-k').selectedOptions[0] || {}).textContent;
     const defTxt = showDef ? ` Deformada ampliada ${fmt(fator, 0)} vezes.` : (st.def && env ? ' A deformada não existe para a envoltória: escolha uma combinação.' : '');
-    $('e3-note').innerHTML = `${nm}. ${cdef[1]}. ${signed && c[0] === 'M' ? 'M > 0 traciona a face externa. ' : ''}${noTop ? 'Etapa construtiva: sem a laje de topo. ' : ''}${c === 'p' ? 'Pressão só sob a laje de fundo; as outras peças aparecem em cinza. ' : ''}Arraste para girar · roda do mouse, pinça ou + e − para o zoom · botão direito ou dois dedos para mover.${defTxt}`;
+    $('e3-note').innerHTML = `${nm}. ${cdef[1]}. ${signed && c[0] === 'M' ? 'M > 0 traciona a face externa. ' : ''}${arco ? 'Vermelho: maior valor; azul' + (lo >= 0 ? ' claro' : '') + ': menor. ' : ''}${noTop ? 'Etapa construtiva: sem a laje de topo. ' : ''}${c === 'p' ? 'Pressão só sob a laje de fundo; as outras peças aparecem em cinza. ' : ''}Arraste para girar · roda do mouse, pinça ou + e − para o zoom · botão direito ou dois dedos para mover.${defTxt}`;
     $('e3-fat').closest('.e3fat').classList.toggle('off', !showDef);
     lastPick = { unit, zc, c };
     $('e3-pick').innerHTML = 'Clique na estrutura para ler o valor no ponto.';
@@ -3833,6 +3845,7 @@ window.E3 = (function () {
   const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
   on('e3-k', 'change', e => { st.k = e.target.value; save(); refresh(); });
   on('e3-c', 'change', e => { st.c = e.target.value; save(); refresh(); });
+  on('e3-pal', 'change', e => { st.pal = e.target.value; save(); refresh(); });
   on('e3-def', 'change', e => { st.def = e.target.checked; save(); refresh(); });
   on('e3-fat', 'input', e => { st.fat = +e.target.value; $('e3-fatv').textContent = '×' + fmt(st.fat, st.fat % 1 ? 2 : 0); save(); refresh(); });
   on('e3-corte', 'change', e => { st.corte = e.target.checked; save(); if (V) V.corte(st.corte); });
@@ -3840,7 +3853,7 @@ window.E3 = (function () {
   on('e3-in', 'click', () => V && V.zoom(0.8));
   on('e3-out', 'click', () => V && V.zoom(1.25));
   on('e3-fit', 'click', () => V && V.ajustar());
-  $('e3-def').checked = st.def; $('e3-corte').checked = st.corte; $('e3-mal').checked = st.mal; $('e3-fat').value = st.fat; $('e3-fatv').textContent = '×' + fmt(st.fat, st.fat % 1 ? 2 : 0);
+  $('e3-pal').value = st.pal; $('e3-def').checked = st.def; $('e3-corte').checked = st.corte; $('e3-mal').checked = st.mal; $('e3-fat').value = st.fat; $('e3-fatv').textContent = '×' + fmt(st.fat, st.fat % 1 ? 2 : 0);
   // a aba Esforços pode estar escondida quando o cálculo termina: desenha ao aparecer
   try { new ResizeObserver(() => { if (dirty && visible()) refresh(); }).observe($('e3-box')); } catch (e) {}
   return { update };

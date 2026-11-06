@@ -1,6 +1,6 @@
 /*!
  * Motor 3D — visualizador de estruturas e resultados de elementos finitos
- * Conjunto "Cálculo Estrutural" · versão 1.1 · nov/2026
+ * Conjunto "Cálculo Estrutural" · versão 1.2 · nov/2026
  *
  * Motor genérico, sem nada específico de um programa. Desenha:
  *   - superfícies de casca (quadriláteros ou triângulos) com mapa de cores por nó e deformada;
@@ -26,7 +26,7 @@
  */
 (function (global) {
   'use strict';
-  const VERSAO = '1.1';
+  const VERSAO = '1.2';
   const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
   const ORBIT_URL = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
 
@@ -60,11 +60,23 @@
   const P3 = (x, y, z) => [x, z, -y];
 
   /* ---------------- escalas de cor ---------------- */
+  // Arco-íris de engenharia, do menor para o maior valor: o maior esforço fica vermelho.
+  const ARCO = ['#3949ab', '#1e88e5', '#29b6f6', '#26c6da', '#26a69a', '#66bb6a', '#9ccc65', '#d4e157', '#ffee58', '#ffca28', '#ffa726', '#fb8c00', '#f4511e', '#d32f2f'];
+  // Para valores de um só sinal (0 → máx): começa num tom claro e escurece até o vermelho.
+  const ARCO_CLARO = ['#e8eaf6', '#bbdefb', '#81d4fa', '#80deea', '#80cbc4', '#a5d6a7', '#c5e1a5', '#e6ee9c', '#fff59d', '#ffe082', '#ffcc80', '#ffab40', '#ff7043', '#d32f2f'];
+  function rampa(lista) {
+    const cs = lista.map(c => rgb(c));
+    return t => { t = Math.max(0, Math.min(1, t)) * (cs.length - 1); const i = Math.min(cs.length - 2, Math.floor(t)); return mix(cs[i], cs[i + 1], t - i); };
+  }
   /**
    * Monta a escala de cores para uma lista de valores.
-   * opts.tipo: 'divergente' (negativo · zero · positivo, simétrica em torno de zero) ou 'sequencial' (mín → máx).
+   * opts.tipo:
+   *   'arco-iris'  — várias cores, do menor (azul, ou tom claro quando o mínimo é 0) ao maior (vermelho);
+   *                  opts.faixas (padrão 12) dá faixas de cor nítidas, como os programas de análise; faixas: 0 = contínuo;
+   *   'divergente' — negativo · zero · positivo, simétrica em torno de zero (duas cores);
+   *   'sequencial' — de zero ao máximo em uma cor.
    * opts.min / opts.max: limites fixos (senão, os extremos dos valores, ou opts.limites = [mín, máx] de uma região).
-   * opts.cores: { neg, zero, pos } (CSS ou --variável). Padrão: azul · branco · laranja-avermelhado.
+   * opts.cores: { neg, zero, pos } para as escalas de duas cores; opts.paleta: lista de cores para o arco-íris.
    */
   function escala(valores, opts) {
     opts = opts || {};
@@ -75,10 +87,21 @@
     if (!Number.isFinite(lo)) { lo = 0; hi = 0; }
     if (opts.min != null) lo = opts.min; if (opts.max != null) hi = opts.max;
     const tipo = opts.tipo || (lo < 0 && hi > 0 ? 'divergente' : 'sequencial');
-    const c = opts.cores || {};
-    const neg = rgb(c.neg || '--neg', [43, 108, 176]), zero = rgb(c.zero || '#f7f8f9', [247, 248, 249]), pos = rgb(c.pos || '--pos', [192, 97, 42]);
     const amax = Math.max(Math.abs(lo), Math.abs(hi), 1e-12);
     const span = Math.max(hi - lo, 1e-12);
+    if (tipo === 'arco-iris') {
+      const faixas = opts.faixas == null ? 12 : Math.max(0, Math.round(opts.faixas));
+      const claro = lo >= -1e-12;
+      const rp = rampa(opts.paleta || (claro ? ARCO_CLARO : ARCO));
+      const tOf = v => Math.max(0, Math.min(1, (v - lo) / span));
+      // com faixas, cada faixa recebe a cor do seu centro
+      const tq = t => faixas > 1 ? Math.min(faixas - 1, Math.floor(t * faixas)) / (faixas - 1) : t;
+      const corFaixa = i => rp(faixas > 1 ? i / (faixas - 1) : 0.5);
+      const cor = v => rp(tq(tOf(v)));
+      return { tipo, min: lo, max: hi, amax, cor, t: tOf, faixas, rampa: rp, corFaixa };
+    }
+    const c = opts.cores || {};
+    const neg = rgb(c.neg || '--neg', [43, 108, 176]), zero = rgb(c.zero || '#f7f8f9', [247, 248, 249]), pos = rgb(c.pos || '--pos', [192, 97, 42]);
     // rampa em 3 pontos: zero → cor → cor escurecida (mais contraste nos extremos, sem distorcer a escala)
     const dark = c => c.map(x => x * 0.62);
     const ramp = (c, t) => t <= 0.55 ? mix(zero, c, t / 0.55) : mix(c, dark(c), (t - 0.55) / 0.45);
@@ -89,16 +112,46 @@
         : v => ramp(pos, Math.max(0, Math.min(1, (v - lo) / span)));
     return { tipo, min: lo, max: hi, amax, cor, cores: { neg, zero, pos } };
   }
-  /** HTML de uma barra de cores com os extremos e o zero. fmt(v) formata os números. */
-  function legendaHTML(esc, unidade, fmt) {
-    fmt = fmt || (v => v.toLocaleString('pt-BR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }));
-    const div = esc.tipo === 'divergente';
-    const a = div ? -esc.amax : esc.min, b = div ? esc.amax : esc.max;
-    const stops = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1].map(t => `${hex(esc.cor(a + (b - a) * t))} ${t * 100}%`).join(',');
-    const ticks = div ? [a, 0, b] : [a, (a + b) / 2, b];
+  const fmtPadrao = v => v.toLocaleString('pt-BR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 });
+  /**
+   * HTML da legenda. Barra horizontal com os extremos (padrão) ou, com opts.vertical, coluna de faixas com os
+   * valores nas divisas (máximo em cima), no estilo dos programas de análise. fmt(v) formata os números.
+   */
+  function legendaHTML(esc, unidade, fmt, opts) {
+    fmt = fmt || fmtPadrao; opts = opts || {};
+    if (esc.tipo === 'arco-iris' && opts.vertical) {
+      const n = esc.faixas || 12, h = opts.altura || 15, H = n * h;
+      let sw = '', lb = '';
+      for (let i = 0; i < n; i++) sw += `<i style="background:${hex(esc.faixas ? esc.corFaixa(n - 1 - i) : esc.rampa((n - 1 - i + 0.5) / n))};height:${h}px"></i>`;
+      for (let i = 0; i <= n; i++) lb += `<span style="top:${i * h - 6}px">${fmt(esc.max - (esc.max - esc.min) * i / n)}</span>`;
+      return `<div class="m3-lv">${unidade ? `<div class="m3-lv-u">${unidade}</div>` : ''}<div class="m3-lv-c"><div class="m3-lv-s">${sw}</div><div class="m3-lv-l" style="height:${H}px">${lb}</div></div></div>`;
+    }
+    let stops, ticks;
+    if (esc.tipo === 'arco-iris') {
+      const n = esc.faixas || 0;
+      stops = n ? Array.from({ length: n }, (_, i) => `${hex(esc.corFaixa(i))} ${i / n * 100}% ${(i + 1) / n * 100}%`).join(',')
+        : Array.from({ length: 15 }, (_, i) => `${hex(esc.rampa(i / 14))} ${i / 14 * 100}%`).join(',');
+      ticks = [esc.min, (esc.min + esc.max) / 2, esc.max];
+    } else {
+      const div = esc.tipo === 'divergente';
+      const a = div ? -esc.amax : esc.min, b = div ? esc.amax : esc.max;
+      stops = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1].map(t => `${hex(esc.cor(a + (b - a) * t))} ${t * 100}%`).join(',');
+      ticks = div ? [a, 0, b] : [a, (a + b) / 2, b];
+    }
     return `<div class="m3-leg"><div class="m3-bar" style="background:linear-gradient(90deg,${stops})"></div>` +
       `<div class="m3-ticks">${ticks.map(t => `<span>${fmt(t)}</span>`).join('')}</div>` +
       (unidade ? `<div class="m3-un">${unidade}</div>` : '') + '</div>';
+  }
+  /** Estilo padrão das legendas (pode ser sobrescrito pela página). Chamado uma vez por criar(). */
+  function estiloLegendas() {
+    if (document.getElementById('m3-css')) return;
+    const st = document.createElement('style'); st.id = 'm3-css';
+    st.textContent = '.m3-leg{display:grid;gap:3px}.m3-bar{height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.15)}' +
+      '.m3-ticks{display:flex;justify-content:space-between;font:12px ui-monospace,Consolas,monospace}.m3-un{font-size:11.5px;opacity:.75}' +
+      '.m3-lv{font:11px ui-monospace,Consolas,monospace;line-height:1;display:grid;gap:6px}.m3-lv-u{font-weight:600}' +
+      '.m3-lv-c{display:flex;gap:6px}.m3-lv-s{display:flex;flex-direction:column;border:1px solid rgba(0,0,0,.2)}.m3-lv-s i{display:block;width:16px}' +
+      '.m3-lv-l{position:relative;min-width:44px}.m3-lv-l span{position:absolute;left:0;white-space:nowrap}';
+    document.head.appendChild(st);
   }
 
   /* ---------------- geometria auxiliar (sem three) ---------------- */
@@ -155,6 +208,7 @@
     let R;
     try { R = new T.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); }
     catch (e) { throw new Error('WebGL indisponível neste navegador.'); }
+    estiloLegendas();
     R.setPixelRatio(Math.min(2, global.devicePixelRatio || 1));
     R.localClippingEnabled = true;
     alvo.appendChild(R.domElement);
@@ -183,6 +237,16 @@
 
     const matOpts = o => Object.assign({ side: T.DoubleSide, clippingPlanes: planos }, o);
 
+    // textura 1D da escala arco-íris: faixas nítidas (NearestFilter) ou contínua (LinearFilter)
+    function texturaDe(esc) {
+      if (esc._tex) return esc._tex;
+      const w = esc.faixas || 256, data = new Uint8Array(4 * w);
+      for (let i = 0; i < w; i++) { const c = esc.faixas ? esc.corFaixa(i) : esc.rampa((i + 0.5) / w); data[4 * i] = c[0]; data[4 * i + 1] = c[1]; data[4 * i + 2] = c[2]; data[4 * i + 3] = 255; }
+      const t = new T.DataTexture(data, w, 1, T.RGBAFormat);
+      t.magFilter = t.minFilter = esc.faixas ? T.NearestFilter : T.LinearFilter; t.generateMipmaps = false; t.needsUpdate = true;
+      esc._tex = t; return t;
+    }
+
     function limpar() {
       grupo.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
       cena.remove(grupo); grupo = new T.Group(); cena.add(grupo); pegaveis.length = 0; marca = null; pedir();
@@ -195,13 +259,16 @@
      *      desloc?: [[dx,dy,dz]] por nó, fator?: multiplicador da deformada, info?: qualquer dado devolvido no clique }
      */
     function superficie(s) {
-      const n = s.nos.length, pos = new Float32Array(3 * n), col = s.valores ? new Float32Array(3 * n) : null;
+      const n = s.nos.length, pos = new Float32Array(3 * n);
+      const tex = s.valores && s.escala && s.escala.tipo === 'arco-iris' ? texturaDe(s.escala) : null;
+      const col = s.valores && !tex ? new Float32Array(3 * n) : null, uv = tex ? new Float32Array(2 * n) : null;
       const f = s.fator || 0;
       for (let i = 0; i < n; i++) {
         const q = s.nos[i], d = s.desloc && f ? s.desloc[i] : null;
         const p = P3(q[0] + (d ? f * d[0] : 0), q[1] + (d ? f * d[1] : 0), q[2] + (d ? f * d[2] : 0));
         pos[3 * i] = p[0]; pos[3 * i + 1] = p[1]; pos[3 * i + 2] = p[2];
         if (col) { const c = s.escala.cor(s.valores[i]); col[3 * i] = c[0] / 255; col[3 * i + 1] = c[1] / 255; col[3 * i + 2] = c[2] / 255; }
+        if (uv) { uv[2 * i] = Math.min(0.9999, Math.max(0.0001, s.escala.t(s.valores[i]))); uv[2 * i + 1] = 0.5; }
       }
       const idx = [];
       (s.quads || []).forEach(([a, b, c, d]) => { idx.push(a, b, c, a, c, d); });
@@ -209,10 +276,11 @@
       const g = new T.BufferGeometry();
       g.setAttribute('position', new T.BufferAttribute(pos, 3));
       if (col) g.setAttribute('color', new T.BufferAttribute(col, 3));
+      if (uv) g.setAttribute('uv', new T.BufferAttribute(uv, 2));
       g.setIndex(idx); g.computeVertexNormals();
       const transp = s.opacidade != null && s.opacidade < 1;
       const m = new T.MeshLambertMaterial(matOpts({
-        color: col ? 0xffffff : new T.Color(hex(rgb(s.cor || '--concrete', [207, 214, 220]))), vertexColors: !!col,
+        color: col || tex ? 0xffffff : new T.Color(hex(rgb(s.cor || '--concrete', [207, 214, 220]))), vertexColors: !!col, map: tex || null,
         transparent: transp, opacity: transp ? s.opacidade : 1, depthWrite: !transp,
         polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1
       }));
@@ -330,5 +398,5 @@
       get grupo() { return grupo; }, three: { cena, camera: cam, controles: ctl, renderer: R } };
   }
 
-  global.Motor3D = { VERSAO, carregar, criar, escala, legendaHTML, espelhar, revolver, rgb, hex };
+  global.Motor3D = { VERSAO, carregar, criar, escala, legendaHTML, espelhar, revolver, rgb, hex, ARCO, ARCO_CLARO };
 })(typeof window !== 'undefined' ? window : globalThis);
