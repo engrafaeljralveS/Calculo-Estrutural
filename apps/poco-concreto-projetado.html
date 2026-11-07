@@ -112,7 +112,7 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
 </style>
 <div class="wrap">
   <header>
-    <p class="eyebrow">Aplicativo v1.1 · NBR 6118 · NBR 6484 · verificação preliminar</p>
+    <p class="eyebrow">Aplicativo v1.2 · NBR 6118 · NBR 6484 · NBR 7481 · verificação preliminar</p>
     <h1>Poço em Concreto Projetado</h1>
     <p class="sub">Contenção de poço circular com anel de concreto projetado: perfil da sondagem SPT, estabilidade da escavação, compressão do anel e flexão por assimetria do empuxo.</p>
   </header>
@@ -205,6 +205,14 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
           </div>
           <p class="gnote">Redução = 1,00 é o anel livre (mais conservador). Valores menores refletem a reação do solo; calibre com modelo de anel sobre molas.</p>
         </section>
+        <section><h2><span class="n">4</span>Tela soldada</h2>
+          <div class="g2">
+            <div class="field" style="grid-column:1/-1"><label for="in-tela">Tela (NBR 7481, CA-60)</label><div class="inp"><select id="in-tela" style="flex:1;border:0;background:transparent;padding:4px 6px;font:500 12.5px var(--f-body)"></select></div></div>
+            <div class="field"><label for="in-telaPos">Posição</label><div class="inp"><select id="in-telaPos" style="flex:1;border:0;background:transparent;padding:4px 6px;font:500 12.5px var(--f-body)"><option value="eixo">Uma tela no eixo</option><option value="faces">Duas telas, uma em cada face</option></select></div></div>
+            <div class="field" data-k="cobT"><label for="in-cobT">Cobrimento</label><div class="inp"><input id="in-cobT" inputmode="decimal"><span class="u">cm</span></div></div>
+          </div>
+          <p class="gnote">Ovalização traciona ora uma face, ora a outra: duas telas são o arranjo que de fato resiste à flexão. Uma tela no eixo serve como armadura de retração e de controle de fissuras.</p>
+        </section>
         <div class="btnrow"><button class="btn" type="button" id="reset">Restaurar o exemplo</button></div>
       </aside>
       <main class="results">
@@ -294,16 +302,22 @@ const consAuto = (t, N) => !isFinite(N) ? "—" : t.g === "co" ? (N <= 2 ? "Muit
   : (N <= 4 ? "Fofa" : N <= 8 ? "Pouco compacta" : N <= 18 ? "Medianamente compacta" : N <= 40 ? "Compacta" : "Muito compacta");
 const consOf = r => { const t = tByName(r.tipo), list = t.g === "co" ? CONS_CO : CONS_GR; return r.cons && r.cons !== "auto" && list.includes(r.cons) ? r.cons : consAuto(t, num(r.N)); };
 
+/* ---------- telas soldadas (NBR 7481, aço CA-60): fios iguais nas duas direções ---------- */
+const TELAS = [["Q61", 3.4, 15], ["Q75", 3.8, 15], ["Q92", 4.2, 15], ["Q113", 3.8, 10], ["Q138", 4.2, 10], ["Q159", 4.5, 10], ["Q196", 5.0, 10],
+  ["Q246", 5.6, 10], ["Q283", 6.0, 10], ["Q335", 8.0, 15], ["Q396", 7.1, 10], ["Q503", 8.0, 10], ["Q636", 9.0, 10], ["Q785", 10.0, 10]]
+  .map(([n, f, s]) => ({ n, f, s, As: Math.PI * f * f / 400 * 100 / s }));   // As em cm²/m
+const telaOf = n => TELAS.find(t => t.n === n) || null;
 /* ---------- estado ---------- */
 const DEFAULT = {
   furo: "SP-01", na: "", fim: "6.45",
   rows: [{ z: "1", N: "5", tipo: "Argila arenosa", cons: "auto" }, { z: "2", N: "6", tipo: "Argila arenosa", cons: "auto" }, { z: "3", N: "7", tipo: "Argila", cons: "auto" },
     { z: "4", N: "8", tipo: "Argila", cons: "auto" }, { z: "5", N: "9", tipo: "Argila", cons: "auto" }, { z: "6", N: "12", tipo: "Argila siltosa", cons: "auto" }],
   alpha: "5", Kco: "0.60", phiMax: "38",
-  Dst: "2.40", t: "0.08", H: "4.0", hl: "1.0", q: "10", fck: "25", fcj: "5", fr: "0", dp: "25", red: "1.00", gf: "1.40"
+  Dst: "2.40", t: "0.08", H: "4.0", hl: "1.0", q: "10", fck: "25", fcj: "5", fr: "0", dp: "25", red: "1.00", gf: "1.40",
+  tela: "Q138", telaPos: "eixo", cobT: "3"
 };
-const NUMK = ["alpha", "Kco", "phiMax", "Dst", "t", "H", "hl", "q", "fck", "fcj", "fr", "dp", "red", "gf"];
-const LIM = { alpha: [1, 15], Kco: [0.2, 1.5], phiMax: [25, 45], Dst: [0.3, 30], t: [0.03, 1], H: [0.5, 60], hl: [0.2, 5], q: [0, 200], fck: [15, 60], fcj: [0.5, 60], fr: [0, 10], dp: [0, 100], red: [0, 1.5], gf: [1, 2] };
+const NUMK = ["alpha", "Kco", "phiMax", "Dst", "t", "H", "hl", "q", "fck", "fcj", "fr", "dp", "red", "gf", "cobT"];
+const LIM = { alpha: [1, 15], Kco: [0.2, 1.5], phiMax: [25, 45], Dst: [0.3, 30], t: [0.03, 1], H: [0.5, 60], hl: [0.2, 5], q: [0, 200], fck: [15, 60], fcj: [0.5, 60], fr: [0, 10], dp: [0, 100], red: [0, 1.5], gf: [1, 2], cobT: [1, 10] };
 const KEY = "poco-cp-v2", TABKEY = "poco-cp-tab";
 let st;
 try { st = JSON.parse(localStorage.getItem(KEY)); } catch (e) { st = null; }
@@ -592,6 +606,13 @@ function compute() {
   for (let z = v.H + 0.01; z < v.H + Math.max(Dex / 2, 0.5); z += 0.05) { const l = layerAt(L, z); if (!l.coh) granB = true; SuB = Math.min(SuB, l.Su); }
   const svH = sigmaV(L, v.H, na), Nc = Math.min(9, 6.2 * (1 + 0.2 * v.H / Dex)), FSb = granB ? NaN : Nc * SuB / (svH + v.q);
   // anel
+  const tl = telaOf(st.tela), nCam = tl ? (st.telaPos === "faces" ? 2 : 1) : 0;
+  const ring = z => anel(p(Math.min(Math.max(0, z), v.H - 1e-6)), v, Rext, Rm, tl, nCam);
+  const zs = []; for (let z = 1; z < v.H - 1e-6; z += 1) zs.push(z); zs.push(v.H);
+  if (!zs.some(z => Math.abs(z - zpm) < 0.05)) zs.push(zpm); zs.sort((a, b) => a - b);
+  const rows = zs.map(z => Object.assign({ z, l: layerAt(L, Math.min(z, v.H - 1e-6)) }, ring(z)));
+  const crit2 = ring(zpm);
+  if (tl && nCam === 2 && 2 * (v.cobT / 100 + tl.f / 1000) > v.t * 0.8) w.push("Duas telas não cabem bem nessa espessura com esse cobrimento: use uma tela no eixo ou aumente t.");
   const N = pmax * Rext, sig = N / v.t / 1000, Nd = v.gf * N, sigd = Nd / v.t / 1000;
   const fcd = 0.85 * v.fck / 1.4, fcjd = 0.85 * v.fcj / 1.4, FSc = fcd / sigd, FSj = fcjd / sigd;
   const dP = pmax * v.dp / 100, M = v.red * dP * Rm * Rm / 4, Md = v.gf * M, e = M / N;
@@ -601,9 +622,37 @@ function compute() {
   const water = isFinite(na) && na < v.H;
   if (water) w.push(`Nível d'água a ${fmt(na)} m, acima do fundo: verifique o rebaixamento, a subpressão e a ruptura hidráulica do fundo.`);
   if (lances.some(l => l.granular)) w.push("Há solo granular (areia ou silte não coesivo) em algum lance: o corte vertical não se sustenta sem suporte. Reduza o lance, faça pré-suporte (enfilagens, colunas) ou rebaixe o NA.");
-  return { v, L, na, Rext, Dex, Rm, prof, pmax, zpm, lp, lances, crit, SuB, granB, svH, Nc, FSb, N, sig, Nd, sigd, fcd, fcjd, FSc, FSj, dP, M, Md, e, sMax, sMin, fctm, fctd, fres, ftRes, tens, FSt, FSm, water, w, p };
+  return { tl, nCam, rows, crit2, v, L, na, Rext, Dex, Rm, prof, pmax, zpm, lp, lances, crit, SuB, granB, svH, Nc, FSb, N, sig, Nd, sigd, fcd, fcjd, FSc, FSj, dP, M, Md, e, sMax, sMin, fctm, fctd, fres, ftRes, tens, FSt, FSm, water, w, p };
 }
 
+/* ---------- anel em uma profundidade: compressão, flexão (concreto simples) e flexo-compressão com tela ---------- */
+function anel(pz, v, Rext, Rm, tl, nCam) {
+  const N = pz * Rext, Nd = v.gf * N, sigd = Nd / v.t / 1000;
+  const fcd = 0.85 * v.fck / 1.4, fcjd = 0.85 * v.fcj / 1.4;
+  const dP = pz * v.dp / 100, M = v.red * dP * Rm * Rm / 4, Md = v.gf * M, e = N > 0 ? M / N : 0;
+  const sMax = (Nd / v.t + 6 * Md / (v.t * v.t)) / 1000, sMin = (Nd / v.t - 6 * Md / (v.t * v.t)) / 1000;
+  const fctm = 0.3 * Math.pow(v.fck, 2 / 3), fctd = 0.7 * fctm / 1.4, ftRes = Math.max(fctd, v.fr > 0 ? v.fr / 1.5 : 0);
+  const tens = -sMin, FSt = tens <= 0 ? 99 : ftRes / tens, FSm = fcd / sMax;
+  const o = { p: pz, N, Nd, sigd, FSc: fcd / sigd, FSj: fcjd / sigd, dP, M, Md, e, sMax, sMin, tens, ftRes, FSt, FSm };
+  if (tl) { o.MRd = mrd(Nd, v, tl, nCam); o.FStela = Md > 1e-9 ? o.MRd / Md : 99; }
+  return o;
+}
+function mrd(Nd, v, tl, nCam) {
+  // seção de 1 m × t, ELU (NBR 6118): εcu = 3,5‰, bloco retangular 0,85·fcd em 0,8x, aço CA-60 (fyd = 600/1,15), Es = 210 GPa
+  const b = 1, t = v.t, fcd = 0.85 * v.fck / 1.4 * 1000 / 0.85, fyd = 600 / 1.15 * 1000, Es = 210e6, As = tl.As / 1e4;
+  const c = v.cobT / 100 + tl.f / 2000;
+  const lay = nCam === 2 ? [c, t - c] : [t / 2];
+  const forces = x => {
+    const y = Math.min(0.8 * x, t), Cc = 0.85 * fcd * b * y;
+    let F = Cc, Mo = Cc * (t / 2 - y / 2);
+    lay.forEach(d => { const eps = 0.0035 * (x - d) / x, sg = Math.max(-fyd, Math.min(fyd, Es * eps)); F += As * sg; Mo += As * sg * (t / 2 - d); });
+    return { F, Mo };
+  };
+  let lo = 1e-5, hi = 50 * t;
+  if (forces(hi).F < Nd) return 0;          // nem a seção toda comprimida resiste a Nd
+  for (let k = 0; k < 80; k++) { const mid = (lo + hi) / 2; if (forces(mid).F > Nd) hi = mid; else lo = mid; }
+  return Math.max(0, forces((lo + hi) / 2).Mo);
+}
 /* ---------- corte do poço ---------- */
 function drawCorte(R) {
   const { v, L, na } = R, Dex = R.Dex;
@@ -670,6 +719,7 @@ function drawCorte(R) {
 
 /* ---------- resultados ---------- */
 let last = null;
+const minTela = R => Math.min(...R.rows.map(r => r.FStela));
 function renderCalc() {
   document.querySelectorAll("[data-k]").forEach(f => { const k = f.dataset.k, x = num(st[k]); f.classList.toggle("bad", LIM[k] && !(isFinite(x) && x >= LIM[k][0] && x <= LIM[k][1])); });
   const R = compute(); last = R;
@@ -683,6 +733,7 @@ function renderCalc() {
     ["Compressão no anel (28 d)", "FS " + fmt(R.FSc, 1), stt(R.FSc)],
     ["Compressão concreto jovem", "FS " + fmt(R.FSj, 1), stt(R.FSj)],
     ["Flexão: tração na face", "FS " + (R.FSt > 50 ? "> 50" : fmt(R.FSt, 2)), stt(R.FSt)],
+    ...(R.tl ? [[`Flexão com tela ${R.tl.n}`, "FS " + (minTela(R) > 50 ? "> 50" : fmt(minTela(R), 2)), stt(minTela(R))]] : []),
     [`Lance sem suporte (L${R.crit.i})`, R.crit.granular ? "granular" : "FS " + fmt(fsl, 1), R.crit.granular ? ["bad", "Não autoportante"] : stt(fsl, 1.5)],
     ["Ruptura de fundo", R.granB ? "granular" : "FS " + fmt(fsb, 1), R.granB ? ["warn", "Ver NA"] : stt(fsb, 1.5)]
   ];
@@ -703,22 +754,43 @@ ${R.granB ? "Fundo em solo granular: a ruptura por levantamento não se aplica; 
   <div class="calc">p = K·(σ'v + q) + u = ${fmt(lp.K, 2)} × (${fmt(sigmaV(R.L, R.zpm, R.na) - pore(R.zpm, R.na), 1)} + ${fmt(v.q, 1)}) + ${fmt(pore(R.zpm, R.na), 1)} = ${fmt(R.pmax, 1)} kPa${R.water ? "   (com água: NA a " + fmt(R.na, 2) + " m)" : "   (sem água)"}</div>
   <div class="ref">K por camada (aba Sondagem). K₀ é conservador para poço circular (ver Coimbra 2018; preprint 2024).</div></div>
 
-  <div class="step"><h3>4 · Compressão de anel ${pill(...stt(Math.min(R.FSc, R.FSj)))}</h3>
-  <div class="calc">N = p·R_ext = ${fmt(R.pmax, 1)} × ${fmt(R.Rext, 3)} = ${fmt(R.N, 1)} kN/m     σ = N/t = ${fmt(R.sig)} MPa
-Nd = γf·N = ${fmt(R.Nd, 1)} kN/m     σd = ${fmt(R.sigd)} MPa
-fcd = 0,85·fck/1,4 = ${fmt(R.fcd)} MPa  → FS = ${fmt(R.FSc, 1)}
-fcd jovem = 0,85 × ${fmt(v.fcj, 1)}/1,4 = ${fmt(R.fcjd)} MPa → FS = ${fmt(R.FSj, 1)}</div>
-  <div class="ref">Ver: patente US 4.423.981; Ferreira (USP); Naseri &amp; Bahrani.</div></div>
+  <div class="step"><h3>4 · Compressão de anel ${pill(...stt(Math.min(...R.rows.map(r => Math.min(r.FSc, r.FSj)))))}<small>metro a metro; ✱ = empuxo máximo</small></h3>
+  <div class="tw"><table><thead><tr><th>z (m)</th><th class="l">Camada</th><th>p (kPa)</th><th>N (kN/m)</th><th>N<sub>d</sub> (kN/m)</th><th>σ<sub>d</sub> (MPa)</th><th>FS 28 d</th><th>FS jovem</th><th></th></tr></thead><tbody>${R.rows.map(r => `<tr${Math.abs(r.z - R.zpm) < 0.05 ? ' style="font-weight:600"' : ""}><td class="num">${fmt(r.z, 2)}${Math.abs(r.z - R.zpm) < 0.05 ? " ✱" : ""}</td><td class="l">${esc(r.l.tipo)}</td><td class="num">${fmt(r.p, 1)}</td><td class="num">${fmt(r.N, 1)}</td><td class="num">${fmt(r.Nd, 1)}</td><td class="num">${fmt(r.sigd)}</td><td class="num">${fmt(r.FSc, 1)}</td><td class="num">${fmt(r.FSj, 1)}</td><td>${pill(...stt(Math.min(r.FSc, r.FSj)))}</td></tr>`).join("")}</tbody></table></div>
+  <div class="calc" style="margin-top:6px">Processo, para cada profundidade z:
+p(z)   = K·(σ'v + q) + u                      empuxo no anel
+N      = p · R_ext                            força de anel (kN/m de altura)
+Nd     = γf · N          σd = Nd / t           tensão de cálculo
+fcd    = 0,85 · fck / 1,4                     concreto aos 28 dias
+fcd,j  = 0,85 · fcj / 1,4                     concreto jovem, no carregamento
+FS     = fcd / σd  ≥ 1   e   FS jovem = fcd,j / σd ≥ 1</div>
+  <div class="ref">fcd = ${fmt(R.fcd)} MPa e fcd,j = ${fmt(R.fcjd)} MPa. Ver: patente US 4.423.981; Ferreira (USP); Naseri &amp; Bahrani.</div></div>
 
-  <div class="step"><h3>5 · Flexão por assimetria (M-N) ${pill(...stt(Math.min(R.FSt, R.FSm)))}</h3>
-  <div class="calc">Δp = ${fmt(v.dp, 0)}% × p = ${fmt(R.dP, 1)} kPa
-M = ${fmt(v.red)}·Δp·Rm²/4 = ${fmt(R.M)} kN·m/m     e = M/N = ${fmt(R.e, 3)} m  (t/6 = ${fmt(v.t / 6, 3)} m${R.e > v.t / 6 ? " → seção com tração" : " → seção toda comprimida"})
-σ = Nd/t ± 6Md/t²  →  σ máx = ${fmt(R.sMax)} MPa   σ mín = ${fmt(R.sMin)} MPa
-Tração resistente = ${v.fr > 0 ? "máx(fctd; fr/1,5) = " : "fctd = 0,7·fctm/1,4 = "}${fmt(R.ftRes)} MPa  (fctm = ${fmt(R.fctm)})
-${R.tens > 0 ? "Tração atuante = " + fmt(R.tens) + " MPa → FS = " + fmt(R.FSt, 2) : "Sem tração na seção."}   Compressão máx → FS = ${fmt(R.FSm, 1)}</div>
-  <div class="ref">Ver: Dias (UnB 2013), diagrama M-N; Kim &amp; Lee (2021), fibras; Martins (UnB 2008). Se não atender, aumente t, informe a tração residual de fibras ou tela, ou calibre a redução pelo solo com modelo de molas.</div></div>
+  <div class="step"><h3>5 · Flexão por assimetria, concreto simples ${pill(...stt(Math.min(...R.rows.map(r => Math.min(r.FSt, r.FSm)))))}<small>metro a metro</small></h3>
+  <div class="tw"><table><thead><tr><th>z (m)</th><th>Δp (kPa)</th><th>M<sub>d</sub> (kN·m/m)</th><th>e = M/N (m)</th><th>σ<sub>máx</sub> (MPa)</th><th>σ<sub>mín</sub> (MPa)</th><th>FS tração</th><th>FS compressão</th><th></th></tr></thead><tbody>${R.rows.map(r => `<tr${Math.abs(r.z - R.zpm) < 0.05 ? ' style="font-weight:600"' : ""}><td class="num">${fmt(r.z, 2)}${Math.abs(r.z - R.zpm) < 0.05 ? " ✱" : ""}</td><td class="num">${fmt(r.dP, 1)}</td><td class="num">${fmt(r.Md, 3)}</td><td class="num">${fmt(r.e, 3)}</td><td class="num">${fmt(r.sMax)}</td><td class="num">${fmt(r.sMin)}</td><td class="num">${r.FSt > 50 ? "> 50" : fmt(r.FSt, 2)}</td><td class="num">${fmt(r.FSm, 1)}</td><td>${pill(...stt(Math.min(r.FSt, r.FSm)))}</td></tr>`).join("")}</tbody></table></div>
+  <div class="calc" style="margin-top:6px">Processo, para cada profundidade z:
+Δp     = (% de assimetria) · p                parcela que ovaliza o anel
+M      = (redução) · Δp · Rm² / 4              anel livre, carga ovalizante
+Md     = γf · M          e = M / N             excentricidade (t/6: limite do núcleo)
+σ      = Nd / t ± 6·Md / t²                    tensões nas faces (seção não fissurada)
+fctd   = 0,7 · 0,3·fck^(2/3) / 1,4             tração resistente do concreto simples
+f,res  = fr / 1,5                              tração residual com fibras (se houver)
+FS tração = máx(fctd; f,res) / |σmín|   e   FS compressão = fcd / σmáx</div>
+  <div class="ref">Rm = ${fmt(R.Rm, 3)} m · fctd = ${fmt(R.fctd)} MPa${v.fr > 0 ? ` · fr/1,5 = ${fmt(v.fr / 1.5)} MPa` : ""}. Ver: Dias (UnB 2013), diagrama M-N; Kim &amp; Lee (2021), fibras; Martins (UnB 2008).</div></div>
 
-  <div class="step"><h3>6 · Observações</h3>
+  <div class="step"><h3>6 · Tela soldada ${R.tl ? pill(...stt(minTela(R))) : pill("info", "Sem tela")}<small>flexo-compressão no ELU, seção armada fissurada</small></h3>
+  ${R.tl ? `<div class="calc">Tela ${R.tl.n}: fios ø${fmt(R.tl.f, 1)} mm a cada ${fmt(R.tl.s, 0)} cm nas duas direções, A<sub>s</sub> = ${fmt(R.tl.As, 2)} cm²/m por camada, aço CA-60 (f<sub>yd</sub> = ${fmt(600 / 1.15, 0)} MPa)
+${R.nCam === 2 ? `Duas telas, uma junto a cada face (cobrimento ${fmt(v.cobT, 1)} cm)` : "Uma tela no eixo da espessura"} · ρ = ${fmt(R.nCam * R.tl.As / (v.t * 100), 3)} %  (mínimo de lajes da NBR 6118: 0,15 % = ${fmt(0.15 * v.t * 100, 2)} cm²/m)</div>
+  <div class="tw" style="margin-top:6px"><table><thead><tr><th>z (m)</th><th>N<sub>d</sub> (kN/m)</th><th>M<sub>d</sub> (kN·m/m)</th><th>M<sub>Rd</sub> (kN·m/m)</th><th>FS = M<sub>Rd</sub>/M<sub>d</sub></th><th></th></tr></thead><tbody>${R.rows.map(r => `<tr${Math.abs(r.z - R.zpm) < 0.05 ? ' style="font-weight:600"' : ""}><td class="num">${fmt(r.z, 2)}${Math.abs(r.z - R.zpm) < 0.05 ? " ✱" : ""}</td><td class="num">${fmt(r.Nd, 1)}</td><td class="num">${fmt(r.Md, 3)}</td><td class="num">${fmt(r.MRd, 3)}</td><td class="num">${r.FStela > 50 ? "> 50" : fmt(r.FStela, 2)}</td><td>${pill(...stt(r.FStela))}</td></tr>`).join("")}</tbody></table></div>` : `<p class="note" style="margin:0 0 6px">Nenhuma tela escolhida: o anel é verificado só como concreto simples (itens 4 e 5). Escolha uma tela em "4 Tela soldada" para ver a contribuição dela.</p>`}
+  <div class="calc" style="margin-top:6px">Processo (seção de 1 m de altura × t, NBR 6118, ELU):
+Concreto: εcu = 3,5‰, bloco retangular 0,85·fcd na altura 0,8·x
+Aço: εs = 3,5‰ · (x − di) / x,  σs = Es·εs limitado a ± fyd  (fyd = 600/1,15 MPa, CA-60)
+Equilíbrio: 0,85·fcd·b·0,8x + Σ As·σs = Nd            →  acha a linha neutra x
+Momento resistente, em relação ao eixo da parede:
+MRd = 0,85·fcd·b·0,8x · (t/2 − 0,4x) + Σ As·σs · (t/2 − di)
+Verificação: MRd ≥ Md   (FS = MRd / Md ≥ 1)</div>
+  <div class="ref">Quando o concreto simples atende (item 5), a tela trabalha como armadura de retração e de controle de fissuras e garante um comportamento dúctil se a tração passar de fctd. Quando não atende, a tela passa a resistir à flexão como seção armada: é essa a verificação acima. Uma tela no eixo pouco acrescenta ao momento (braço pequeno); duas telas, uma em cada face, são o arranjo eficiente, já que a ovalização traciona ora uma face, ora a outra.</div></div>
+
+  <div class="step"><h3>7 · Observações</h3>
   <div class="calc">${R.water ? "Há água acima do fundo: verificar rebaixamento, subpressão e piping (ver AMCA, laje × casca)." : "Sem água no trecho escavado."}
 Espessura mínima prática de execução: ≈ 5 cm; recomendado ≥ 8 cm com tela ou fibras.</div></div>`;
   // tabela e gráfico
@@ -749,6 +821,9 @@ function setTab(t) {
 ["son", "calc", "teo"].forEach(k => $("tb-" + k).addEventListener("click", () => setTab(k)));
 function bindNums() {
   NUMK.forEach(k => { const i = $("in-" + k); if (!i) return; i.value = String(st[k]).replace(".", ","); if (!i.dataset.b) { i.addEventListener("input", () => { st[k] = i.value; update(); }); i.dataset.b = "1"; } });
+  const ts = $("in-tela");
+  if (!ts.dataset.b) { ts.innerHTML = '<option value="">Sem tela (concreto simples)</option>' + TELAS.map(t => `<option value="${t.n}">${t.n} · ø${fmt(t.f, 1)} c/${t.s} · ${fmt(t.As, 2)} cm²/m</option>`).join(""); ts.addEventListener("change", () => { st.tela = ts.value; update(); }); $("in-telaPos").addEventListener("change", () => { st.telaPos = $("in-telaPos").value; update(); }); ts.dataset.b = "1"; }
+  ts.value = st.tela || ""; $("in-telaPos").value = st.telaPos;
   $("iFuro").value = st.furo; $("iNA").value = st.na; $("iFim").value = st.fim;
 }
 $("iFuro").addEventListener("input", e => { st.furo = e.target.value; update(); });
@@ -759,7 +834,7 @@ $("btnSort").addEventListener("click", () => { st.rows.sort((a, b) => (num(a.z) 
 $("fileXls").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (f) importFile(f); });
 $("btnModelo").addEventListener("click", baixarModelo);
 $("fileImg").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (f && sample) readImage(f); });
-$("reset").addEventListener("click", () => { ["Dst", "t", "H", "hl", "q", "fck", "fcj", "fr", "dp", "red", "gf"].forEach(k => { st[k] = DEFAULT[k]; }); bindNums(); update(); });
+$("reset").addEventListener("click", () => { ["Dst", "t", "H", "hl", "q", "fck", "fcj", "fr", "dp", "red", "gf", "tela", "telaPos", "cobT"].forEach(k => { st[k] = DEFAULT[k]; }); bindNums(); update(); });
 bindNums(); renderTable(); update();
 try { const t = localStorage.getItem(TABKEY); setTab(t === "calc" || t === "teo" ? t : "son"); } catch (e) { setTab("son"); }
 if (location.hash === "#teoria") setTab("teo");
