@@ -188,7 +188,7 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
             <div class="field" data-k="hl"><label for="in-hl">Altura de cada lance</label><div class="inp"><input id="in-hl" inputmode="decimal"><span class="u">m</span></div></div>
             <div class="field" data-k="q"><label for="in-q">Sobrecarga na superfície</label><div class="inp"><input id="in-q" inputmode="decimal"><span class="u">kPa</span></div></div>
           </div>
-          <p class="gnote">O solo vem da aba Sondagem (camadas, nível d'água e correlações).</p>
+          <p class="gnote">O solo vem da aba Sondagem (camadas, nível d'água e correlações). Nos campos numéricos, as setas ↑ e ↓ do teclado mudam o valor passo a passo (espessura de 1 em 1 cm); com Shift, 10 passos.</p>
         </section>
         <section><h2><span class="n">2</span>Concreto projetado</h2>
           <div class="g2">
@@ -318,6 +318,7 @@ const DEFAULT = {
 };
 const NUMK = ["alpha", "Kco", "phiMax", "Dst", "t", "H", "hl", "q", "fck", "fcj", "fr", "dp", "red", "gf", "cobT"];
 const LIM = { alpha: [1, 15], Kco: [0.2, 1.5], phiMax: [25, 45], Dst: [0.3, 30], t: [0.03, 1], H: [0.5, 60], hl: [0.2, 5], q: [0, 200], fck: [15, 60], fcj: [0.5, 60], fr: [0, 10], dp: [0, 100], red: [0, 1.5], gf: [1, 2], cobT: [1, 10] };
+const STEP = { alpha: 0.5, Kco: 0.05, phiMax: 1, Dst: 0.05, t: 0.01, H: 0.5, hl: 0.1, q: 1, fck: 1, fcj: 0.5, fr: 0.1, dp: 5, red: 0.05, gf: 0.05, cobT: 0.5 };
 const KEY = "poco-cp-v2", TABKEY = "poco-cp-tab";
 let st;
 try { st = JSON.parse(localStorage.getItem(KEY)); } catch (e) { st = null; }
@@ -820,7 +821,21 @@ function setTab(t) {
 }
 ["son", "calc", "teo"].forEach(k => $("tb-" + k).addEventListener("click", () => setTab(k)));
 function bindNums() {
-  NUMK.forEach(k => { const i = $("in-" + k); if (!i) return; i.value = String(st[k]).replace(".", ","); if (!i.dataset.b) { i.addEventListener("input", () => { st[k] = i.value; update(); }); i.dataset.b = "1"; } });
+  NUMK.forEach(k => { const i = $("in-" + k); if (!i) return; i.value = String(st[k]).replace(".", ","); if (!i.dataset.b) {
+      i.addEventListener("input", () => { st[k] = i.value; update(); });
+      // setas do teclado: ↑ aumenta e ↓ diminui um passo (Shift: 10 passos), sem passar dos limites
+      i.addEventListener("keydown", e => {
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault();
+        const stp = STEP[k] || 1, dec = Math.max(0, (String(stp).split(".")[1] || "").length);
+        let x = num(i.value); if (!isFinite(x)) x = num(DEFAULT[k]);
+        x = Math.round((x + (e.key === "ArrowUp" ? 1 : -1) * stp * (e.shiftKey ? 10 : 1)) / stp) * stp;
+        x = Math.min(LIM[k][1], Math.max(LIM[k][0], x));
+        st[k] = x.toFixed(dec); i.value = x.toFixed(dec).replace(".", ","); update();
+      });
+      i.title = "Use ↑ e ↓ para mudar de " + String(STEP[k] || 1).replace(".", ",") + " em " + String(STEP[k] || 1).replace(".", ",") + " (Shift: ×10)";
+      i.dataset.b = "1";
+    } });
   const ts = $("in-tela");
   if (!ts.dataset.b) { ts.innerHTML = '<option value="">Sem tela (concreto simples)</option>' + TELAS.map(t => `<option value="${t.n}">${t.n} · ø${fmt(t.f, 1)} c/${t.s} · ${fmt(t.As, 2)} cm²/m</option>`).join(""); ts.addEventListener("change", () => { st.tela = ts.value; update(); }); $("in-telaPos").addEventListener("change", () => { st.telaPos = $("in-telaPos").value; update(); }); ts.dataset.b = "1"; }
   ts.value = st.tela || ""; $("in-telaPos").value = st.telaPos;
