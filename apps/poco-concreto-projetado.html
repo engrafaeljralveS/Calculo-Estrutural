@@ -156,6 +156,45 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
             <div class="field" data-k="phiMax"><label for="in-phiMax">φ′ máximo (areias e siltes)</label><div class="inp"><input id="in-phiMax" inputmode="decimal"><span class="u">°</span></div></div>
           </div>
           <p class="gnote">S<sub>u</sub> ≈ 4 a 6 · N kPa (Stroud, 1974; prática brasileira 5 a 6). Areias e siltes: φ′ = 28° + 0,4 · N (Godoy, 1983) e K = K<sub>0</sub> = 1 − sen φ′ (Jaky), sem coesão. Peso específico pela consistência ou compacidade (Godoy, 1972). Para argilas, K = K<sub>0</sub> ≈ 0,5 a 0,7 é a favor da segurança em poço circular.</p>
+                  <h3>Referência: resistência não drenada das argilas, S<sub>u</sub> (kPa)</h3>
+          <div class="tw"><table>
+            <thead><tr><th class="l">Correlação</th><th>Fórmula</th><th>N = 5</th><th>N = 10</th><th>N = 20</th><th class="l">Observação</th></tr></thead>
+            <tbody>
+              <tr><td class="l">Stroud (1974)</td><td class="num">4,4 a 6 · N</td><td class="num">22 a 30</td><td class="num">44 a 60</td><td class="num">88 a 120</td><td class="l">4,4 para alta plasticidade; 6 para baixa</td></tr>
+              <tr><td class="l">Terzaghi e Peck (1967)</td><td class="num">≈ 6 · N</td><td class="num">30</td><td class="num">60</td><td class="num">120</td><td class="l">a partir de q<sub>u</sub> ≈ N/8 kgf/cm²</td></tr>
+              <tr><td class="l">Teixeira e Godoy (1996)</td><td class="num">10 · N</td><td class="num">50</td><td class="num">100</td><td class="num">200</td><td class="l">usual em fundações no Brasil; menos conservadora</td></tr>
+              <tr><td class="l">Hara et al. (1974)</td><td class="num">29 · N<sup>0,72</sup></td><td class="num">92</td><td class="num">152</td><td class="num">251</td><td class="l">argilas japonesas; alta para N baixo</td></tr>
+            </tbody></table></div>
+          <div class="tw" style="margin-top:6px"><table>
+            <thead><tr><th class="l">Consistência (NBR 6484)</th><th>N<sub>SPT</sub></th><th>S<sub>u</sub> típico (kPa)</th><th>γ (kN/m³)</th></tr></thead>
+            <tbody>
+              <tr><td class="l">Muito mole</td><td class="num">≤ 2</td><td class="num">&lt; 12</td><td class="num">13</td></tr>
+              <tr><td class="l">Mole</td><td class="num">3 a 5</td><td class="num">12 a 25</td><td class="num">15</td></tr>
+              <tr><td class="l">Média</td><td class="num">6 a 10</td><td class="num">25 a 50</td><td class="num">17</td></tr>
+              <tr><td class="l">Rija</td><td class="num">11 a 19</td><td class="num">50 a 100</td><td class="num">19</td></tr>
+              <tr><td class="l">Dura</td><td class="num">&gt; 19</td><td class="num">&gt; 100</td><td class="num">21</td></tr>
+            </tbody></table></div>
+          <p class="gnote">S<sub>u</sub> pela consistência segundo Terzaghi e Peck; γ segundo Godoy (1972), o mesmo que o programa usa. Para poço em argila, α = 5 fica entre Stroud e Terzaghi e Peck, a favor da segurança. Com ensaio de palheta (vane) ou triaxial UU, prefira o resultado do ensaio.</p>
+
+          <h3>Referência: ângulo de atrito das areias e siltes, φ′</h3>
+          <div class="tw"><table>
+            <thead><tr><th class="l">Correlação</th><th>Fórmula</th><th>N = 5</th><th>N = 10</th><th>N = 20</th><th>N = 30</th></tr></thead>
+            <tbody>
+              <tr><td class="l">Godoy (1983) · usada no programa</td><td class="num">28° + 0,4 · N</td><td class="num">30°</td><td class="num">32°</td><td class="num">36°</td><td class="num">40°</td></tr>
+              <tr><td class="l">Teixeira (1996)</td><td class="num">√(20 · N) + 15°</td><td class="num">25°</td><td class="num">29°</td><td class="num">35°</td><td class="num">39°</td></tr>
+              <tr><td class="l">Peck, Hanson e Thornburn (Wolff, 1989)</td><td class="num">27,1 + 0,3N − 0,00054N²</td><td class="num">29°</td><td class="num">30°</td><td class="num">33°</td><td class="num">36°</td></tr>
+            </tbody></table></div>
+          <p class="gnote">Teixeira dá valores menores para N baixo; Godoy, maiores para N alto. O limite "φ′ máximo" acima corta os valores altos (padrão 38°).</p>
+
+          <h3>Referência: coeficiente de empuxo K das argilas</h3>
+          <div class="tw"><table>
+            <thead><tr><th class="l">Situação</th><th>Fórmula</th><th>φ′ = 22°</th><th>φ′ = 26°</th><th>φ′ = 30°</th></tr></thead>
+            <tbody>
+              <tr><td class="l">Repouso, argila normalmente adensada (Jaky)</td><td class="num">K<sub>0</sub> = 1 − sen φ′</td><td class="num">0,63</td><td class="num">0,56</td><td class="num">0,50</td></tr>
+              <tr><td class="l">Repouso, argila sobreadensada, OCR = 2 (Mayne e Kulhawy, 1982)</td><td class="num">K<sub>0</sub> · OCR<sup>sen φ′</sup></td><td class="num">0,81</td><td class="num">0,76</td><td class="num">0,71</td></tr>
+              <tr><td class="l">Ativo de Rankine, plano (só referência: subestima o poço)</td><td class="num">tg²(45° − φ′/2)</td><td class="num">0,45</td><td class="num">0,39</td><td class="num">0,33</td></tr>
+            </tbody></table></div>
+          <p class="gnote">Em poço circular o solo arqueia e o empuxo real fica abaixo do plano, mas o concreto projetado é aplicado logo após a escavação e limita os deslocamentos: por isso o programa usa K<sub>0</sub>. O padrão de 0,60 cobre argilas normalmente adensadas; para argilas sobreadensadas (rijas a duras, de solo residual ou terciárias), use 0,7 a 0,8.</p>
         </section>
       </div>
       <div class="results">
