@@ -112,7 +112,7 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
 </style>
 <div class="wrap">
   <header>
-    <p class="eyebrow">Aplicativo v1.2 · NBR 6118 · NBR 6484 · NBR 7481 · verificação preliminar</p>
+    <p class="eyebrow">Aplicativo v1.3 · NBR 6118 · NBR 6484 · NBR 7481 · NBR 16935 · verificação preliminar</p>
     <h1>Poço em Concreto Projetado</h1>
     <p class="sub">Contenção de poço circular com anel de concreto projetado: perfil da sondagem SPT, estabilidade da escavação, compressão do anel e flexão por assimetria do empuxo.</p>
   </header>
@@ -188,14 +188,15 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
             <div class="field" data-k="hl"><label for="in-hl">Altura de cada lance</label><div class="inp"><input id="in-hl" inputmode="decimal"><span class="u">m</span></div></div>
             <div class="field" data-k="q"><label for="in-q">Sobrecarga na superfície</label><div class="inp"><input id="in-q" inputmode="decimal"><span class="u">kPa</span></div></div>
           </div>
-          <p class="gnote">O solo vem da aba Sondagem (camadas, nível d'água e correlações). Nos campos numéricos, as setas ↑ e ↓ do teclado mudam o valor passo a passo (espessura de 1 em 1 cm); com Shift, 10 passos.</p>
+          <p class="gnote">O solo vem da aba Sondagem (camadas, nível d'água e correlações).</p>
         </section>
         <section><h2><span class="n">2</span>Concreto projetado</h2>
           <div class="g2">
             <div class="field" data-k="fck"><label for="in-fck">f<sub>ck</sub> aos 28 dias</label><div class="inp"><input id="in-fck" inputmode="decimal"><span class="u">MPa</span></div></div>
             <div class="field" data-k="fcj"><label for="in-fcj">Resistência no carregamento (jovem)</label><div class="inp"><input id="in-fcj" inputmode="decimal"><span class="u">MPa</span></div></div>
-            <div class="field" data-k="fr" style="grid-column:1/-1"><label for="in-fr">Tração residual com fibras ou tela (0 = concreto simples)</label><div class="inp"><input id="in-fr" inputmode="decimal"><span class="u">MPa</span></div></div>
+            <div class="field" data-k="fr" style="grid-column:1/-1"><label for="in-fr">Tração residual das fibras, f<sub>Ftu</sub> (0 = sem fibras)</label><div class="inp"><input id="in-fr" inputmode="decimal"><span class="u">MPa</span></div></div>
           </div>
+          <p class="gnote">Só para concreto projetado com fibras, com o valor do ensaio de prisma entalhado (f<sub>Ftu</sub> ≈ f<sub>R3</sub>/3). A tela soldada não entra aqui: escolha em "4 Tela soldada". Valores de referência na aba Teoria, item 5.</p>
         </section>
         <section><h2><span class="n">3</span>Flexão e segurança</h2>
           <div class="g3">
@@ -261,6 +262,27 @@ Nc = 6,2 · (1 + 0,2·H/D) ≤ 9</div>
 
       <h2>4. Concreto projetado jovem</h2>
       <p>O anel recebe carga em poucas horas, quando o concreto ainda tem baixa resistência e rigidez. O método convergência-confinamento relaciona a curva de reação do maciço com a do suporte, que enrijece com o tempo. Para poços rasos em argila, a verificação simples com a resistência no momento do carregamento costuma bastar.</p>
+      <h2>5. Concreto projetado com fibras: resistência residual</h2>
+      <p>Depois de fissurar, o concreto com fibras continua transmitindo tração pelas fibras que costuram a fissura. Essa resistência pós-fissura é medida no ensaio de flexão em prisma entalhado (EN 14651, adotado na NBR 16935): f<sub>R1</sub> corresponde a uma abertura de fissura de 0,5 mm (serviço) e f<sub>R3</sub> a 2,5 mm (último). Pelo modelo rígido-plástico do fib Model Code 2010, a tração residual última é:</p>
+      <div class="eq">fFtu = fR3 / 3              (valor do ensaio, característico)
+fFtd = fFtu / 1,5          (o programa faz essa divisão)
+Tração resistente no item 5 = máx(fctd; fFtd)</div>
+      <p>O campo "Tração residual das fibras" da aba Verificação recebe o f<sub>Ftu</sub>. A tabela abaixo reúne resultados publicados, só como ordem de grandeza para pré-dimensionamento. A dispersão é grande (coeficientes de variação de 10% a 30%, e o concreto projetado na obra fica abaixo do moldado em laboratório). Para projeto, use o ensaio da dosagem que vai ser aplicada ou o certificado do fornecedor da fibra.</p>
+      <div class="tw"><table>
+        <thead><tr><th class="l">Fibra</th><th>Teor (kg/m³)</th><th>f<sub>R1</sub> (MPa)</th><th>f<sub>R3</sub> (MPa)</th><th>f<sub>Ftu</sub> = f<sub>R3</sub>/3</th><th>Sugerido no campo</th><th class="l">Fonte</th></tr></thead>
+        <tbody>
+          <tr><td class="l">Sem fibra</td><td class="num">0</td><td class="num">0,4</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td class="l">[A]</td></tr>
+          <tr><td class="l">Aço com gancho (projetado, obra)</td><td class="num">30</td><td class="num">2,5</td><td class="num">1,6</td><td class="num">0,55</td><td class="num">0,35</td><td class="l">[A]</td></tr>
+          <tr><td class="l">Aço com gancho (laboratório)</td><td class="num">30</td><td class="num">3,6 a 4,3</td><td class="num">1,8 a 2,9</td><td class="num">0,6 a 1,0</td><td class="num">0,55</td><td class="l">[A] [B]</td></tr>
+          <tr><td class="l">Aço com gancho</td><td class="num">35</td><td class="num">3,8</td><td class="num">3,7</td><td class="num">1,2</td><td class="num">0,85</td><td class="l">[B]</td></tr>
+          <tr><td class="l">Aço com gancho</td><td class="num">45</td><td class="num">4,2</td><td class="num">4,1</td><td class="num">1,4</td><td class="num">0,95</td><td class="l">[B]</td></tr>
+          <tr><td class="l">Aço com gancho (projetado, obra)</td><td class="num">50</td><td class="num">3,8</td><td class="num">2,8</td><td class="num">0,9</td><td class="num">0,65</td><td class="l">[A]</td></tr>
+          <tr><td class="l">Macrofibra sintética (poliolefina)</td><td class="num">7</td><td class="num">1,8 a 1,9</td><td class="num">2,3 a 2,4</td><td class="num">0,8</td><td class="num">0,55</td><td class="l">[A]</td></tr>
+          <tr><td class="l">Macrofibra sintética (poliolefina)</td><td class="num">10</td><td class="num">2,1 a 2,5</td><td class="num">2,6 a 3,3</td><td class="num">0,9 a 1,1</td><td class="num">0,65</td><td class="l">[A]</td></tr>
+          <tr><td class="l">Híbrida (25 aço + 5 poliolefina)</td><td class="num">30</td><td class="num">3,2 a 4,0</td><td class="num">2,9 a 3,1</td><td class="num">1,0</td><td class="num">0,65</td><td class="l">[A]</td></tr>
+        </tbody></table></div>
+      <p style="margin-top:6px">"Sugerido no campo" = 0,7 × f<sub>Ftu</sub> médio, uma aproximação do valor característico, arredondada para baixo. [A] Preprints.org 202206.0037 (2022), concreto projetado com fibras de aço, poliolefina e híbridas, ensaios em laboratório e na obra. [B] Hu et al., <i>Construction and Building Materials</i> (2018), fibras de aço industriais e recicladas, concreto de cerca de 40 MPa. Uma base de 765 misturas (Garcia-Taengua et al.) tem mediana de 0,51% em volume (≈ 40 kg/m³ de aço) com f<sub>R3</sub> ≈ 4,3 MPa, incluindo concretos de alta resistência.</p>
+      <p>Quando usar fibra e quando usar tela: as fibras entram no item 5 (tração do concreto, com a seção ainda tratada como contínua); a tela entra no item 6 (seção armada fissurada). Não informe os dois para a mesma função. Com fibras, a NBR 16935 também permite verificar a seção fissurada; o item 5 é uma simplificação adequada ao pré-dimensionamento.</p>
     </div>
 
     <h2 style="font-family:var(--f-display);font-size:1.1rem">Trabalhos pesquisados</h2>
@@ -278,7 +300,10 @@ Nc = 6,2 · (1 + 0,2·H/D) ≤ 9</div>
       <div class="card"><div class="tag">Medições</div><h3>Investigations on the stress in circular shaft linings</h3><div class="who">Hiramatsu, Y.; Oka, Y.; Ogino, S. — Kyoto University, 1960</div><p>Medições de tensões em revestimentos de poços reais e análise elástica para diferentes estados de empuxo, incluindo concentração de tensões.</p><a href="https://repository.kulib.kyoto-u.ac.jp/dspace/bitstream/2433/280490/1/mfeku_23_1_90.pdf" target="_blank" rel="noopener">repository.kulib.kyoto-u.ac.jp/…/280490</a></div>
       <div class="card"><div class="tag">Prática</div><h3>Practical Aspects of Shaft Lining Design</h3><div class="who">Grant, P.M. — AIME, 1983</div><p>Visão geral do projeto de revestimentos circulares de poços na prática britânica e alemã, com ênfase em aspectos construtivos.</p><a href="https://onemine.org/documents/practical-aspects-of-shaft-lining-design" target="_blank" rel="noopener">onemine.org/…/practical-aspects-of-shaft-lining-design</a></div>
       <div class="card"><div class="tag">Compressão biaxial</div><h3>Concrete lining of drilled shaft (patente US 4.423.981)</h3><div class="who">USPTO</div><p>Mostra que o revestimento é governado pela tensão de anel, que o concreto ganha resistência em compressão biaxial e que, sob compressão predominante, dispensa armadura estrutural.</p><a href="https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/4423981" target="_blank" rel="noopener">uspto.gov/…/4423981</a></div>
-    </div>
+          <div class="card"><div class="tag">Fibras: resistência residual</div><h3>Concreto projetado com fibras de aço, poliolefina e híbridas: ensaios EN 14651 em laboratório e na obra</h3><div class="who">Preprints.org 202206.0037, 2022</div><p>Compara 30 e 50 kg/m³ de aço, 7 e 10 kg/m³ de poliolefina e misturas híbridas, com f<sub>R1</sub> e f<sub>R3</sub> medidos em laboratório e em placas projetadas na obra. Base da tabela do item 5.</p><a href="https://www.preprints.org/manuscript/202206.0037/v1/download" target="_blank" rel="noopener">preprints.org/manuscript/202206.0037</a></div>
+      <div class="card"><div class="tag">Fibras: resistência residual</div><h3>Mechanical properties of SFRC using blended manufactured and recycled tyre steel fibres</h3><div class="who">Hu, H. et al. — Construction and Building Materials, 2018</div><p>Ensaios EN 14651 com 30 a 45 kg/m³ de fibras de aço industriais, recicladas e misturadas, em concreto de cerca de 40 MPa.</p><a href="https://eprints.whiterose.ac.uk/129698/1/HH_CBM_Mechanical%20properties_R1.pdf" target="_blank" rel="noopener">eprints.whiterose.ac.uk/129698</a></div>
+      <div class="card"><div class="tag">Fibras: base de dados</div><h3>Base de dados de 765 misturas de concreto com fibras de aço: modelo da resistência residual</h3><div class="who">Garcia-Taengua, E. et al. — White Rose eprints</div><p>Modelo estatístico de f<sub>R1</sub> e f<sub>R3</sub> em função do teor, do comprimento e da esbeltez das fibras e da matriz.</p><a href="https://eprints.whiterose.ac.uk/173756/" target="_blank" rel="noopener">eprints.whiterose.ac.uk/173756</a></div>
+</div>
   
   </section>
 </div>
@@ -774,9 +799,9 @@ M      = (redução) · Δp · Rm² / 4              anel livre, carga ovalizant
 Md     = γf · M          e = M / N             excentricidade (t/6: limite do núcleo)
 σ      = Nd / t ± 6·Md / t²                    tensões nas faces (seção não fissurada)
 fctd   = 0,7 · 0,3·fck^(2/3) / 1,4             tração resistente do concreto simples
-f,res  = fr / 1,5                              tração residual com fibras (se houver)
-FS tração = máx(fctd; f,res) / |σmín|   e   FS compressão = fcd / σmáx</div>
-  <div class="ref">Rm = ${fmt(R.Rm, 3)} m · fctd = ${fmt(R.fctd)} MPa${v.fr > 0 ? ` · fr/1,5 = ${fmt(v.fr / 1.5)} MPa` : ""}. Ver: Dias (UnB 2013), diagrama M-N; Kim &amp; Lee (2021), fibras; Martins (UnB 2008).</div></div>
+fFtd   = fFtu / 1,5                            tração residual das fibras (se houver)
+FS tração = máx(fctd; fFtd) / |σmín|   e   FS compressão = fcd / σmáx</div>
+  <div class="ref">Rm = ${fmt(R.Rm, 3)} m · fctd = ${fmt(R.fctd)} MPa${v.fr > 0 ? ` · fFtd = fFtu/1,5 = ${fmt(v.fr / 1.5)} MPa` : ""}. Ver: Dias (UnB 2013), diagrama M-N; Kim &amp; Lee (2021), fibras; Martins (UnB 2008).</div></div>
 
   <div class="step"><h3>6 · Tela soldada ${R.tl ? pill(...stt(minTela(R))) : pill("info", "Sem tela")}<small>flexo-compressão no ELU, seção armada fissurada</small></h3>
   ${R.tl ? `<div class="calc">Tela ${R.tl.n}: fios ø${fmt(R.tl.f, 1)} mm a cada ${fmt(R.tl.s, 0)} cm nas duas direções, A<sub>s</sub> = ${fmt(R.tl.As, 2)} cm²/m por camada, aço CA-60 (f<sub>yd</sub> = ${fmt(600 / 1.15, 0)} MPa)
