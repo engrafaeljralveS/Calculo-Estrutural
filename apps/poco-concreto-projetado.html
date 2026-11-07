@@ -112,7 +112,7 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
 </style>
 <div class="wrap">
   <header>
-    <p class="eyebrow">Aplicativo v1.3 · NBR 6118 · NBR 6484 · NBR 7481 · NBR 16935 · verificação preliminar</p>
+    <p class="eyebrow">Aplicativo v1.4 · NBR 6118 · NBR 6484 · NBR 7481 · NBR 16935 · verificação preliminar</p>
     <h1>Poço em Concreto Projetado</h1>
     <p class="sub">Contenção de poço circular com anel de concreto projetado: perfil da sondagem SPT, estabilidade da escavação, compressão do anel e flexão por assimetria do empuxo.</p>
   </header>
@@ -253,7 +253,8 @@ td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
           </div>
           <p class="gnote">Ovalização traciona ora uma face, ora a outra: duas telas são o arranjo que de fato resiste à flexão. Uma tela no eixo serve como armadura de retração e de controle de fissuras.</p>
         </section>
-        <div class="btnrow"><button class="btn" type="button" id="reset">Restaurar o exemplo</button></div>
+        <div class="btnrow"><button class="btn primary" type="button" id="memo">Gerar memorial de cálculo (Word)</button><button class="btn" type="button" id="reset">Restaurar o exemplo</button></div>
+        <p class="gnote" id="memo-msg" role="status"></p>
       </aside>
       <main class="results">
         <div class="warns" id="warns" aria-live="polite"></div>
@@ -878,6 +879,185 @@ function update() {
   renderCalc();
 }
 
+function xesc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function svgToPng(svg, W, H, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = Math.round(W * scale); c.height = Math.round(H * scale); const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); c.toBlob(b => b ? b.arrayBuffer().then(a => resolve(new Uint8Array(a))) : reject(new Error('png')), 'image/png'); };
+    img.onerror = () => reject(new Error('svg'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  const enc = new TextEncoder(), chunks = [], cd = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    chunks.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    cd.push(new Uint8Array(ch.buffer), name); off += 30 + name.length + data.length;
+  });
+  const cdSize = cd.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  const all = chunks.concat(cd, [new Uint8Array(end.buffer)]), out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
+  let q = 0; all.forEach(b => { out.set(b, q); q += b.length; }); return out;
+}
+const wPar = (runs, o = {}) => `<w:p><w:pPr>${o.keep ? '<w:keepNext/>' : ''}<w:spacing w:before="${o.before || 0}" w:after="${o.after || 0}"/><w:jc w:val="${o.al || 'left'}"/></w:pPr>${runs}</w:p>`;
+function wCell(w, content, o = {}) {
+  const bd = o.bottom ? `<w:tcBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="${o.bottom}"/></w:tcBorders>` : '';
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.span ? `<w:gridSpan w:val="${o.span}"/>` : ''}${bd}${o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : ''}<w:vAlign w:val="center"/></w:tcPr>${content}</w:tc>`;
+}
+function wTbl(widths, rows) {
+  return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="20" w:type="dxa"/><w:left w:w="50" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/><w:right w:w="50" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
+}
+const wRow = cells => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.join('')}</w:tr>`;
+
+
+/* ---------- memorial de cálculo (Word, Arial, até 12 pt) ---------- */
+const PRINTC = { clay: "#d2a86e", silt: "#b9c08f", sand: "#ecd9a0", water: "#2f7fc4", press: "#c0612a", concrete: "#cfd6dc", "concrete-line": "#5f6b77", ink: "#1f2b37", muted: "#5e6b78", line: "#d9e0e7", accent: "#2b6cb0", soft: "#eef2f5" };
+function svgPrint(svg) {
+  const vb = svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), W = +vb[1], H = +vb[2];
+  const s = svg.replace(/var\(--f-mono\)/g, "Arial").replace(/var\(--([\w-]+)\)/g, (m, k) => PRINTC[k] || "#1f2b37")
+    .replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif" ')
+    .replace(/(<svg[^>]*>)/, '$1<style>.halo{paint-order:stroke;stroke:#ffffff;stroke-width:3.5px;stroke-linejoin:round}</style><rect width="100%" height="100%" fill="#ffffff"/>');
+  return { svg: s, W, H };
+}
+async function buildMemorial(R) {
+  const { v } = R, C = { ink: "1f2b37", muted: "5e6b78", accent: "2b6cb0", line: "d9e0e7", head: "eef2f5", ok: "2e7d50", okbg: "e6f4ec", bad: "b83a2e", badbg: "fbe8e5", warn: "8c5d08", warnbg: "fbf1dc" };
+  const imgs = [];
+  const Rn = (t, o2 = {}) => String(t).split(/(_\{[^}]*\}|_[A-Za-zÀ-ú0-9,.]+)/).filter(x => x !== "").map(part => {
+    const sub = part.startsWith("_"), tx = sub ? part.replace(/^_\{?|\}$/g, "") : part;
+    return `<w:r><w:rPr>${o2.b ? "<w:b/>" : ""}${o2.i ? "<w:i/>" : ""}${o2.color ? `<w:color w:val="${o2.color}"/>` : ""}<w:sz w:val="${o2.sz || 20}"/><w:szCs w:val="${o2.sz || 20}"/>${sub ? '<w:vertAlign w:val="subscript"/>' : ""}</w:rPr><w:t xml:space="preserve">${xesc(tx)}</w:t></w:r>`;
+  }).join("");
+  const H1 = t => wPar(Rn(t.toUpperCase(), { b: true, sz: 22, color: C.accent }), { before: 220, after: 80, keep: true });
+  const H2 = t => wPar(Rn(t, { b: true, sz: 20, color: C.ink }), { before: 120, after: 40, keep: true });
+  const txt = (t, o2 = {}) => wPar(Rn(t, Object.assign({ sz: 20 }, o2)), { after: 60 });
+  const eqs = lines => lines.map((l, i) => wPar(Rn(l, { sz: 18 }), { after: i === lines.length - 1 ? 100 : 0 })).join("");
+  const W0 = 10206, SZ = 17;
+  const table = (widths, head, rows) => {
+    const cell = (w, c, hd) => { const vv = typeof c === "object" && c !== null ? c : { t: c }; return wCell(w, wPar(Rn(vv.t == null ? "" : vv.t, { sz: SZ, b: hd || vv.b, color: vv.color || (hd ? C.ink : undefined) }), { al: vv.al || (hd ? "center" : "left") }), { bottom: C.line, fill: hd ? C.head : vv.fill }); };
+    return wTbl(widths, [wRow(head.map((h, i) => cell(widths[i], h, true)))].concat(rows.map(rw => wRow(rw.map((c, i) => cell(widths[i], c)))))) + wPar("", { after: 80 });
+  };
+  const n = (x, d = 2) => ({ t: fmt(x, d), al: "right" });
+  const ver = (fs, lim = 1) => { const [c] = stt(fs, lim); return { t: c === "ok" ? "atende" : c === "warn" ? "atenção" : "não atende", b: true, al: "center", color: c === "ok" ? C.ok : c === "warn" ? C.warn : C.bad, fill: c === "ok" ? C.okbg : c === "warn" ? C.warnbg : C.badbg }; };
+  const imgRun = (idx, cx) => { const im = imgs[idx - 1], cy = Math.round(cx * im.H / im.W); return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idx}" name="Figura ${idx}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idx}" name="fig${idx}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`; };
+  const addSvg = async svg => { const o = svgPrint(svg); imgs.push({ png: await svgToPng(o.svg, o.W, o.H, 2), W: o.W, H: o.H }); return imgs.length; };
+  const figure = (idx, cap, frac = 1) => wPar(imgRun(idx, Math.round(W0 * 635 * frac)), { al: "center", keep: true }) + wPar(Rn(cap, { sz: 18, i: true, color: C.muted }), { al: "center", after: 140 });
+  const body = [], hoje = new Date().toLocaleDateString("pt-BR");
+  const mark = r => Math.abs(r.z - R.zpm) < 0.05 ? " *" : "";
+
+  body.push(wPar(Rn("MEMÓRIA DE CÁLCULO", { b: true, sz: 24, color: C.ink }), { after: 20 }));
+  body.push(wPar(Rn("Poço circular com contenção em concreto projetado", { sz: 22, color: C.muted }), { after: 40 }));
+  body.push(wPar(Rn(`Estrutura Ø ${fmt(v.Dst)} m, escavação Ø ${fmt(R.Dex)} m, profundidade ${fmt(v.H)} m · sondagem ${st.furo || "—"} · ${hoje} · aplicativo Poço em Concreto Projetado v1.4`, { sz: 18, color: C.muted }), { after: 160 }));
+
+  // 1 dados de entrada
+  body.push(H1("1. Dados de entrada"));
+  const tl = R.tl;
+  body.push(table([3300, 1803, 3300, 1803], ["Grandeza", "Valor", "Grandeza", "Valor"], [
+    ["Diâmetro externo da estrutura", { t: `${fmt(v.Dst)} m`, al: "right" }, "Espessura do concreto projetado t", { t: `${fmt(v.t)} m`, al: "right" }],
+    ["Diâmetro de escavação (D + 2t)", { t: `${fmt(R.Dex)} m`, al: "right" }, "Profundidade do poço H", { t: `${fmt(v.H)} m`, al: "right" }],
+    ["Altura de cada lance", { t: `${fmt(v.hl)} m (${R.lances.length} lances)`, al: "right" }, "Sobrecarga na superfície q", { t: `${fmt(v.q, 1)} kPa`, al: "right" }],
+    ["f_ck aos 28 dias · f_cj no carregamento", { t: `${fmt(v.fck, 0)} · ${fmt(v.fcj, 1)} MPa`, al: "right" }, "Tração residual das fibras f_Ftu", { t: v.fr > 0 ? `${fmt(v.fr)} MPa` : "sem fibras", al: "right" }],
+    ["Assimetria do empuxo Δp", { t: `${fmt(v.dp, 0)} % de p`, al: "right" }, "Redução do momento · γ_f", { t: `${fmt(v.red)} · ${fmt(v.gf)}`, al: "right" }],
+    ["Tela soldada (CA-60)", { t: tl ? `${tl.n} (ø${fmt(tl.f, 1)} c/${tl.s})` : "sem tela", al: "right" }, "Posição · cobrimento", { t: tl ? `${R.nCam === 2 ? "duas, uma por face" : "uma, no eixo"} · ${fmt(v.cobT, 1)} cm` : "—", al: "right" }]
+  ]));
+
+  // 2 sondagem
+  body.push(H1("2. Sondagem e parâmetros do solo"));
+  body.push(txt(`Furo ${st.furo || "—"}, fim da sondagem a ${fmt(num(st.fim))} m, ${isFinite(R.na) ? `nível d'água a ${fmt(R.na)} m` : "nível d'água não encontrado"}. Cada leitura representa a camada entre os pontos médios das leituras vizinhas.`));
+  body.push(figure(await addSvg(drawPerfil(R.L)), `Figura ${imgs.length} · Perfil da sondagem ${st.furo || ""}: camadas e N_SPT.`, 0.62));
+  body.push(table([1500, 3100, 700, 1500, 1200, 1000, 1206], ["De – até (m)", "Solo", "N", "γ_nat / γ_sat", "S_u (kPa)", "φ′", "K"],
+    R.L.map(l => [{ t: `${fmt(l.top)} – ${fmt(l.bot)}` }, `${l.tipo} ${l.cons.toLowerCase()}`, n(l.N, 0), { t: `${fmt(l.gNat, 0)} / ${fmt(l.gSat, 0)}`, al: "right" }, l.coh ? n(l.Su, 0) : { t: "—", al: "right" }, l.coh ? { t: "—", al: "right" } : { t: fmt(l.phi, 1) + "°", al: "right" }, n(l.K, 2)])));
+  body.push(txt(`Correlações: argilas e siltes argilosos S_u = ${fmt(num(st.alpha), 1)} · N kPa e K = ${fmt(num(st.Kco))}; areias e siltes φ′ = 28° + 0,4·N (Godoy, 1983), limitado a ${fmt(num(st.phiMax), 0)}°, K = K_0 = 1 − sen φ′ (Jaky), sem coesão; peso específico pela consistência ou compacidade (Godoy, 1972).`, { color: C.muted, sz: 18 }));
+
+  // 3 corte
+  body.push(H1("3. Corte do poço"));
+  body.push(figure(await addSvg(drawCorte(R)), `Figura ${imgs.length} · Corte em escala: camadas de solo, escavação, anel de concreto projetado, lances, nível d'água e empuxo no anel.`, 0.98));
+
+  // 4 estabilidade
+  body.push(H1("4. Estabilidade da escavação"));
+  body.push(txt("Curto prazo, não drenado. Cada lance fica sem suporte até receber o concreto: altura crítica de corte H_c = 4·S_u/γ e FS = H_c/h ≥ 1,5. Fundo: ruptura por levantamento (Bjerrum e Eide), FS = N_c·S_u/(σ_v + q) ≥ 1,5, com N_c = 6,2·(1 + 0,2·H/D) ≤ 9."));
+  body.push(table([900, 1700, 1500, 1300, 1700, 1500, 1606], ["Lance", "z (m)", "S_u,mín (kPa)", "γ médio", "H_c (m)", "FS", "Verificação"],
+    R.lances.map(l => [`L${l.i}`, { t: `${fmt(l.z0)} – ${fmt(l.z1)}`, al: "right" }, l.granular ? { t: "granular", al: "right" } : n(l.Su, 0), n(l.g, 1), l.granular ? { t: "—", al: "right" } : n(l.Hc), l.granular ? { t: "0", al: "right" } : n(l.FS), l.granular ? ver(0) : ver(l.FS, 1.5)])));
+  body.push(txt(R.granB ? "Fundo em solo granular: a ruptura por levantamento não se aplica; com água, verificar ruptura hidráulica (piping)." : `Fundo: N_c = ${fmt(R.Nc)}, σ_v(H) = ${fmt(R.svH, 1)} kPa, S_u abaixo do fundo = ${fmt(R.SuB, 0)} kPa → FS = ${fmt(R.FSb)} (mínimo 1,5).`));
+
+  // 5 empuxo e anel
+  body.push(H1("5. Empuxo e compressão do anel"));
+  body.push(eqs(["Processo, para cada profundidade z:", "p(z) = K·(σ′_v + q) + u  (empuxo no anel, K por camada)", "N = p·R_ext  (força de anel, kN/m de altura);  N_d = γ_f·N;  σ_d = N_d/t",
+    "f_cd = 0,85·f_ck/1,4;  f_cd,j = 0,85·f_cj/1,4", "FS = f_cd/σ_d ≥ 1  e  FS jovem = f_cd,j/σ_d ≥ 1"]));
+  body.push(txt(`R_ext = ${fmt(R.Rext, 3)} m · f_cd = ${fmt(R.fcd)} MPa · f_cd,j = ${fmt(R.fcjd)} MPa · empuxo máximo ${fmt(R.pmax, 1)} kPa a ${fmt(R.zpm)} m (* nas tabelas).`, { color: C.muted, sz: 18 }));
+  body.push(table([1000, 2200, 1000, 1100, 1100, 1000, 1000, 1000, 1806], ["z (m)", "Camada", "p (kPa)", "N (kN/m)", "N_d (kN/m)", "σ_d (MPa)", "FS 28 d", "FS jovem", "Verificação"],
+    R.rows.map(r => [{ t: fmt(r.z) + mark(r), b: !!mark(r) }, r.l.tipo, n(r.p, 1), n(r.N, 1), n(r.Nd, 1), n(r.sigd), n(r.FSc, 1), n(r.FSj, 1), ver(Math.min(r.FSc, r.FSj))])));
+
+  // 6 flexão
+  body.push(H1("6. Flexão por assimetria do empuxo (concreto simples)"));
+  body.push(eqs(["Processo, para cada profundidade z:", "Δp = (% de assimetria)·p;  M = (redução)·Δp·R_m²/4  (anel livre, carga ovalizante)", "M_d = γ_f·M;  e = M/N  (t/6: limite do núcleo central)",
+    "σ = N_d/t ± 6·M_d/t²  (tensões nas faces, seção não fissurada)", "f_ctd = 0,7·0,3·f_ck^(2/3)/1,4;  f_Ftd = f_Ftu/1,5 (fibras)", "FS tração = máx(f_ctd; f_Ftd)/|σ_mín|  e  FS compressão = f_cd/σ_máx"]));
+  body.push(txt(`R_m = ${fmt(R.Rm, 3)} m · f_ctd = ${fmt(R.fctd)} MPa${v.fr > 0 ? ` · f_Ftd = ${fmt(v.fr / 1.5)} MPa` : ""}.`, { color: C.muted, sz: 18 }));
+  body.push(table([1000, 1100, 1200, 1100, 1200, 1200, 1100, 1300, 1006], ["z (m)", "Δp (kPa)", "M_d (kN·m/m)", "e (m)", "σ_máx (MPa)", "σ_mín (MPa)", "FS tração", "FS compr.", "Verif."],
+    R.rows.map(r => [{ t: fmt(r.z) + mark(r), b: !!mark(r) }, n(r.dP, 1), n(r.Md, 3), n(r.e, 3), n(r.sMax), n(r.sMin), { t: r.FSt > 50 ? "> 50" : fmt(r.FSt), al: "right" }, n(r.FSm, 1), ver(Math.min(r.FSt, r.FSm))])));
+
+  // 7 tela
+  body.push(H1("7. Tela soldada (flexo-compressão, seção armada)"));
+  if (tl) {
+    body.push(txt(`Tela ${tl.n}: fios ø${fmt(tl.f, 1)} mm a cada ${tl.s} cm nas duas direções, A_s = ${fmt(tl.As)} cm²/m por camada, aço CA-60 (f_yd = ${fmt(600 / 1.15, 0)} MPa). ${R.nCam === 2 ? `Duas telas, uma junto a cada face, cobrimento ${fmt(v.cobT, 1)} cm.` : "Uma tela no eixo da espessura."} Taxa ρ = ${fmt(R.nCam * tl.As / (v.t * 100), 3)} % (mínimo de lajes da NBR 6118: 0,15 % = ${fmt(0.15 * v.t * 100)} cm²/m).`));
+    body.push(table([1400, 2200, 2200, 2200, 1200, 1006], ["z (m)", "N_d (kN/m)", "M_d (kN·m/m)", "M_Rd (kN·m/m)", "FS", "Verif."],
+      R.rows.map(r => [{ t: fmt(r.z) + mark(r), b: !!mark(r) }, n(r.Nd, 1), n(r.Md, 3), n(r.MRd, 3), { t: r.FStela > 50 ? "> 50" : fmt(r.FStela), al: "right" }, ver(r.FStela)])));
+  } else body.push(txt("Nenhuma tela adotada: o anel foi verificado como concreto simples (itens 5 e 6)."));
+  body.push(eqs(["Processo (seção de 1 m de altura × t, NBR 6118, ELU):", "Concreto: ε_cu = 3,5‰, bloco retangular 0,85·f_cd na altura 0,8·x", "Aço: ε_s = 3,5‰·(x − d_i)/x;  σ_s = E_s·ε_s limitado a ±f_yd",
+    "Equilíbrio: 0,85·f_cd·b·0,8x + Σ A_s·σ_s = N_d  → linha neutra x", "M_Rd = 0,85·f_cd·b·0,8x·(t/2 − 0,4x) + Σ A_s·σ_s·(t/2 − d_i)", "Verificação: M_Rd ≥ M_d  (FS = M_Rd/M_d ≥ 1)"]));
+
+  // 8 resumo
+  body.push(H1("8. Resumo das verificações"));
+  const minT = tl ? minTela(R) : null;
+  const res = [
+    ["Lance sem suporte (pior lance)", R.crit.granular ? "granular" : fmt(R.crit.FS), "1,5", R.crit.granular ? ver(0) : ver(R.crit.FS, 1.5)],
+    ["Ruptura de fundo", R.granB ? "solo granular" : fmt(R.FSb), "1,5", R.granB ? { t: "ver NA", b: true, al: "center", color: C.warn, fill: C.warnbg } : ver(R.FSb, 1.5)],
+    ["Compressão do anel, 28 dias", fmt(Math.min(...R.rows.map(r => r.FSc)), 1), "1,0", ver(Math.min(...R.rows.map(r => r.FSc)))],
+    ["Compressão do anel, concreto jovem", fmt(Math.min(...R.rows.map(r => r.FSj)), 1), "1,0", ver(Math.min(...R.rows.map(r => r.FSj)))],
+    ["Flexão, concreto simples (tração)", (() => { const m = Math.min(...R.rows.map(r => r.FSt)); return m > 50 ? "> 50" : fmt(m); })(), "1,0", ver(Math.min(...R.rows.map(r => Math.min(r.FSt, r.FSm))))]
+  ];
+  if (tl) res.push([`Flexão com tela ${tl.n}`, minT > 50 ? "> 50" : fmt(minT), "1,0", ver(minT)]);
+  body.push(table([4600, 1800, 1500, 2306], ["Verificação", "FS mínimo", "Mínimo exigido", "Situação"], res.map(r => [r[0], { t: r[1], al: "right" }, { t: r[2], al: "right" }, r[3]])));
+  if (tl && minT >= 1 && Math.min(...R.rows.map(r => r.FSt)) < 1) body.push(txt(`O concreto simples não atende à tração em todas as profundidades; a flexão fica resistida pela tela ${tl.n}, que atende.`, { b: true }));
+
+  // 9 observações
+  body.push(H1("9. Observações"));
+  R.w.forEach(w => body.push(txt("• " + w.replace(/<[^>]+>/g, ""))));
+  body.push(txt(R.water ? "• Há água acima do fundo: verificar rebaixamento, subpressão e ruptura hidráulica." : "• Sem água no trecho escavado."));
+  body.push(txt("• Espessura mínima prática de execução ≈ 5 cm; recomendado ≥ 8 cm com tela ou fibras."));
+  body.push(txt("Cálculo preliminar, gerado automaticamente. Os parâmetros do solo vêm de correlações com o SPT e devem ser confirmados pelo responsável técnico, de preferência com ensaios.", { i: true, color: C.muted, sz: 18 }));
+
+  const sect = '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850" w:header="400" w:footer="400" w:gutter="0"/></w:sectPr>';
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body.join("")}${sect}</w:body></w:document>`;
+  const NS = "http://schemas.openxmlformats.org/";
+  const rels = imgs.map((_, i) => `<Relationship Id="rIdImg${i + 1}" Type="${NS}officeDocument/2006/relationships/image" Target="media/fig${i + 1}.png"/>`).join("");
+  return zipStore([
+    { name: "[Content_Types].xml", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>` },
+    { name: "_rels/.rels", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${NS}officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>` },
+    { name: "word/_rels/document.xml.rels", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rIdSt" Type="${NS}officeDocument/2006/relationships/styles" Target="styles.xml"/>${rels}</Relationships>` },
+    { name: "word/styles.xml", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>` },
+    { name: "word/document.xml", data: doc }
+  ].concat(imgs.map((im, i) => ({ name: `word/media/fig${i + 1}.png`, data: im.png }))));
+}
+async function gerarMemorial() {
+  const msg = $("memo-msg"), btn = $("memo");
+  if (!last || last.errs) { msg.textContent = "Corrija os dados antes de gerar o memorial."; return; }
+  btn.disabled = true; msg.textContent = "Gerando o memorial…";
+  try {
+    const bytes = await buildMemorial(last);
+    const name = `memorial-poco-${(st.furo || "sondagem").replace(/[^\w.-]+/g, "_")}.docx`;
+    await saveBytes(name, bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    msg.textContent = "Memorial gerado: " + name;
+  } catch (e) { msg.textContent = "Não foi possível gerar o memorial: " + (e && e.message || e); }
+  finally { btn.disabled = false; }
+}
+
 /* ---------- abas e eventos ---------- */
 function setTab(t) {
   [["son", "v-son"], ["calc", "v-calc"], ["teo", "v-teo"]].forEach(([k, id]) => { $("tb-" + k).setAttribute("aria-selected", String(k === t)); $(id).hidden = k !== t; });
@@ -912,6 +1092,7 @@ $("btnAdd").addEventListener("click", () => addRow());
 $("btnSort").addEventListener("click", () => { st.rows.sort((a, b) => (num(a.z) || 0) - (num(b.z) || 0)); renderTable(); update(); });
 $("fileXls").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (f) importFile(f); });
 $("btnModelo").addEventListener("click", baixarModelo);
+$("memo").addEventListener("click", gerarMemorial);
 $("fileImg").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (f && sample) readImage(f); });
 $("reset").addEventListener("click", () => { ["Dst", "t", "H", "hl", "q", "fck", "fcj", "fr", "dp", "red", "gf", "tela", "telaPos", "cobT"].forEach(k => { st[k] = DEFAULT[k]; }); bindNums(); update(); });
 bindNums(); renderTable(); update();
