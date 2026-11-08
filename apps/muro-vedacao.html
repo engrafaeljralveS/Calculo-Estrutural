@@ -64,6 +64,7 @@ fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column}
 .field{display:grid;grid-template-columns:1fr 104px 50px;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid var(--line2)}
 .field:last-child{border-bottom:0}
 .field label{font-size:13.5px}
+.field label .fnote{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.35}
 .field input,.field select{font:500 14px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:5px 7px;width:100%;text-align:right;font-variant-numeric:tabular-nums}
 .field select{text-align:left;font-family:var(--body);font-size:13px}
 .field.wide{grid-template-columns:1fr minmax(0,230px)}
@@ -354,6 +355,7 @@ const DEF=[
   ['gm','Coeficiente γm da alvenaria','–',2.0],
   ['v1Full','Vergalhão vertical V1 – extensão','sel','toda',[['toda','Em toda a altura (construtivo acima do trecho de cálculo)'],['calc','Só até onde o cálculo exige (+ ancoragem)']],'arm'],
   ['modOut','Módulo dos furos (pelo comprimento do bloco)','ro',null,null,'arm'],
+  ['cA','Cobrimento da armadura vertical, c<small class="fnote">Da face externa até o centro de gravidade da armadura. O braço útil é d = t − c (ex.: bloco de 19 cm com c = 5 cm → d = 14 cm).</small>','cm',5,null,'arm'],
   ['fsMode','Tensão no aço da alvenaria','sel','elu',[['elu','fyd = fyk / 1,15 (NBR 16868:2020)'],['adm','Conservadora ≈ 150 MPa (planilha de referência)']],'arm']]],
  [['Pilares, baldrame e cinta superior','Parede de fundação e verga de topo'],['O pilar fica embutido na parede, com a espessura do bloco.','A parede de fundação liga o muro à sapata corrida; a verga de topo amarra a última fiada.'],[
   ['s','Espaçamento entre pilares','m',2.80,null,'pil'],
@@ -946,7 +948,7 @@ function calc(){
     R.MdA=R.MdvA+R.Md2A;
     R.Mest=0.9*R.NkA*t/6; // compressão favorável (γ = 0,9), usada só no trecho sem armadura
     // flexão simples no estádio III (Parsekian e Medeiros, 2021, item 3.4; NBR 16868-1:2020)
-    R.fdA=0.7*R.fpkC/I.gm/10; R.dA=R.t/2; const bA=100,Mdc=R.MdA*100; // kN/cm², cm, kN·cm
+    R.fdA=0.7*R.fpkC/I.gm/10; R.cA=Math.min(Math.max(+I.cA||5,1.5),R.t-1.5); R.dA=R.t-R.cA; const bA=100,Mdc=R.MdA*100; // kN/cm², cm, kN·cm
     R.MRdMax=0.3*R.fdA*bA*R.dA*R.dA/100; // kN·m/m
     R.Mu=Mdc/(bA*R.dA*R.dA*R.fdA);
     const bar=BARRAS.find(x=>String(x[0])===String(I.phiA))||BARRAS[2]; R.phiA=bar[0];
@@ -1072,8 +1074,9 @@ function drawCorte(R){
   if(R.cInt)s+=rect(0,R.t/100,R.yA+R.h1+R.hcan,R.yA+R.h1,'var(--conc)','var(--concline)');
   if(R.canPI)R.CPI.zs.forEach(z=>{s+=rect(0,R.t/100,R.yA+z+R.hcan/2,R.yA+z-R.hcan/2,'var(--conc)','var(--concline)')+`<circle cx="${X(R.t/200)}" cy="${Y(R.yA+z)}" r="2.6" fill="var(--steel)"/>`});
   if(R.arm){const zA=Math.min(R.hA,R.ateA),zF=I.v1Full==='toda'?R.hT:zA;
-    if(zF>zA+1e-6)s+=`<line x1="${X(wa)}" y1="${Y(NAe+zA)}" x2="${X(wa)}" y2="${Y(NAe+zF)}" stroke="var(--steel)" stroke-width="1.4" stroke-dasharray="5 3"/>`;
-    s+=`<line x1="${X(wa)}" y1="${Y(R.ytop)-4}" x2="${X(wa)}" y2="${Y(NAe+zA)}" stroke="var(--steel)" stroke-width="2.4"/>`;
+    const wv=R.cA!=null?R.cA/100:wa; // V1 a c da face externa
+    if(zF>zA+1e-6)s+=`<line x1="${X(wv)}" y1="${Y(NAe+zA)}" x2="${X(wv)}" y2="${Y(NAe+zF)}" stroke="var(--steel)" stroke-width="1.4" stroke-dasharray="5 3"/>`;
+    s+=`<line x1="${X(wv)}" y1="${Y(R.ytop)-4}" x2="${X(wv)}" y2="${Y(NAe+zA)}" stroke="var(--steel)" stroke-width="2.4"/>`;
     R.canH.forEach(z=>{s+=`<circle cx="${X(wa)}" cy="${Y(NAe+z)}" r="3" fill="var(--steel)"/>`});
 }
   s+=`<line x1="${xface}" y1="${top-30}" x2="${xface}" y2="${Yb+8}" stroke="var(--divisa)" stroke-width="1.2" stroke-dasharray="12 4 3 4"/><text x="${xface-6}" y="${top-18}" text-anchor="end" class="t-div">DIVISA</text>`;
@@ -1379,7 +1382,7 @@ function renderChecks(R){
      <tr><td>Md 2ª ordem</td><td>${f(R.Md2A,3)} kN·m/m</td><td class="txt">Nd hef² / (2000 ${R.enr?'tef':'t'}), NBR 16868</td><td></td></tr>
      <tr><td><b>Md total</b></td><td><b>${f(R.MdA,3)} kN·m/m</b></td><td class="txt">Nd = 1,4 × ${f(R.NkA)} = ${f(R.NdA)} kN/m</td><td></td></tr>
      <tr><td>Resistência de cálculo fd</td><td>${f(R.fdA*10,2)} MPa</td><td class="txt">fd = 0,7 · fpk*/γm = 0,7 × ${f(R.fpkC,1)} / ${f(I.gm,1)} (prisma cheio, furos grauteados)</td><td></td></tr>
-     <tr><td>Momento máximo com armadura simples</td><td>${f(R.MRdMax,3)} kN·m/m</td><td class="txt">MRd,máx = 0,3 · fd · b · d², d = t/2 = ${f(R.dA,1)} cm</td><td>${pill(R.MdA<=R.MRdMax)}</td></tr>
+     <tr><td>Momento máximo com armadura simples</td><td>${f(R.MRdMax,3)} kN·m/m</td><td class="txt">MRd,máx = 0,3 · fd · b · d², d = t − c = ${f(R.t,0)} − ${f(R.cA,1)} = ${f(R.dA,1)} cm</td><td>${pill(R.MdA<=R.MRdMax)}</td></tr>
      <tr><td>Linha neutra x/d</td><td>${f(R.xi,3)}</td><td class="txt">x = 1,25d[1 − √(1 − Md/(0,5·b·d²·fd))] = ${f(R.xA,2)} cm; z = d − 0,4x = ${f(R.zA,2)} cm; limite 0,45</td><td>${pill(R.xiOk)}</td></tr>
      <tr><td>Cisalhamento na base</td><td>${f(R.VdA,2)} kN/m</td><td class="txt">Va = fvk/γm · b · d = ${f(R.VaA,2)} kN/m, fvk = 0,35 + 17,5ρ = ${f(R.fvkA,2)} MPa (≤ 0,7)</td><td>${pill(R.vAok)}</td></tr>
      <tr><td>Mr sem aço</td><td>${f(R.MrA,3)} kN·m/m</td><td class="txt">W · ftk/γm + 0,9 · Nk · t/6, com ftk normal à fiada = ${f(R.ftkN,2)} MPa</td><td>${pill(R.MrA>=R.MdA?true:'warn',R.MrA>=R.MdA?'Dispensa aço':'Precisa de aço')}</td></tr>
@@ -1648,7 +1651,7 @@ function detSvg(R,D){
     if(bpe>bp+0.02)T(X(Math.max(bp,P0+bpe))+14,Y(NAe)+54,`N2a – face interna do pescoço, ${detText('N2a',D)}`,13,'start',st3,'bold');
     T(X(Math.max(bp,P0+bpe))+14,Y(NAe)+72,`estribos N4 – ${detText('N4',D)}`,13,'start',stir);
   }else{
-    const v=D.V1,lp=lapLen(v.phi).L,xm=X(t/2),xw=X(R.px0+bpe/2);
+    const v=D.V1,lp=lapLen(v.phi).L,xm=X(R.cA!=null?R.cA/100:t/2),xw=X(R.px0+bpe/2);
     Pp(`M${(xw+hook*sc).toFixed(1)} ${ybot.toFixed(1)} L${xw.toFixed(1)} ${ybot.toFixed(1)} L${xw.toFixed(1)} ${Y(NAe+lp).toFixed(1)}`,st2);
     const zV=I.v1Full==='toda'?R.hT:Math.max(R.ateA,lp);
     o.push(`<rect x="${(xm-6).toFixed(1)}" y="${Y(NAe+zV).toFixed(1)}" width="12" height="${(zV*sc).toFixed(1)}" fill="#c9c2b6"/>`);
@@ -1760,7 +1763,7 @@ function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvg
   K.L(x0-20,y0-2,X(len)+20,y0-2,'#b3261e',1,'6 3');K.T(x0-22,y0-6,'face externa do muro',{fs:9});
   for(let m=0;m<len-1e-6;m+=2*md)K.R(X(m),Y(0),Math.min(2*md,len-m)*k-1,t*k,ARMC.blk,'#333333',0.8);
   const cw=(md-0.05)*k,ch=(t-0.06)*k;
-  for(let c=md/2;c<len;c+=md){const g=G.isV1(c),onE=eixos.some(e=>Math.abs(e-c)<1e-6),cx=X(c),cy=Y(t/2);K.R(cx-cw/2,cy-ch/2,cw,ch,g||onE?ARMC.gr:'#ffffff','#333333',0.6);if(g&&!onE)K.C(cx,cy,4,ARMC.bar)}
+  for(let c=md/2;c<len;c+=md){const g=G.isV1(c),onE=eixos.some(e=>Math.abs(e-c)<1e-6),cx=X(c),cy=Y(t/2);K.R(cx-cw/2,cy-ch/2,cw,ch,g||onE?ARMC.gr:'#ffffff','#333333',0.6);if(g&&!onE)K.C(cx,R.cA!=null?Y(R.cA/100):cy,4,ARMC.bar)}
   if(G.enr){const nA=Math.max(1,Math.round((G.tenr-t)/md)),cy=j=>t+(j+0.5)*(G.tenr-t)/nA,r=4.5;
     eixos.forEach((e,i)=>{K.R(X(e-G.eenr/2),Y(t),G.eenr*k,(G.tenr-t)*k,ARMC.blk,'#333333',0.8);
       for(let j=0;j<nA;j++)K.R(X(e)-ch/2,Y(cy(j))-cw/2,ch,cw,ARMC.gr,'#333333',0.6);
@@ -2043,7 +2046,7 @@ function inputRows(){
       if(id==='zCi'&&I.cintaInt!=='sim')return;
       if(I.drLado==='nao'&&['drB','drPhi','drLas','drAr','drSel','drImp'].includes(id))return;
       if((id==='fpkM'||id==='fpkCM')&&(I.bloco||'')[0]!=='k')return;
-      const l=Array.isArray(lab)?lab[I.sys==='pil'?0:1]:lab;let val;
+      const l=String(Array.isArray(lab)?lab[I.sys==='pil'?0:1]:lab).replace(/<small[^>]*>[\s\S]*?<\/small>/g,'');let val;
       if(u==='sel'){const o=opts.find(o=>String(o[0])===String(I[id]));val=o?o[1]:I[id]}
       else if(u==='ro'){const el=$(id);val=el?el.value:''}
       else val=`${f(I[id],Math.abs(I[id])<10&&I[id]%1?2:(I[id]%1?2:0))} ${u}`;
@@ -2210,7 +2213,7 @@ function memorialXML(R,figs,state){
     b.push(EQ('Esbeltez:',`hef = 2·h = ${f(R.hef)} m; λ = hef/${R.enr?'tef':'t'} = ${f(R.lamA,1)} ≤ 30 (${ST(R.lamAOk)})`));
     b.push(EQ('Momentos:',`Md vento/empuxo${R.enr?' (Md,normal da placa)':''} = ${f(R.MdvA,3)}; Md 2ª ordem = Nd·hef²/(2000·${R.enr?'tef':'t'}) = ${f(R.Md2A,3)}; Md total = ${f(R.MdA,3)} kN·m/m (Nd = ${f(R.NdA,2)} kN/m)`));
     b.push(EQ('Materiais:',`bloco ${R.Bl[1]}, fbk = ${f(+I.fbk,0)} MPa; prisma oco fpk = ${f(R.fpk,1)} MPa e prisma cheio fpk* = ${f(R.fpkC,1)} MPa ${R.cer?'(valores informados)':'(Parsekian e Medeiros, 2021, Tabela 3.2)'}; graute fgk ≥ 15 MPa; argamassa ${['','','1,5 a 3,4','','','3,5 a 7,0','','','acima de 7,0'][+I.fa]||''} MPa → ftk = ${f(R.ftkN,2)} MPa (normal) e ${f(R.ftkP,2)} MPa (paralela à fiada); Ea = ${R.Ecoef}·fpk = ${f(R.Ealv/1000,0)} MPa`));
-    b.push(EQ('Flexão (estádio III):',`fd = 0,7·fpk*/γm = 0,7 × ${f(R.fpkC,1)} / ${f(I.gm,1)} = ${f(R.fdA*10,2)} MPa; d = t/2 = ${f(R.dA,1)} cm; MRd,máx = 0,3·fd·b·d² = ${f(R.MRdMax,3)} kN·m/m ${R.MdA<=R.MRdMax?'≥':'<'} Md`));
+    b.push(EQ('Flexão (estádio III):',`fd = 0,7·fpk*/γm = 0,7 × ${f(R.fpkC,1)} / ${f(I.gm,1)} = ${f(R.fdA*10,2)} MPa; d = t − c = ${f(R.t,0)} − ${f(R.cA,1)} = ${f(R.dA,1)} cm (c da face externa ao centro da armadura); MRd,máx = 0,3·fd·b·d² = ${f(R.MRdMax,3)} kN·m/m ${R.MdA<=R.MRdMax?'≥':'<'} Md`));
     b.push(EQ('Linha neutra:',`x = 1,25·d·[1 − √(1 − Md/(0,5·b·d²·fd))] = ${f(R.xA,2)} cm; x/d = ${f(R.xi,3)} ≤ 0,45 (${ST(R.xiOk)}); z = d − 0,4x = ${f(R.zA,2)} cm`));
     b.push(EQ('Armadura:',`fyd = ${f(R.fsA*10,0)} MPa; As = Md/(fyd·z) = ${f(R.AsCalc,2)} cm²/m; As,mín = 0,10%·b·t = ${f(R.AsMinA,2)} cm²/m; barras nos furos grauteados, no módulo de ${f(R.mod,0)} cm`));
     pushA(['V1','N2']);
