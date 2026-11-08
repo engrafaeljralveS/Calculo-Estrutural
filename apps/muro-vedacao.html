@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><script>/* ponte da suíte: downloads pela página principal (troca de mensagens); demais recursos repassados */(function(){try{if(window.claude||window.parent===window)return;var n=0,pend={};window.addEventListener("message",function(e){var d=e.data;if(!d||d.tipo!=="suite-claude-r"||!pend[d.id])return;var f=pend[d.id];delete pend[d.id];f(d);});function ask(m,ms){return new Promise(function(res){var id="c"+(++n)+Math.random().toString(36).slice(2);var t=setTimeout(function(){if(pend[id]){delete pend[id];res({nulo:true});}},ms);pend[id]=function(d){clearTimeout(t);res(d);};m.tipo="suite-claude";m.id=id;window.parent.postMessage(m,"*");});}function erro(x){var e=new Error(x.message||"erro");e.code=x.code;return e;}window.claude={use:function(cap){if(cap==="downloads")return ask({cap:cap,op:"probe"},6000).then(function(d){if(!d.ok)return null;return Object.freeze({save:function(a){return ask({cap:cap,op:"save",args:{filename:a.filename,data:a.data}},900000).then(function(d){if(d.erro)throw erro(d.erro);if(!d.ok)throw erro({code:"unavailable",message:"Download indisponível"});return d.r;});}});});try{var p=window.parent.claude;return p&&p.use?p.use(cap):Promise.resolve(null);}catch(e){return Promise.resolve(null);}}};}catch(e){}})();</script>
-<title>Muro de Vedação v13</title>
+<title>Muro de Vedação v14</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -141,7 +141,7 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
 <header class="top">
   <div class="wrap">
     <div>
-      <div class="eyebrow">v13 · NBR 6118 · NBR 6122 · NBR 6123 · NBR 16868</div>
+      <div class="eyebrow">v14 · NBR 6118 · NBR 6122 · NBR 6123 · NBR 16868</div>
       <h1>Muro de vedação</h1>
     </div>
     <nav class="steps" aria-label="Etapas">
@@ -271,8 +271,9 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
   </section>
 
   <section class="screen" id="s4" hidden>
-    <div class="lead"><div><h2>Detalhamento das armaduras</h2><p>Os valores vêm preenchidos com o que o cálculo pede. Altere quantidade, diâmetro e espaçamento; cada linha confere o adotado contra o necessário e o desenho acompanha.</p></div><button class="btn ghost" type="button" id="detReset">Usar armaduras calculadas</button></div>
+    <div class="lead"><div><h2>Detalhamento das armaduras</h2><p>Escolha as bitolas de cada elemento logo abaixo: elas valem também para as verificações. Os valores vêm preenchidos com o que o cálculo pede; altere quantidade, diâmetro e espaçamento linha a linha se precisar; cada linha confere o adotado contra o necessário e o desenho acompanha.</p></div><button class="btn ghost" type="button" id="detReset">Usar armaduras calculadas</button></div>
     <div id="detVerdict"></div>
+    <div class="panel"><header><h3>Bitolas por elemento</h3><small>Escolhidas só aqui: o cálculo das verificações e a tabela abaixo usam estes diâmetros</small></header><div id="detBitolas"></div></div>
     <div class="panel"><header><h3>Armaduras adotadas</h3><small>Traspasse de 1,00 m; para Ø ≥ 16 mm é calculado pela NBR 6118 (*)</small></header><div class="scroll"><table id="tabDet" class="detTab"></table></div></div>
     <div class="panel" style="background:#ffffff"><header><h3 style="color:#16212c">Esboço do detalhamento</h3><small style="color:#5a6774">Vai para o memorial em Word</small></header><div class="scroll"><div id="detDraw" style="min-width:900px"></div></div></div>
     <div class="panel" style="background:#ffffff" id="armDwgPanel" hidden><header><h3 style="color:#16212c">Planta e vista do muro armado</h3><small style="color:#5a6774">Grauteamento vertical e canaletas armadas · vai para o memorial em Word</small></header><div class="scroll"><div id="armPlan" style="min-width:900px"></div><div id="armVista" style="min-width:900px;margin-top:18px"></div></div></div>
@@ -351,7 +352,6 @@ const DEF=[
   ['fa','Resistência da argamassa fa','sel','5',[['2','1,5 a 3,4 MPa'],['5','3,5 a 7,0 MPa'],['8','Acima de 7,0 MPa']]],
   ['ftkOut','Tração na flexão ftk (normal / paralela à fiada)','ro'],
   ['gm','Coeficiente γm da alvenaria','–',2.0],
-  ['phiA','Vergalhão vertical (alvenaria armada)','sel','10',BARRAS.map(b=>[String(b[0]),`Ø ${String(b[0]).replace('.',',')} mm`]),'arm'],
   ['v1Full','Vergalhão vertical V1 – extensão','sel','toda',[['toda','Em toda a altura (construtivo acima do trecho de cálculo)'],['calc','Só até onde o cálculo exige (+ ancoragem)']],'arm'],
   ['modOut','Módulo dos furos (pelo comprimento do bloco)','ro',null,null,'arm'],
   ['fsMode','Tensão no aço da alvenaria','sel','elu',[['elu','fyd = fyk / 1,15 (NBR 16868:2020)'],['adm','Conservadora ≈ 150 MPa (planilha de referência)']],'arm']]],
@@ -363,10 +363,8 @@ const DEF=[
   ['pInf','Painel inferior – material (sapata corrida)','sel','bloco',[['bloco','Bloco – alvenaria até a sapata'],['conc','Parede de concreto armado engastada na sapata']],'pil'],
   ['hcw','Parede de concreto – altura acima do topo da sapata','m',1.00,null,'pil'],
   ['bcw','Parede de concreto – espessura','cm',15,null,'pil'],
-  ['phW','Parede de concreto – vergalhão','sel','8',BARRAS.map(b=>[String(b[0]),`Ø ${String(b[0]).replace('.',',')} mm`]),'pil'],
   ['canPI','Canaletas armadas horizontais no painel inferior','sel','nao',[['nao','Não – pano não armado'],['sim','Sim – canaletas grauteadas e armadas, ancoradas nos pilares']],'pil'],
   ['ehPI','Canaletas do painel inferior – a cada','m',0.40,null,'pil'],
-  ['phPI','Canaletas do painel inferior – vergalhão','sel','8',BARRAS.map(b=>[String(b[0]),`Ø ${String(b[0]).replace('.',',')} mm`]),'pil'],
   ['bpw','Pilar – espessura (sentido do vento, ≥ bloco)','cm',19,null,'pil'],
   ['hp','Pilar – comprimento ao longo do muro','cm',30,null,'pil'],
   ['bpe','Pescoço abaixo de NA – sentido do vento','cm',30,null,'pil'],
@@ -380,10 +378,8 @@ const DEF=[
   ['lenr','Enrijecedor – distância entre eixos','m',2.60,null,'arm'],
   ['tenr','Enrijecedor – comprimento total, incluindo o muro','cm',39,null,'arm'],
   ['eenrOut','Enrijecedor – espessura e δ (NBR 16868, Tabela 3.3)','ro',null,null,'arm'],
-  ['phE','Enrijecedor – vergalhão vertical','sel','16',BARRAS.map(b=>[String(b[0]),`Ø ${String(b[0]).replace('.',',')} mm`]),'arm'],
   ['ehor','Canaletas horizontais armadas a cada (acima do terço inferior)','m',0.60,null,'arm'],
-  ['ehorI','Canaletas horizontais armadas no terço inferior a cada','m',0.40,null,'arm'],
-  ['phH','Canaletas e grampos – vergalhão horizontal','sel','10',BARRAS.map(b=>[String(b[0]),`Ø ${String(b[0]).replace('.',',')} mm`]),'arm']]],
+  ['ehorI','Canaletas horizontais armadas no terço inferior a cada','m',0.40,null,'arm']]],
  [['Sapata','Sapata corrida (por metro de muro)'],'De divisa: alinhada à face externa do muro e avança só para o lado interno.',[
   ['tipoSap','Tipo de sapata','sel','iso',[['iso','Isolada sob cada pilar'],['cor','Corrida ao longo do muro']],'pil'],
   ['B','Largura B (transversal ao muro)','m',2.20],
@@ -420,9 +416,19 @@ const DEF=[
   ['borda','Condição das extremidades','sel','iso',[['iso','Muro isolado'],['borda','Com muros de borda (retorno)']]],
   ['CfOut','Coeficiente de força Cf','ro']]],
  ['Materiais e detalhamento','',[
-  ['fck','fck (até 50 MPa)','MPa',25],['fyk','fyk','MPa',500],['cob',['Cobrimento (pilar e vigas)','Cobrimento (parede de fundação)'],'cm',2.5],
-  ['phl','Barra do pilar','mm',12.5,null,'pil'],['phv',['Barra das vigas','Barra da parede de fundação e da verga'],'mm',8],['pht','Estribo','mm',5,null,'pil'],['phs','Barra da sapata','mm',10]]]
+  ['fck','fck (até 50 MPa)','MPa',25],['fyk','fyk','MPa',500],['cob',['Cobrimento (pilar e vigas)','Cobrimento (parede de fundação)'],'cm',2.5]]]
 ];
+// bitolas: escolhidas só na aba Detalhamento, separadas por elemento (o cálculo usa estes valores)
+const BITOLAS=[
+  ['phiA','Alvenaria armada: vertical nos furos grauteados (V1 e V2)','arm','s',['V1','V2'],'10'],
+  ['phH','Canaletas horizontais e grampos (H1 e grampo do enrijecedor)','arm','s',['H1','E3'],'10'],
+  ['phE','Enrijecedores: vertical (E1, E2 e E4)','arm','s',['E1','E2','E4'],'16'],
+  ['phl','Pilar e pescoço: longitudinal (N1, N2)','pil','n',['N1','N2','N2a'],12.5],
+  ['pht','Estribos do pilar, do pescoço, do baldrame e da cinta','pil','n',['N3','N4','N11','N12'],5],
+  ['phv',['Baldrame e cintas: longitudinal','Parede de fundação e verga de topo (N2 e N13)'],null,'n',['N8','N9','N10','N15','N2','N13'],8],
+  ['phPI','Canaletas armadas do painel inferior (N17)','pil','s',['N17'],'8'],
+  ['phW','Parede de concreto: vertical e horizontal (N18 a N20)','pil','s',['N18','N19','N20'],'8'],
+  ['phs','Sapata e chaveta (N5, N6, N7 e N21)',null,'n',['N5','N6','N7','N21'],10]];
 const CAT={I:[1.10,0.06],II:[1.00,0.085],III:[0.94,0.10],IV:[0.86,0.12],V:[0.74,0.15]};
 const KEY='muro-vedacao-v3';
 const VIDEO_EX={sys:'pil',bpw:14,NTopo:2.0,NT:0,NT2:0,NA:0,Nf:-1.2,s:3.3,V0:35,s2mode:'man',S2m:0.88,S3:0.88,fck:25,fyk:500,cob:2,pht:5,phl:10,Lm:20,borda:'iso',hp:25,bpe:14,hpe:25,bloco:'k14_29',reb:'1',bwi:14,bws:14,B:0.6,L:0.6,hs:0.25,gam:15,sadm:147.1,pos:'divisa'};
@@ -436,7 +442,7 @@ const DREN=[
   ['drAr','Dreno – camada de areia sobre a manta','cm',15],
   ['drSel','Dreno – selamento de solo argiloso','cm',15],
   ['drImp','Impermeabilização da face enterrada','sel','sim',[['sim','Sim (emulsão asfáltica ou manta)'],['nao','Não']]]];
-const DEFAULTS={sys:'pil'};DEF.forEach(g=>g[2].forEach(x=>{if(x[2]!=='ro')DEFAULTS[x[0]]=x[3]}));DREN.forEach(x=>DEFAULTS[x[0]]=x[3]);
+const DEFAULTS={sys:'pil'};DEF.forEach(g=>g[2].forEach(x=>{if(x[2]!=='ro')DEFAULTS[x[0]]=x[3]}));BITOLAS.forEach(b=>DEFAULTS[b[0]]=b[5]);DREN.forEach(x=>DEFAULTS[x[0]]=x[3]);
 let I={...DEFAULTS};
 try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){Object.assign(I,s);if(+I.FStMin===1.5)I.FStMin=2.0}}catch(e){}
 if(OLD_BLOCO[I.bloco])I.bloco=OLD_BLOCO[I.bloco];
@@ -1804,7 +1810,15 @@ function armVistaSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSv
   const yN=ly+28*F+K.TW(x0,ly+28*F,`As barras H1 passam contínuas${G.enr?' pelos enrijecedores':''}; emendas por traspasse de 40Ø fora do meio do vão${G.enr?' e dobra de 90° dentro do enrijecedor nas extremidades':''}.`,{fs:9},mem?95:200);
   const W=Math.max(xd+240*F,760),H=yN+6;return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}"><rect width="${W.toFixed(0)}" height="${H.toFixed(0)}" fill="#ffffff"/>${K.o.join('')}</svg>`,w:Math.round(W),h:Math.round(H)}}
 
+function bitolasHtml(R){
+  const vis=b=>{if(b[2]&&b[2]!==I.sys)return false;
+    if(b[0]==='phE')return !!R.enr; if(b[0]==='phPI')return !!R.canPI; if(b[0]==='phW')return !!R.CW; return true};
+  const opts=b=>b[3]==='s'?BARRAS.map(x=>String(x[0])):(b[0]==='pht'?[5,6.3,8,10]:BAR_D).map(String);
+  return `<fieldset class="bitolas">${BITOLAS.filter(vis).map(b=>{const lab=Array.isArray(b[1])?b[1][I.sys==='pil'?0:1]:b[1];
+    return `<div class="field wide"><label for="bit-${b[0]}">${lab}</label><select id="bit-${b[0]}" data-bitola="${b[0]}">${opts(b).map(v=>`<option value="${v}"${String(I[b[0]])===v?' selected':''}>Ø ${v.replace('.',',')} mm</option>`).join('')}</select></div>`}).join('')}</fieldset>`;
+}
 function renderDet(R){
+  $('detBitolas').innerHTML=bitolasHtml(R);
   const D=detGet(R),rows=detRows(R,D);R.det={D,rows};
   const selPhi=(id,fld,v)=>`<select data-det="${id}.${fld}" aria-label="Diâmetro ${id}">${BAR_D.map(d=>`<option value="${d}"${Math.abs(d-v)<1e-6?' selected':''}>${String(d).replace('.',',')}</option>`).join('')}</select>`;
   const num=(id,fld,v,lab)=>`<input data-det="${id}.${fld}" type="number" min="1" step="1" value="${v}" aria-label="${lab}" style="width:70px">`;
@@ -2048,7 +2062,7 @@ function memorialXML(R,figs,state){
   const cont=R.dh>0.01,tipoM=cont?'contenção e vedação':'vedação';
   b.push(PP(`MEMORIAL DE CÁLCULO – MURO DE ${tipoM.toUpperCase()}`,{b:true,sz:24,align:'center',after:60}));
   if(I.nomeModelo)b.push(PP(String(I.nomeModelo),{b:true,sz:22,align:'center',after:60}));
-  b.push(PP(`Emitido em ${dt} · Muro de vedação v13`,{sz:20,align:'center',after:240,color:'5A6774'}));
+  b.push(PP(`Emitido em ${dt} · Muro de vedação v14`,{sz:20,align:'center',after:240,color:'5A6774'}));
   b.push(H1('1. Objeto e critérios'));
   b.push(TXT(`Este memorial apresenta o dimensionamento de um muro de ${tipoM} no sistema de ${sysTxt}.${cont?` O muro contém um desnível de terreno de ${f(R.dh)} m: o ${I.NT2>I.NT?'terreno do vizinho':'terreno interno'} está em ${sgn(R.Hg)} m e o ${I.NT2>I.NT?'interno':'do vizinho'} em ${sgn(R.Lg)} m${R.qE>0||R.qI>0?`, com sobrecarga de ${f(Math.max(R.qE,R.qI),1)} kN/m² no lado ${R.qE>=R.qI?'do vizinho':'interno'}`:''}; por isso trabalha também como contenção, recebendo o empuxo do solo${R.CW?', resistido na parte inferior pela parede de concreto engastada na sapata':''}.`:''} As ações consideradas são o peso próprio, o vento e o empuxo de solo; a fundação é verificada quanto a tensões no solo, excentricidade, tombamento e deslizamento.`));
   b.push(TXT('Normas de referência: ABNT NBR 6118 (estruturas de concreto), NBR 6122 (fundações), NBR 6123 (forças devidas ao vento) e NBR 16868 (alvenaria estrutural). Estabilidade e tensões no solo em valores característicos; dimensionamento no ELU com γf = 1,4, γc = 1,4 e γs = 1,15.'));
@@ -2233,7 +2247,7 @@ function memorialXML(R,figs,state){
   b.push(H1('10. Conclusão'));
   b.push(TXT(state.fails?`${state.fails} verificação(ões) não atende(m) com os dados informados. Revisar os itens indicados.`:'Todas as verificações atendem com os dados informados.'));
   state.obs.forEach(o=>b.push(PP([RUN('• '),RUN(o)],{ind:360,align:'both'})));
-  b.push(PP('Este memorial foi gerado automaticamente pela ferramenta de apoio Muro de vedação v13. Os resultados devem ser conferidos e assumidos pelo engenheiro responsável.',{sz:20,i:true,before:200,color:'5A6774'}));
+  b.push(PP('Este memorial foi gerado automaticamente pela ferramenta de apoio Muro de vedação v14. Os resultados devem ser conferidos e assumidos pelo engenheiro responsável.',{sz:20,i:true,before:200,color:'5A6774'}));
   b.push(H1('11. Referências bibliográficas'));
   refList(R).forEach(t=>b.push(PP(t,{align:'both',after:80})));
   const sect=`<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/><w:pgMar w:top="1418" w:right="1418" w:bottom="1418" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr>`;
@@ -2504,6 +2518,11 @@ $('aplicaTxt').addEventListener('click',()=>{const t=$('modeloTxt').value.trim()
 $('mostraTxt').addEventListener('click',()=>{$('modeloTxt').value=modeloJSON();$('modeloTxt').select();sayM('Modelo atual no campo de texto: copie e guarde.')});
 document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.det;if(!k)return;const [id,fld]=k.split('.');const v=+e.target.value;if(!(v>0))return;
   I.det=I.det||{};I.det[I.sys]=I.det[I.sys]||{};I.det[I.sys][id]={...(I.det[I.sys][id]||{}),[fld]:v};save();update()});
+document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.bitola;if(!k)return;const b=BITOLAS.find(x=>x[0]===k);
+  I[k]=b[3]==='s'?e.target.value:+e.target.value;
+  // a nova bitola vale para as posições do elemento: tira o diâmetro escolhido linha a linha
+  const U=I.det&&I.det[I.sys];if(U)b[4].forEach(id=>{if(U[id]){delete U[id].phi;if(!Object.keys(U[id]).length)delete U[id]}});
+  save();update()});
 document.addEventListener('click',e=>{if(e.target.id==='detReset'){if(I.det)delete I.det[I.sys];save();update()}});
 /* ---------- dimensionamento otimizado: menor custo por metro de muro ---------- */
 // preços unitários de referência (R$, editáveis; ordem de grandeza de composições SINAPI – conferir com a praça)
