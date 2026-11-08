@@ -1778,7 +1778,14 @@ function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvg
     for(let i=0;i<eixos.length-1;i++)K.dimH(X(eixos[i]),X(eixos[i+1]),Y(-0.17),`${G.dm(R.lenr)} m entre eixos de enrijecedores`);
     const e2=eixos[eixos.length-1];K.dimV(X(e2)+40,Y(0),Y(G.tenr),`${f(R.tenr,0)} cm`,false);K.dimH(X(e2-G.eenr/2),X(e2+G.eenr/2),Y(G.tenr)+30,`${f(R.eenr,0)} cm`,false);}
   {const a0=G.enr?eixos[0]:md/2,a1=G.enr?eixos[1]:Math.min(len-md/2,a0+4*G.sV);let a=a0;while(a<a1-1e-6){const b=Math.min(a1,a+G.sV);K.dimH(X(a),X(b),Y(-0.08),f((b-a)*100,0));a=b}}
-  K.dimV(X(len)+30,Y(0),Y(t),`${f(R.t,0)} cm`,false);
+  {// cotas da armadura vertical: face externa → armadura = c; armadura → face interna = d = t − c; total = t
+   const cm=(R.cA!=null?R.cA:R.t/2)/100,xd=X(len)+26,xt=X(len)+64;
+   K.L(X(len)+4,Y(cm),xd+6,Y(cm),'#c0392b',.6,'3 2');
+   K.dimV(xd,Y(0),Y(cm),'',false);K.dimV(xd,Y(cm),Y(t),'',false);
+   K.T(xd+8,(Y(0)+Y(cm))/2+3,`${f(cm*100,cm*100%1?1:0)} (c)`,{fs:9});
+   K.T(xd+8,(Y(cm)+Y(t))/2+3,`${f((R.t-cm*100),(R.t-cm*100)%1?1:0)} (d)`,{fs:9});
+   K.dimV(xt,Y(0),Y(t),`${f(R.t,0)} cm`,false);
+   K.T(xd-4,Y(0)-6,'face externa',{fs:8,a:'start'});K.T(xd-4,Y(t)+12,'face interna',{fs:8,a:'start'});}
   const yl=Y(G.tenr)+(G.enr?20:30);K.T(x0,yl,'lado interno ↓',{fs:9});
   const ly=yl+60;K.legend(x0,ly,[{k:'rect',c:ARMC.gr,s:'#333333',t:'furo grauteado'},{k:'dot',c:ARMC.bar,t:'barra vertical'},{k:'rect',c:'#ffffff',s:'#333333',t:'furo vazio'},...(G.enr?[{k:'line',c:ARMC.st,t:'grampo do enrijecedor'}]:[])]);
 
