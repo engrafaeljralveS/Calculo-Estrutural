@@ -355,7 +355,7 @@ const DEF=[
   ['gm','Coeficiente γm da alvenaria','–',2.0],
   ['v1Full','Vergalhão vertical V1 – extensão','sel','toda',[['toda','Em toda a altura (construtivo acima do trecho de cálculo)'],['calc','Só até onde o cálculo exige (+ ancoragem)']],'arm'],
   ['modOut','Módulo dos furos (pelo comprimento do bloco)','ro',null,null,'arm'],
-  ['cA','Cobrimento da armadura vertical, c<small class="fnote">Da face externa até o centro de gravidade da armadura. O braço útil é d = t − c (ex.: bloco de 19 cm com c = 5 cm → d = 14 cm).</small>','cm',5,null,'arm'],
+  ['cA','Cobrimento da armadura vertical, c<small class="fnote">Da face tracionada até o centro de gravidade da armadura. O braço útil é d = t − c (ex.: bloco de 19 cm com c = 5 cm → d = 14 cm). A barra fica do lado do maior momento fletor, normalmente o lado com mais solo; o sentido inverso é verificado com d = c.</small>','cm',5,null,'arm'],
   ['fsMode','Tensão no aço da alvenaria','sel','elu',[['elu','fyd = fyk / 1,15 (NBR 16868:2020)'],['adm','Conservadora ≈ 150 MPa (planilha de referência)']],'arm']]],
  [['Pilares, baldrame e cinta superior','Parede de fundação e verga de topo'],['O pilar fica embutido na parede, com a espessura do bloco.','A parede de fundação liga o muro à sapata corrida; a verga de topo amarra a última fiada.'],[
   ['s','Espaçamento entre pilares','m',2.80,null,'pil'],
@@ -944,11 +944,13 @@ function calc(){
     R.lamA=hef/tefm; R.lamAOk=R.lamA<=30?true:false;
     R.NkA=R.g1+R.g2; R.NdA=1.4*R.NkA;
     R.MdvA=1.4*momW(NAe,0)*R.fV;
+    // face tracionada no assentamento: a do maior momento (Mpos traciona a face do vizinho, Mneg a face interna); a armadura fica junto dela
+    {const mp=R.at(R.Mpos,NAe),mn=R.at(R.Mneg,NAe),mx=Math.max(mp,mn);R.faceA=mn>mp?'int':'ext';R.revRat=mx>1e-12?Math.min(mp,mn)/mx:0}
     R.Md2A=R.NdA*hef*hef/(2000*tefm);
     R.MdA=R.MdvA+R.Md2A;
     R.Mest=0.9*R.NkA*t/6; // compressão favorável (γ = 0,9), usada só no trecho sem armadura
     // flexão simples no estádio III (Parsekian e Medeiros, 2021, item 3.4; NBR 16868-1:2020)
-    R.fdA=0.7*R.fpkC/I.gm/10; R.cA=Math.min(Math.max(+I.cA||5,1.5),R.t-1.5); R.dA=R.t-R.cA; const bA=100,Mdc=R.MdA*100; // kN/cm², cm, kN·cm
+    R.fdA=0.7*R.fpkC/I.gm/10; R.cA=Math.min(Math.max(+I.cA||5,1.5),R.t-1.5); R.dA=R.t-R.cA; R.xV1=R.faceA==='int'?R.t-R.cA:R.cA; /* posição da barra medida da face externa (cm) */ const bA=100,Mdc=R.MdA*100; // kN/cm², cm, kN·cm
     R.MRdMax=0.3*R.fdA*bA*R.dA*R.dA/100; // kN·m/m
     R.Mu=Mdc/(bA*R.dA*R.dA*R.fdA);
     const bar=BARRAS.find(x=>String(x[0])===String(I.phiA))||BARRAS[2]; R.phiA=bar[0];
@@ -966,6 +968,9 @@ function calc(){
     // cisalhamento na base (Parsekian e Medeiros, 2021, item 3.3): fvk = 0,35 + 17,5ρ ≤ 0,7 MPa
     R.VdA=1.4*R.envV(NAe)*R.fV; const rhoA=isFinite(R.AsA)&&R.espAd>0?(area(R.phiA)*100/R.espAd)/(100*R.dA):0;
     R.fvkA=Math.min(0.35+17.5*rhoA,0.7); R.VaA=R.fvkA*1000/I.gm*1*R.dA/100; R.vAok=R.VdA<=R.VaA;
+    // sentido inverso: a outra face tracionada, a mesma barra com braço d = c
+    {const Mv=R.MdvA*R.revRat,Md=Mv>1e-9?Mv+R.Md2A:0,r=alvFlex(Md,100,R.cA,R.fdA,R.fsA),AsP=R.espAd>0?area(R.phiA)*100/R.espAd:0;
+     R.revA={Mdv:Mv,Md,d:R.cA,r,AsP,semAco:Md<=R.MrA,ok:Md<=R.MrA||(r.ok&&AsP>=r.As-1e-6)}}
     if(R.enr){const E={},lE=R.lenr,b=R.eenr,tf=R.t,Ht=R.tenr;R.E=E;
       const barE=BARRAS.find(x=>String(x[0])===String(I.phE))||BARRAS[3];E.phi=barE[0];
       const fsE=I.fsMode==='elu'?Math.min(I.fyk,500)/1.15/10:barE[1]*0.3077*G;E.fs=fsE;
@@ -1074,7 +1079,7 @@ function drawCorte(R){
   if(R.cInt)s+=rect(0,R.t/100,R.yA+R.h1+R.hcan,R.yA+R.h1,'var(--conc)','var(--concline)');
   if(R.canPI)R.CPI.zs.forEach(z=>{s+=rect(0,R.t/100,R.yA+z+R.hcan/2,R.yA+z-R.hcan/2,'var(--conc)','var(--concline)')+`<circle cx="${X(R.t/200)}" cy="${Y(R.yA+z)}" r="2.6" fill="var(--steel)"/>`});
   if(R.arm){const zA=Math.min(R.hA,R.ateA),zF=I.v1Full==='toda'?R.hT:zA;
-    const wv=R.cA!=null?R.cA/100:wa; // V1 a c da face externa
+    const wv=R.xV1!=null?R.xV1/100:wa; // V1 a c da face tracionada
     if(zF>zA+1e-6)s+=`<line x1="${X(wv)}" y1="${Y(NAe+zA)}" x2="${X(wv)}" y2="${Y(NAe+zF)}" stroke="var(--steel)" stroke-width="1.4" stroke-dasharray="5 3"/>`;
     s+=`<line x1="${X(wv)}" y1="${Y(R.ytop)-4}" x2="${X(wv)}" y2="${Y(NAe+zA)}" stroke="var(--steel)" stroke-width="2.4"/>`;
     R.canH.forEach(z=>{s+=`<circle cx="${X(wa)}" cy="${Y(NAe+z)}" r="3" fill="var(--steel)"/>`});
@@ -1386,6 +1391,8 @@ function renderChecks(R){
      <tr><td>Linha neutra x/d</td><td>${f(R.xi,3)}</td><td class="txt">x = 1,25d[1 − √(1 − Md/(0,5·b·d²·fd))] = ${f(R.xA,2)} cm; z = d − 0,4x = ${f(R.zA,2)} cm; limite 0,45</td><td>${pill(R.xiOk)}</td></tr>
      <tr><td>Cisalhamento na base</td><td>${f(R.VdA,2)} kN/m</td><td class="txt">Va = fvk/γm · b · d = ${f(R.VaA,2)} kN/m, fvk = 0,35 + 17,5ρ = ${f(R.fvkA,2)} MPa (≤ 0,7)</td><td>${pill(R.vAok)}</td></tr>
      <tr><td>Mr sem aço</td><td>${f(R.MrA,3)} kN·m/m</td><td class="txt">W · ftk/γm + 0,9 · Nk · t/6, com ftk normal à fiada = ${f(R.ftkN,2)} MPa</td><td>${pill(R.MrA>=R.MdA?true:'warn',R.MrA>=R.MdA?'Dispensa aço':'Precisa de aço')}</td></tr>
+     <tr><td>Face tracionada (maior momento)</td><td>${R.faceA==='int'?'interna (lote)':'externa (vizinho)'}</td><td class="txt">Barra V1 a c = ${f(R.cA,1)} cm dessa face, d = ${f(R.dA,1)} cm. Momento no outro sentido = ${f(R.revRat*100,0)}% do maior.</td><td></td></tr>
+     <tr><td>Sentido inverso (tração na face ${R.faceA==='int'?'externa':'interna'})</td><td>${f(R.revA.Md,3)} kN·m/m</td><td class="txt">mesma barra com d = c = ${f(R.revA.d,1)} cm: ${R.revA.Md<=1e-9?'sem momento nesse sentido':R.revA.semAco?`Md ≤ Mr sem aço = ${f(R.MrA,3)} kN·m/m`:R.revA.r.ok?`As nec. = ${f(R.revA.r.As,2)} cm²/m; adotado ${f(R.revA.AsP,2)} cm²/m`:`Md > MRd,máx = ${f(R.revA.r.MRdMax,3)} kN·m/m com d = c`}</td><td>${pill(R.revA.ok)}</td></tr>
      <tr><td>Deslocamento no topo</td><td>${f(R.uTop,2)} cm</td><td class="txt">${R.enr?`enrijecedor em balanço, Ea = ${R.Ecoef}·fpk = ${f(R.Ealv/1000,0)} MPa, inércia ${R.E.fiss?`de Branson (fissurado, Ma ${f(R.E.Ma,2)} > Mr ${f(R.E.Mr,2)} kN·m)`:'bruta da seção T'} = ${f(R.E.Ie,0)} cm⁴`:`Ea = ${R.Ecoef}·fpk = ${f(R.Ealv/1000,0)} MPa, seção bruta`}; balanço: limite 2H/250 = ${f(R.uLim,2)} cm</td><td>${pill(R.uOk)}</td></tr>`;
     $('tabAlv').innerHTML=armRows;
     if(R.enr){const E=R.E;
@@ -1454,6 +1461,7 @@ function renderChecks(R){
     if(!R.espOk&&isFinite(R.xi))obs.push(`Espaçamento calculado (${f(R.espA,1)} cm) menor que o módulo dos furos: use vergalhão de diâmetro maior.`);
     else if(!R.xiOk)obs.push('Alvenaria armada sem capacidade à flexão: use bloco mais espesso ou maior fbk.');
     if(!R.lamAOk)obs.push('Muro armado esbelto demais (λ > 30): use bloco mais espesso ou crie pilares.');
+    if(R.revA&&!R.revA.ok)obs.push(`Sentido inverso do momento (tração na face ${R.faceA==='int'?'externa':'interna'}): a barra V1, a ${f(R.cA,1)} cm da face oposta, trabalha com d = c e não atende. Aumente c (barra mais ao centro), use barras junto às duas faces ou aumente a bitola.`);
     obs.push(`Grautear os furos com vergalhão e ancorar ${f(R.phiA,1)} mm na parede de fundação com espera em L.`);
     obs.push(`Armadura horizontal (NBR 16868-1, 12.2): mínimo de 0,05% da seção = ${f(R.AsHmin,2)} cm²/m. Canaletas armadas H1 com ${R.nH1} ${phiTxt(R.phH)}: na 1ª fiada acima do assentamento, a cada ${f(R.ehI)} m no terço inferior e a cada ${f(R.ehG)} m acima (${R.canH.length} canaletas).${R.ehMod?'':' Ajuste os espaçamentos a múltiplos da altura da fiada ('+f(R.hcan)+' m).'}`);
     obs.push(`Barras verticais construtivas V2 nas extremidades do muro, nos cantos e dos dois lados de cada junta de controle, em furos grauteados em toda a altura.${I.v1Full==='toda'?' V1 segue em toda a altura (acima do trecho de cálculo é construtiva).':''}`);
@@ -1557,7 +1565,7 @@ function detRows(R,D){
   }else{
     const asv=AsS(D.V1.phi,D.V1.s),modOk=D.V1.s%R.mod===0&&D.V1.s<=6*R.t;
     const o8v=R.ok8(1,D.V1.phi,R.Agr);
-    rows.push({id:'V1',el:'Muro armado',pos:I.v1Full==='toda'?`Vertical nos furos grauteados, em toda a altura (cálculo até ${f(R.ateA)} m acima do NA)`:`Vertical nos furos grauteados, até ${f(R.ateA)} m acima do NA`,mode:'s',req:isFinite(R.AsA)?`${f(R.AsA)} cm²/m`:'—',ad:`${f(asv)} cm²/m`,ok:R.xiOk!==false&&isFinite(R.AsA)&&asv>=R.AsA-1e-6&&modOk&&o8v,note:[modOk?'':`espaçamento deve ser múltiplo de ${R.mod} cm e ≤ ${f(6*R.t,0)} cm`,o8v?'':'aço acima de 8% do graute do furo (NBR 16868-1, 12.3)'].filter(Boolean).join('; '),lap:lapLen(D.V1.phi)});
+    rows.push({id:'V1',el:'Muro armado',pos:I.v1Full==='toda'?`Vertical nos furos grauteados, em toda a altura (cálculo até ${f(R.ateA)} m acima do NA)`:`Vertical nos furos grauteados, até ${f(R.ateA)} m acima do NA`,mode:'s',req:isFinite(R.AsA)?`${f(R.AsA)} cm²/m`:'—',ad:`${f(asv)} cm²/m`,ok:R.xiOk!==false&&isFinite(R.AsA)&&asv>=R.AsA-1e-6&&modOk&&o8v&&(!R.revA||R.revA.ok),note:[R.revA&&!R.revA.ok?'sentido inverso (d = c) não atende':'',modOk?'':`espaçamento deve ser múltiplo de ${R.mod} cm e ≤ ${f(6*R.t,0)} cm`,o8v?'':'aço acima de 8% do graute do furo (NBR 16868-1, 12.3)'].filter(Boolean).join('; '),lap:lapLen(D.V1.phi)});
     rows.push({id:'V2',el:'Muro armado',pos:'Construtiva: extremidades, cantos e lados das juntas de controle, furos grauteados em toda a altura',mode:'n',req:'≥ 2 barras',ad:`${D.V2.n} ${phiTxt(D.V2.phi)}`,ok:D.V2.n>=2&&R.ok8(1,D.V2.phi,R.Agr),lap:lapLen(D.V2.phi)});
     {const E=R.E,aH=D.H1.n*area(D.H1.phi),reqH=Math.max(R.AsHmin*R.ehG,R.enr&&!E.hOk&&E.rH.ok?E.AsH:0),o8h=R.ok8(D.H1.n,D.H1.phi,R.Acan),flexOk=!R.enr||E.hOk||E.rH.ok;
      rows.push({id:'H1',el:'Canaletas horizontais',pos:`1ª fiada acima do NA, a cada ${f(R.ehI)} m no terço inferior e a cada ${f(R.ehG)} m acima (${R.canH.length} canaletas)${R.enr?', ancoradas nos enrijecedores':''}`,mode:'n',req:`${f(reqH)} cm² por canaleta (mín. 0,05%: ${f(R.AsHmin)} cm²/m)`,ad:`${f(aH)} cm²`,ok:flexOk&&aH>=reqH-1e-6&&o8h&&R.ehMod,note:[R.ehMod?'':'espaçamentos devem ser múltiplos da altura da fiada',o8h?'':'aço acima de 8% do graute da canaleta'].filter(Boolean).join('; '),lap:lapLen(D.H1.phi)});}
@@ -1651,7 +1659,7 @@ function detSvg(R,D){
     if(bpe>bp+0.02)T(X(Math.max(bp,P0+bpe))+14,Y(NAe)+54,`N2a – face interna do pescoço, ${detText('N2a',D)}`,13,'start',st3,'bold');
     T(X(Math.max(bp,P0+bpe))+14,Y(NAe)+72,`estribos N4 – ${detText('N4',D)}`,13,'start',stir);
   }else{
-    const v=D.V1,lp=lapLen(v.phi).L,xm=X(R.cA!=null?R.cA/100:t/2),xw=X(R.px0+bpe/2);
+    const v=D.V1,lp=lapLen(v.phi).L,xm=X(R.xV1!=null?R.xV1/100:t/2),xw=X(R.px0+bpe/2);
     Pp(`M${(xw+hook*sc).toFixed(1)} ${ybot.toFixed(1)} L${xw.toFixed(1)} ${ybot.toFixed(1)} L${xw.toFixed(1)} ${Y(NAe+lp).toFixed(1)}`,st2);
     const zV=I.v1Full==='toda'?R.hT:Math.max(R.ateA,lp);
     o.push(`<rect x="${(xm-6).toFixed(1)}" y="${Y(NAe+zV).toFixed(1)}" width="12" height="${(zV*sc).toFixed(1)}" fill="#c9c2b6"/>`);
@@ -1763,7 +1771,7 @@ function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvg
   K.L(x0-20,y0-2,X(len)+20,y0-2,'#b3261e',1,'6 3');K.T(x0-22,y0-6,'face externa do muro',{fs:9});
   for(let m=0;m<len-1e-6;m+=2*md)K.R(X(m),Y(0),Math.min(2*md,len-m)*k-1,t*k,ARMC.blk,'#333333',0.8);
   const cw=(md-0.05)*k,ch=(t-0.06)*k;
-  for(let c=md/2;c<len;c+=md){const g=G.isV1(c),onE=eixos.some(e=>Math.abs(e-c)<1e-6),cx=X(c),cy=Y(t/2);K.R(cx-cw/2,cy-ch/2,cw,ch,g||onE?ARMC.gr:'#ffffff','#333333',0.6);if(g&&!onE)K.C(cx,R.cA!=null?Y(R.cA/100):cy,4,ARMC.bar)}
+  for(let c=md/2;c<len;c+=md){const g=G.isV1(c),onE=eixos.some(e=>Math.abs(e-c)<1e-6),cx=X(c),cy=Y(t/2);K.R(cx-cw/2,cy-ch/2,cw,ch,g||onE?ARMC.gr:'#ffffff','#333333',0.6);if(g&&!onE)K.C(cx,R.xV1!=null?Y(R.xV1/100):cy,4,ARMC.bar)}
   if(G.enr){const nA=Math.max(1,Math.round((G.tenr-t)/md)),cy=j=>t+(j+0.5)*(G.tenr-t)/nA,r=4.5;
     eixos.forEach((e,i)=>{K.R(X(e-G.eenr/2),Y(t),G.eenr*k,(G.tenr-t)*k,ARMC.blk,'#333333',0.8);
       for(let j=0;j<nA;j++)K.R(X(e)-ch/2,Y(cy(j))-cw/2,ch,cw,ARMC.gr,'#333333',0.6);
@@ -1778,14 +1786,14 @@ function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvg
     for(let i=0;i<eixos.length-1;i++)K.dimH(X(eixos[i]),X(eixos[i+1]),Y(-0.17),`${G.dm(R.lenr)} m entre eixos de enrijecedores`);
     const e2=eixos[eixos.length-1];K.dimV(X(e2)+40,Y(0),Y(G.tenr),`${f(R.tenr,0)} cm`,false);K.dimH(X(e2-G.eenr/2),X(e2+G.eenr/2),Y(G.tenr)+30,`${f(R.eenr,0)} cm`,false);}
   {const a0=G.enr?eixos[0]:md/2,a1=G.enr?eixos[1]:Math.min(len-md/2,a0+4*G.sV);let a=a0;while(a<a1-1e-6){const b=Math.min(a1,a+G.sV);K.dimH(X(a),X(b),Y(-0.08),f((b-a)*100,0));a=b}}
-  {// cotas da armadura vertical: face externa → armadura = c; armadura → face interna = d = t − c; total = t
-   const cm=(R.cA!=null?R.cA:R.t/2)/100,xd=X(len)+26,xt=X(len)+64;
-   K.L(X(len)+4,Y(cm),xd+6,Y(cm),'#c0392b',.6,'3 2');
-   K.dimV(xd,Y(0),Y(cm),'',false);K.dimV(xd,Y(cm),Y(t),'',false);
-   K.T(xd+8,(Y(0)+Y(cm))/2+3,`${f(cm*100,cm*100%1?1:0)} (c)`,{fs:9});
-   K.T(xd+8,(Y(cm)+Y(t))/2+3,`${f((R.t-cm*100),(R.t-cm*100)%1?1:0)} (d)`,{fs:9});
+  {// cotas da armadura vertical, a partir da face externa: a barra fica a c da face tracionada (maior momento)
+   const xb=(R.xV1!=null?R.xV1:R.t/2)/100,ext=R.faceA!=='int',xd=X(len)+26,xt=X(len)+64,v=x=>{x=Math.round(x*10)/10;return f(x,x%1?1:0)};
+   K.L(X(len)+4,Y(xb),xd+6,Y(xb),'#c0392b',.6,'3 2');
+   K.dimV(xd,Y(0),Y(xb),'',false);K.dimV(xd,Y(xb),Y(t),'',false);
+   K.T(xd+8,(Y(0)+Y(xb))/2+3,`${v(xb*100)} (${ext?'c':'d'})`,{fs:9});
+   K.T(xd+8,(Y(xb)+Y(t))/2+3,`${v(R.t-xb*100)} (${ext?'d':'c'})`,{fs:9});
    K.dimV(xt,Y(0),Y(t),`${f(R.t,0)} cm`,false);
-   K.T(xd-4,Y(0)-6,'face externa',{fs:8,a:'start'});K.T(xd-4,Y(t)+12,'face interna',{fs:8,a:'start'});}
+   K.T(xd-4,Y(0)-6,`face externa${ext?' (tracionada)':''}`,{fs:8,a:'start'});K.T(xd-4,Y(t)+12,`face interna${ext?'':' (tracionada)'}`,{fs:8,a:'start'});}
   const yl=Y(G.tenr)+(G.enr?20:30);K.T(x0,yl,'lado interno ↓',{fs:9});
   const ly=yl+60;K.legend(x0,ly,[{k:'rect',c:ARMC.gr,s:'#333333',t:'furo grauteado'},{k:'dot',c:ARMC.bar,t:'barra vertical'},{k:'rect',c:'#ffffff',s:'#333333',t:'furo vazio'},...(G.enr?[{k:'line',c:ARMC.st,t:'grampo do enrijecedor'}]:[])]);
 
@@ -2227,6 +2235,7 @@ function memorialXML(R,figs,state){
     b.push(EQ('Armadura horizontal:',`NBR 16868-1, 12.2: armadura secundária ≥ 0,05% da seção = 0,0005 × 100 × ${f(R.t,0)} = ${f(R.AsHmin,2)} cm²/m; canaletas H1 com ${R.nH1} ${phiTxt(R.phH)} (${f(R.nH1*area(R.phH),2)} cm²) na 1ª fiada acima do assentamento, a cada ${f(R.ehI)} m no terço inferior e a cada ${f(R.ehG)} m acima: ${f(R.nH1*area(R.phH)/R.ehG,2)} cm²/m no trecho menos armado (${ST(R.nH1*area(R.phH)/R.ehG>=R.AsHmin-1e-9)})`));
     b.push(EQ('Detalhamento:',`V1 ${I.v1Full==='toda'?'em toda a altura (construtiva acima do trecho de cálculo)':'até o ponto de corte calculado'}; V2 construtivas nas extremidades, cantos e juntas de controle; aço por furo ou canaleta ≤ 8% da área de graute, contando o traspasse (NBR 16868-1, 12.3)`));
     b.push(EQ('Trecho sem armadura:',`Mr = W·ftk/γm + 0,9·Nk·t/6 = ${f(R.MrA,3)} kN·m/m na base; pelo diagrama de momentos, a armadura vai até ${f(R.ateA)} m acima do NA, já com 40Ø de ancoragem`));
+    b.push(EQ('Posição da armadura:',`face tracionada pelo maior momento: ${R.faceA==='int'?'interna (lado do lote)':'externa (lado do vizinho)'}; V1 a c = ${f(R.cA,1)} cm dessa face, d = t − c = ${f(R.dA,1)} cm. Sentido inverso (${f(R.revRat*100,0)}% do momento): mesma barra com d = c = ${f(R.revA.d,1)} cm, Md = ${f(R.revA.Md,3)} kN·m/m → ${R.revA.Md<=1e-9?'sem momento nesse sentido':R.revA.semAco?'dispensa aço (Md ≤ Mr)':R.revA.r.ok?`As nec. ${f(R.revA.r.As,2)} cm²/m ≤ adotado ${f(R.revA.AsP,2)} cm²/m`:'não atende'} (${ST(R.revA.ok)})`));
     b.push(EQ('Cisalhamento:',`Vd = ${f(R.VdA,2)} kN/m ≤ Va = fvk/γm·b·d = ${f(R.VaA,2)} kN/m, fvk = 0,35 + 17,5ρ = ${f(R.fvkA,2)} MPa (${ST(R.vAok)})`));
     if(R.enr){const E=R.E;
       b.push(EQ('Flexão horizontal do pano:',`Md,paralelo = ${f(E.MdH,3)} kN·m/m; σ = Md/W = ${f(E.sigH/1000,3)} MPa ${E.hOk?'≤':'>'} ftd paralela à fiada = ${f(R.ftdP/1000,3)} MPa${E.hOk?' (dispensa armadura; canaleta construtiva)':`; canaleta grauteada a cada ${f(E.eh)} m, faixa comprimida b = ${f(E.bc,0)} cm (≤ 6t), fd = 0,7·fpk/γm = ${f(E.fdF*10,2)} MPa, d = ${f(R.t/2,1)} cm: Md = ${f(E.MdH*E.eh,3)} kN·m, x/d = ${f(E.rH.xi,3)}, As = ${f(E.AsH,2)} cm² → ${E.nH} ${phiTxt(E.phH)} (${ST(E.rH.ok)})`}`));
