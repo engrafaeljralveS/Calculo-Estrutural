@@ -418,6 +418,7 @@ var Motor = (function () {
     var isT = bf > 0 && hf > 0;
     var dl = i.dl > 0 ? i.dl : cob + 1.5;   // d' (planilha: cob + 1,5; o app informa o CG real da armadura comprimida)
     var ds = d - dl;
+    if (!(ds > 0)) return { erroD: true, dl: dl, d: d, mat: m };   // armadura comprimida além da tracionada: sem solução física
     var Md = i.Md;                 // kN.cm
     var fcd = m.fcd, fyd = m.fyd;
     var w = isT ? bf : bw;         // largura usada no KMD/y (S25)
@@ -971,6 +972,8 @@ if (typeof module !== 'undefined') module.exports = Motor;
     if (!(g.h > 0)) errs.push('Informe h maior que zero.');
     if (!(g.d > 0)) errs.push('Informe d maior que zero.');
     if (g.bw > 0 && g.h > 0 && g.d > 0 && g.d > g.h - g.cob) errs.push('d deve ser menor ou igual a h − cobrimento (' + f(g.h - g.cob, 1) + ' cm).');
+    // d é a distância da face comprimida ao centro da armadura tracionada: abaixo de h/2 a barra estaria na metade comprimida (ex.: cobrimento digitado no lugar de d)
+    if (g.bw > 0 && g.h > 0 && g.d > 0 && g.d <= g.h - g.cob && g.d < g.h / 2) errs.push('d = ' + f(g.d, 1) + ' cm é menor que h/2 (' + f(g.h / 2, 1) + ' cm). d é a altura útil: da face comprimida até o centro da armadura tracionada, normalmente perto de h − cobrimento − Φ estribo − Φ/2. Não confunda com o cobrimento. Use a sugestão logo abaixo do campo.');
     if (!isLaje() && g.bw < 10) errs.push('bw deve ser pelo menos 10 cm.');
     if (g.h < 7) errs.push('h deve ser pelo menos 7 cm.');
     if (!isLaje() && g.h < 10) errs.push('h deve ser pelo menos 10 cm.');
@@ -1014,6 +1017,7 @@ if (typeof module !== 'undefined') module.exports = Motor;
         var dlN = lj ? g.cob + phiI / 20 : (fI && isFinite(fI.cg) ? fI.cg : undefined);
         rP = Mp > 0 ? mk(Mp, g.bf, g.hf, g.d, dlP) : null;
         rN = Mn > 0 ? mk(Mn, 0, 0, dSup, dlN) : null;
+        if ((rP && rP.erroD) || (rN && rN.erroD)) break;
         if ((rP && rP.esmagamento) || (rN && rN.esmagamento)) break;
         reqI = Math.max(rP ? rP.AsBase : 0, rN && rN.dupla ? rN.Asc : 0);
         reqS = Math.max(rN ? rN.AsBase : 0, rP && rP.dupla ? rP.Asc : 0);
@@ -1022,6 +1026,9 @@ if (typeof module !== 'undefined') module.exports = Motor;
         fS = M.armaduraFace({ layers: layS, req: reqS, bw: g.bw, cob: g.cob, phiT: g.phiT, brita: g.brita });
         if (!isFinite(dSupMan) && rN && isFinite(fS.cg)) dSup = g.h - fS.cg;
       }
+      if ((rP && rP.erroD) || (rN && rN.erroD)) { var rE = (rP && rP.erroD) ? rP : rN; fe.push('A armadura comprimida (d′ = ' + f(rE.dl, 1) + ' cm) fica abaixo da tracionada (d = ' + f(rE.d, 1) + ' cm): confira d e d superior.'); rP = rN = null; }
+    }
+    if (!fe.length) {
       fx.pos = rP; fx.neg = rN; fx.dSup = dSup;
       fx.esm = !!((rP && rP.esmagamento) || (rN && rN.esmagamento));
       fx.r = { esmagamento: fx.esm };
