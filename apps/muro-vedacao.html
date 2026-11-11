@@ -1599,7 +1599,8 @@ function detText(id,D){const v=D[id];if(!v)return '';return v.n!=null?`${v.n} ${
 // desenho do detalhamento (prancha em fundo branco)
 // textos dos desenhos de detalhamento: pretos, Arial, entre 8 e 12
 function dwgText(x){return x.replace(/<text([^>]*)>/g,(m,a)=>{a=a.replace(/font-size="([\d.]+)"/,(q,v)=>`font-size="${Math.min(12,Math.max(8,+v))}"`).replace(/\sfill="[^"]*"/,'');if(!/font-size=/.test(a))a+=' font-size="11"';if(!/font-family=/.test(a))a+=' font-family="Arial,Helvetica,sans-serif"';return `<text${a} fill="#000">`})}
-function detSvg(R,D){
+function detSvg(R,D,opt){
+  opt=opt||{};const lead=!!opt.lead,LB=[];
   const Wd=1800,Hd=1150,ink='#16212c',mut='#5a6774',conc='#e3e7eb',concl='#5f6b77',steel='#c0392b',st2='#7a2d22',st3='#a0522d',stir='#1c5ca3',soilc='#ecdfc6',soill='#9a6a25',dv='#b3261e';
   const o=[];const e=v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const T=(x,y,s,sz=13,an='start',fl=ink,w='normal')=>o.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="Arial,Helvetica,sans-serif" font-size="${sz}" text-anchor="${an}" fill="${fl}" font-weight="${w}">${e(s)}</text>`);
@@ -1609,12 +1610,13 @@ function detSvg(R,D){
   const Pp=(d,c=steel,sw=2.6)=>o.push(`<path d="${d}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`);
   const dimH=(x1,x2,y,s)=>{Ln(x1,y,x2,y,mut,.8);Ln(x1,y-5,x1,y+5,mut,.8);Ln(x2,y-5,x2,y+5,mut,.8);T((x1+x2)/2,y-5,s,12,'middle',mut)};
   const dimV=(x,y1,y2,s)=>{Ln(x,y1,x,y2,mut,.8);Ln(x-5,y1,x+5,y1,mut,.8);Ln(x-5,y2,x+5,y2,mut,.8);o.push(`<text x="${(x-8).toFixed(1)}" y="${((y1+y2)/2).toFixed(1)}" font-family="Arial" font-size="12" text-anchor="middle" fill="${mut}" transform="rotate(-90 ${(x-8).toFixed(1)} ${((y1+y2)/2).toFixed(1)})">${e(s)}</text>`)};
+  const Lab=(ax,ay,x,y,s,sz=13,an='start',fl=ink,w='normal')=>{if(lead)LB.push({ax,ay,s,sz,fl,w});else T(x,y,s,sz,an,fl,w)};
   o.push(`<rect width="${Wd}" height="${Hd}" fill="#ffffff"/>`);
   const sysT=R.arm?'ALVENARIA ESTRUTURAL ARMADA, SAPATA CORRIDA':`PILARES DE CONCRETO, SAPATA ${R.cor?'CORRIDA':'ISOLADA'} ${R.cen?'CENTRADA':'DE DIVISA'}`;
   T(40,40,`ESBOÇO DO DETALHAMENTO – MURO DE VEDAÇÃO (${sysT})`,15,'start',ink,'bold');
   T(40,62,`${R.Bl[1]}${R.arm?'':` · pilares ${f(R.bp,0)}×${f(R.hp,0)} cm a cada ${f(R.s)} m`} · concreto C${f(I.fck,0)} · aço CA-${f(I.fyk/10,0)} · cobrimento ${f(I.cob,1)} cm e 5 cm na sapata`,13,'start',mut);
   // ---- corte ----
-  const yMax=I.NTopo+0.25,yMin=I.Nf-0.2-(R.K?R.K.hk:0),top=110,bot=1080,sc=(bot-top)/(yMax-yMin),xface=120+(R.cen?Math.max(0,-R.fx0*sc):0);
+  const yMax=I.NTopo+0.25,yMin=I.Nf-0.2-(R.K?R.K.hk:0),top=110,bot=opt.bot||1080,sc=(bot-top)/(yMax-yMin),xface=120+(R.cen?Math.max(0,-R.fx0*sc):0);
   const Y=v=>top+(yMax-v)*sc,X=m=>xface+m*sc;
   T(40,98,R.arm?'A – CORTE DO MURO':'A – CORTE NO EIXO DO PILAR',15,'start',ink,'bold');
   {// solo dos dois lados: vizinho (x < 0) até NT2 e lote interno (x > 0) até NT
@@ -1627,7 +1629,7 @@ function detSvg(R,D){
   Rc(X(F0),Y(ytop),B*sc,hs*sc); Rc(X(P0),Y(NAe),bpe*sc,(NAe-ytop)*sc);
   if(R.K&&D.N21){const K=R.K,xa=X(K.x0+0.05),xb=X(K.x0+K.bk-0.05),yb=Y(I.Nf-K.hk+0.05),yt=Y(I.Nf+hs-0.08);Rc(X(K.x0),Y(I.Nf),K.bk*sc,K.hk*sc);
     Pp(`M${xa.toFixed(1)} ${yt.toFixed(1)} V${yb.toFixed(1)} H${xb.toFixed(1)} V${yt.toFixed(1)}`,steel,2.2);
-    T(X(K.x0),Y(I.Nf-K.hk)+18,`N21 – chaveta ${f(K.bk*100,0)}×${f(K.hk*100,0)} cm · ${detText('N21',D)} em U`,13,'start',steel,'bold')}
+    Lab(xb,(yb+yt)/2,X(K.x0),Y(I.Nf-K.hk)+18,`N21 – chaveta ${f(K.bk*100,0)}×${f(K.hk*100,0)} cm · ${detText('N21',D)} em U`,13,'start',steel,'bold')}
   if(R.cor&&R.hEmb>0){Rc(X(0),Y(NAe),t*sc,(NAe-ytop)*sc,'#efe9df','#8a7d6b',1);for(let v=ytop+R.hcan;v<NAe-1e-6;v+=R.hcan)Ln(X(0),Y(v),X(t),Y(v),'#8a7d6b',.7);
     o.push(`<rect x="${X(P0).toFixed(1)}" y="${Y(NAe).toFixed(1)}" width="${(bpe*sc).toFixed(1)}" height="${((NAe-ytop)*sc).toFixed(1)}" fill="none" stroke="${concl}" stroke-width="1.2" stroke-dasharray="6 3"/>`);}
   if(R.arm){Rc(X(0),Y(I.NTopo-I.hcs/100),t*sc,(I.NTopo-I.hcs/100-NAe)*sc,'#efe9df','#8a7d6b');Rc(X(0),Y(I.NTopo),t*sc,I.hcs/100*sc)}
@@ -1672,17 +1674,17 @@ function detSvg(R,D){
     o.push(`<rect x="${(xm-6).toFixed(1)}" y="${Y(NAe+zV).toFixed(1)}" width="12" height="${(zV*sc).toFixed(1)}" fill="#c9c2b6"/>`);
     Pp(`M${xm.toFixed(1)} ${Y(NAe+0.05).toFixed(1)} L${xm.toFixed(1)} ${Y(NAe+zV).toFixed(1)}`);
     R.canH.forEach(z=>{Rc(X(0),Y(NAe+z+R.hcan/2),t*sc,R.hcan*sc,'#d8d2c6','#8a7d6b',.8);Cc(xm,Y(NAe+z),3.6,stir)});
-    T(X(t)+14,Y(NAe+R.hT*0.8)+4,`H1 – ${detText('H1',D)} em canaleta: 1ª fiada, a cada ${f(R.ehI)} m no terço inferior, a cada ${f(R.ehG)} m acima`,12,'start',stir,'bold');
+    {const zc=R.canH.length?R.canH[Math.floor(R.canH.length/2)]:R.hT*0.8;Lab(xm,Y(NAe+zc),X(t)+14,Y(NAe+R.hT*0.8)+4,`H1 – ${detText('H1',D)} em canaleta: 1ª fiada, a cada ${f(R.ehI)} m no terço inferior, a cada ${f(R.ehG)} m acima`,12,'start',stir,'bold');}
     const xn2a=X(R.px0+cs),xn2b=X(R.px0+bpe-cs);[xn2a,xn2b].forEach(x=>Pp(`M${x.toFixed(1)} ${ybot.toFixed(1)} L${x.toFixed(1)} ${Y(NAe+0.03).toFixed(1)}`,st3,2));
-    T(X(t)+14,Y(NAe+R.ateA/2)-6,`V1 – ${detText('V1',D)} no furo grauteado, ${I.v1Full==='toda'?`em toda a altura (cálculo até ${f(R.ateA)} m)`:`até ${f(R.ateA)} m`}`,13,'start',steel,'bold');
-    T(X(t)+14,Y(NAe+R.ateA/2)+18,`espera na parede de fundação, traspasse ${f(lp,2)} m`,12,'start',mut);
-    T(X(t)+14,Y(I.NTopo)+12,`N13 – verga de topo ${detText('N13',D)}`,13,'start',steel);
-    T(X(t)+14,Y(I.NTopo)+(R.enr?88:30),`V2 – ${detText('V2',D)} nas extremidades, cantos e juntas de controle`,12,'start',steel);
-    T(X(R.px0+bpe)+14,Y(NAe)+40,`N2 – parede de fundação ${detText('N2',D)} por face`,13,'start',st3,'bold');
+    Lab(xm,Y(NAe+R.ateA/2),X(t)+14,Y(NAe+R.ateA/2)-6,`V1 – ${detText('V1',D)} no furo grauteado, ${I.v1Full==='toda'?`em toda a altura (cálculo até ${f(R.ateA)} m)`:`até ${f(R.ateA)} m`}${lead?`; espera na parede de fundação, traspasse ${f(lp,2)} m`:''}`,13,'start',steel,'bold');
+    if(!lead)T(X(t)+14,Y(NAe+R.ateA/2)+18,`espera na parede de fundação, traspasse ${f(lp,2)} m`,12,'start',mut);
+    Lab(X(t/2),Y(I.NTopo-I.hcs/200),X(t)+14,Y(I.NTopo)+12,`N13 – verga de topo ${detText('N13',D)}`,13,'start',steel);
+    Lab(X(t/2),Y(I.NTopo-0.35),X(t)+14,Y(I.NTopo)+(R.enr?88:30),`V2 – ${detText('V2',D)} nas extremidades, cantos e juntas de controle${lead?' (fora deste corte)':''}`,12,'start',steel);
+    Lab(xn2b,Y((NAe+ytop)/2),X(R.px0+bpe)+14,Y(NAe)+40,`N2 – parede de fundação ${detText('N2',D)} por face`,13,'start',st3,'bold');
     if(R.enr){const te=R.tenr/100;o.push(`<path d="M${X(t).toFixed(1)} ${Y(I.NTopo).toFixed(1)}H${X(te).toFixed(1)}V${Y(NAe).toFixed(1)}M${X(R.px0+bpe).toFixed(1)} ${Y(NAe).toFixed(1)}H${X(te).toFixed(1)}V${Y(ytop).toFixed(1)}" fill="none" stroke="${ink}" stroke-width="1.2" stroke-dasharray="7 4"/>`);
-      T(X(te)+12,Y(I.NTopo)+34,`enrijecedor ${f(R.eenr,0)}×${f(R.tenr,0)} cm a cada ${f(R.lenr)} m (em vista)`,12,'start',mut);
-      T(X(te)+12,Y(I.NTopo)+52,`E1 ${detText('E1',D)} · E2 ${detText('E2',D)} · grampos E3 ${detText('E3',D)} – ver planta B`,12,'start',steel,'bold');
-      T(X(te)+12,Y(I.NTopo)+70,`H1 – ${detText('H1',D)} em canaleta a cada ${f(R.E.eh)} m no pano`,12,'start',stir);}
+      Lab(X(te),Y(I.NTopo-0.15),X(te)+12,Y(I.NTopo)+34,`enrijecedor ${f(R.eenr,0)}×${f(R.tenr,0)} cm a cada ${f(R.lenr)} m (em vista${lead?', tracejado':''})`,12,'start',mut);
+      Lab(X(te),Y(I.NTopo-0.25),X(te)+12,Y(I.NTopo)+52,`E1 ${detText('E1',D)} · E2 ${detText('E2',D)} · grampos E3 ${detText('E3',D)} – ver planta B`,12,'start',steel,'bold');
+      if(!lead)T(X(te)+12,Y(I.NTopo)+70,`H1 – ${detText('H1',D)} em canaleta a cada ${f(R.E.eh)} m no pano`,12,'start',stir);}
   }
   // sapata
   const yi=Y(I.Nf+cs),ys=Y(ytop-cs);
@@ -1690,12 +1692,22 @@ function detSvg(R,D){
   Pp(`M${X(F0+cs).toFixed(1)} ${(ys+20).toFixed(1)} L${X(F0+cs).toFixed(1)} ${ys.toFixed(1)} L${X(F0+B-cs).toFixed(1)} ${ys.toFixed(1)} L${X(F0+B-cs).toFixed(1)} ${(ys+20).toFixed(1)}`,steel,2.2);
   const sp7=R.cor?Math.max(0.08,(B-2*cs)/Math.max(1,D.N7.n-1)):D.N7.s/100;
   for(let x=cs;x<=B-cs+1e-6;x+=sp7){Cc(X(F0+x),yi-6,3.2,st2);Cc(X(F0+x),ys+6,3.2,st2)}
-  T(X(F0+B/2)+40,Y(ytop)-8,`N6 – ${detText('N6',D)} (face superior, direção B)`,13,'middle',steel,'bold');
-  T(X(F0+B/2),yi+22,`N5 – ${detText('N5',D)} (face inferior, direção B)`,13,'middle',steel,'bold');
-  T(X(F0+B/2),yi+40,R.cor?`N7 – ${detText('N7',D)} longitudinal, em cada face`:`N7 – ${detText('N7',D)} (${R.arm?'distribuição':'direção L'}, nas duas malhas)`,12,'middle',st2);
-  T(X(F0+0.55),ybot-8,'ganchos de 30 cm sobre a malha inferior',11,'start',mut);
+  Lab(X(F0+B*0.7),ys,X(F0+B/2)+40,Y(ytop)-8,`N6 – ${detText('N6',D)} (face superior, direção B)`,13,'middle',steel,'bold');
+  Lab(X(F0+B*0.8),yi,X(F0+B/2),yi+22,`N5 – ${detText('N5',D)} (face inferior, direção B)`,13,'middle',steel,'bold');
+  Lab(X(F0+cs+sp7*Math.max(1,Math.floor((B-2*cs)/sp7)-1)),yi-6,X(F0+B/2),yi+40,R.cor?`N7 – ${detText('N7',D)} longitudinal, em cada face`:`N7 – ${detText('N7',D)} (${R.arm?'distribuição':'direção L'}, nas duas malhas)`,12,'middle',st2);
+  Lab(X(F0+0.1),ybot,X(F0+0.55),ybot-8,lead?'esperas com ganchos de 30 cm sobre a malha inferior':'ganchos de 30 cm sobre a malha inferior',11,'start',mut);
   dimH(X(F0),X(F0+B),Y(I.Nf)+70,`B = ${f(B)} m`); dimV(X(F0+B)+40,Y(ytop),Y(I.Nf),`hs ${f(hs)}`);
   [[I.NTopo,'topo'],...(Math.abs(I.NT-I.NT2)>1e-6?[[I.NT,'terreno interno'],[I.NT2,'terreno vizinho']]:[[I.NT,'terreno']]),[NAe,R.cor?'topo pescoço':'NA'],[ytop,'topo sapata'],[I.Nf,'apoio']].forEach(([v,lab])=>{const y=Y(v),x0=46;o.push(`<path d="M${x0-5} ${(y-8).toFixed(1)}h10l-5 8z" fill="none" stroke="${ink}"/>`);Ln(x0-12,y,x0+12,y);T(x0+16,y+4,sgn(v),12);T(x0+16,y+17,lab,10,'start',mut)});
+  if(lead){// rótulos numa coluna à direita, com linha de chamada até a armadura
+    const xR=X(Math.max(F0+B,R.enr?R.tenr/100:t,R.px0+bpe)+0.3)+40,wrap=(str,n)=>{const w=String(str).split(' '),ls=[];let c2='';w.forEach(q=>{if((c2+' '+q).trim().length>n&&c2){ls.push(c2);c2=q}else c2=(c2+' '+q).trim()});if(c2)ls.push(c2);return ls};
+    LB.sort((a,b)=>a.ay-b.ay);let yPrev=top;const yLim=Y(yMin)+40;
+    LB.forEach(L=>{L.ls=wrap(L.s,50);L.h=L.ls.length*15;L.ly=Math.max(L.ay-L.h/2+4,yPrev+8);yPrev=L.ly+L.h});
+    if(yPrev>yLim){let nxt=yLim;for(let i=LB.length-1;i>=0;i--){const L=LB[i];L.ly=Math.min(L.ly,nxt-L.h);nxt=L.ly-8}}
+    LB.forEach(L=>{const yT=L.ly+4;o.push(`<circle cx="${L.ax.toFixed(1)}" cy="${L.ay.toFixed(1)}" r="2.4" fill="${ink}"/>`);
+      o.push(`<polyline points="${L.ax.toFixed(1)},${L.ay.toFixed(1)} ${(xR-14).toFixed(1)},${yT.toFixed(1)} ${(xR-4).toFixed(1)},${yT.toFixed(1)}" fill="none" stroke="${mut}" stroke-width=".8"/>`);
+      L.ls.forEach((q,j)=>T(xR,yT+4+j*15,q,Math.min(L.sz,12),'start',L.fl,j?'normal':L.w))});
+    const Wc=xR+50*7.2+20,Hc=Math.max(Y(yMin)+110,yPrev+20);
+    return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${Wc.toFixed(0)} ${Hc.toFixed(0)}">${dwgText(o.join(''))}</svg>`,w:Wc,h:Hc,cut:true};}
   // ---- seções ----
   const sec=(x0,y0,bwc,hc,nTop,nBot,phi,tit,sub,mid,scl=6)=>{const w=bwc*scl,h=hc*scl,cc=(I.cob+I.pht/10)*scl,r=Math.max(3.5,phi/20*scl);
     T(x0,y0-28,tit,15,'start',ink,'bold');T(x0,y0-10,sub,12,'start',mut);Rc(x0,y0,w,h);
@@ -1723,7 +1735,7 @@ function detSvg(R,D){
       Pp(`M${(ex+3).toFixed(1)} ${(y0+tw/2-6).toFixed(1)} V${(y0+tw+eh-8).toFixed(1)} M${(ex+R.eenr*scl-3).toFixed(1)} ${(y0+tw/2-6).toFixed(1)} V${(y0+tw+eh-8).toFixed(1)}`,stir,1.6);
       Ln(x0+4,y0+tw/2+10,x0+Lw*scl-4,y0+tw/2+10,stir,1.6,'8 3');
       T(ex+R.eenr*scl+12,y0+tw/2+4,`E1 – ${detText('E1',D)} (junta)`,12,'start',steel,'bold');T(ex+R.eenr*scl+12,y0+tw+eh-R.t/2*scl+4,`E2 – ${detText('E2',D)} (ponta)`,12,'start',steel,'bold');
-      T(ex+R.eenr*scl+12,y0+tw+eh/2,`E3 – grampos ${detText('E3',D)}`,12,'start',stir);T(x0+4,y0+tw+20,`H1 – ${detText('H1',D)} em canaleta`,12,'start',stir);T(x0+4,y0+tw+36,`a cada ${f(E.eh)} m (tracejado),`,12,'start',stir);T(x0+4,y0+tw+52,'ancorado no enrijecedor',12,'start',stir);T(x0+4,y0+tw+76,'lado interno (lote) ↓',11,'start',mut);
+      T(ex+R.eenr*scl+12,y0+tw+eh-R.t/2*scl+22,`E3 – grampos ${detText('E3',D)}`,12,'start',stir);T(x0+4,y0+tw+20,`H1 – ${detText('H1',D)} em canaleta`,12,'start',stir);T(x0+4,y0+tw+36,`a cada ${f(E.eh)} m (tracejado),`,12,'start',stir);T(x0+4,y0+tw+52,'ancorado no enrijecedor',12,'start',stir);T(x0+4,y0+tw+76,'lado interno (lote) ↓',11,'start',mut);
       T(x0,y0-4,'face externa (divisa) ↑',11,'start',mut);dimH(x0,x0+Lw*scl,y0+tw+eh+16,`${f(Lw/100)} m`);dimV(ex-14,y0,y0+tw+eh,`${f(R.tenr,0)} cm`);
     }else{
     // planta de 1,2 m de muro com furos grauteados
@@ -1793,20 +1805,23 @@ function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvg
     for(let i=0;i<eixos.length-1;i++)K.dimH(X(eixos[i]),X(eixos[i+1]),Y(-0.17),`${G.dm(R.lenr)} m entre eixos de enrijecedores`);
     const e2=eixos[eixos.length-1];K.dimV(X(e2)+40,Y(0),Y(G.tenr),`${f(R.tenr,0)} cm`,false);K.dimH(X(e2-G.eenr/2),X(e2+G.eenr/2),Y(G.tenr)+30,`${f(R.eenr,0)} cm`,false);}
   {const a0=G.enr?eixos[0]:md/2,a1=G.enr?eixos[1]:Math.min(len-md/2,a0+4*G.sV);let a=a0;while(a<a1-1e-6){const b=Math.min(a1,a+G.sV);K.dimH(X(a),X(b),Y(-0.08),f((b-a)*100,0));a=b}}
-  {// cotas da armadura vertical, a partir da face externa: a barra fica a c da face tracionada (maior momento)
-   const xb=(R.xV1!=null?R.xV1:R.t/2)/100,ext=R.faceA!=='int',xd=X(len)+26,xt=X(len)+64,v=x=>{x=Math.round(x*10)/10;return f(x,x%1?1:0)};
+  {// cotas da armadura vertical (a partir da face externa): c da face tracionada até a barra, d até a face oposta; textos fora das cotas para não sobrepor
+   const xb=(R.xV1!=null?R.xV1:R.t/2)/100,ext=R.faceA!=='int',v=x=>{x=Math.round(x*10)/10;return f(x,x%1?1:0)};
+   const xd=Math.max(X(len)+30,G.enr?X(eixos[eixos.length-1])+72:0),xt=xd+70*F;
    K.L(X(len)+4,Y(xb),xd+6,Y(xb),'#c0392b',.6,'3 2');
-   K.dimV(xd,Y(0),Y(xb),'',false);K.dimV(xd,Y(xb),Y(t),'',false);
-   K.T(xd+8,(Y(0)+Y(xb))/2+3,`${v(xb*100)} (${ext?'c':'d'})`,{fs:9});
-   K.T(xd+8,(Y(xb)+Y(t))/2+3,`${v(R.t-xb*100)} (${ext?'d':'c'})`,{fs:9});
-   K.dimV(xt,Y(0),Y(t),`${f(R.t,0)} cm`,false);
-   K.T(xd-4,Y(0)-6,`face externa${ext?' (tracionada)':''}`,{fs:8,a:'start'});K.T(xd-4,Y(t)+12,`face interna${ext?'':' (tracionada)'}`,{fs:8,a:'start'});}
-  const yl=Y(G.tenr)+(G.enr?20:30);K.T(x0,yl,`lado interno (lote)${I.NT>I.NT2+1e-6?', com mais solo':''} ↓`,{fs:9});
-  const ly=yl+60;K.legend(x0,ly,[{k:'rect',c:ARMC.gr,s:'#333333',t:'furo grauteado'},{k:'dot',c:ARMC.bar,t:'barra vertical'},{k:'rect',c:'#ffffff',s:'#333333',t:'furo vazio'},...(G.enr?[{k:'line',c:ARMC.st,t:'grampo do enrijecedor'}]:[])]);
+   K.dimV(xd,Y(0),Y(xb),'',false);K.dimV(xd,Y(xb),Y(t),'',false);K.dimV(xt,Y(0),Y(t),'',false);
+   const cTop=ext,yc=cTop?Y(0)-6:Y(t)+11*F,yd=cTop?(Y(xb)+Y(t))/2+3:(Y(0)+Y(xb))/2+3;
+   K.T(xd+6,yc,`c = ${v(R.cA!=null?R.cA:R.t/2)}`,{fs:9});
+   K.T(xd+6,yd,`d = ${v(R.dA!=null?R.dA:R.t/2)}`,{fs:9});
+   K.T(xt+6,(Y(0)+Y(t))/2+3,`t = ${f(R.t,0)} cm`,{fs:9});
+   K.T(xt+6,Y(0)-6,`face externa${ext?' (tracionada)':''}`,{fs:8});K.T(xt+6,Y(t)+11*F,`face interna${ext?'':' (tracionada)'}`,{fs:8});
+   K._wMin=xt+6+190*F;}
+  const yl=Y(G.tenr)+(G.enr?62*F:30);K.T(x0,yl,`lado interno (lote)${I.NT>I.NT2+1e-6?', com mais solo':''} ↓`,{fs:9});
+  const ly=yl+(G.enr?34:60);K.legend(x0,ly,[{k:'rect',c:ARMC.gr,s:'#333333',t:'furo grauteado'},{k:'dot',c:ARMC.bar,t:'barra vertical'},{k:'rect',c:'#ffffff',s:'#333333',t:'furo vazio'},...(G.enr?[{k:'line',c:ARMC.st,t:'grampo do enrijecedor'}]:[])]);
 
   let yN=ly+30*F;yN+=K.TW(x0,yN,`Grauteamento vertical: V1 ${G.txt('V1')}${G.enr?' a partir do eixo de cada enrijecedor':''}, em toda a altura${G.enr?'; enrijecedor com todos os furos grauteados':''}.`,{fs:9},mem?95:200);
   yN+=K.TW(x0,yN,`V2 – ${G.txt('V2')} nas extremidades do muro, nos cantos e dos dois lados de cada junta de controle (não mostrado neste trecho).`,{fs:9},mem?95:200);
-  const W=Math.max(X(len)+130*F,mem?820:760),H=yN+10;return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}"><rect width="${W.toFixed(0)}" height="${H.toFixed(0)}" fill="#ffffff"/>${K.o.join('')}</svg>`,w:Math.round(W),h:Math.round(H)}}
+  const W=Math.max(X(len)+130*F,mem?820:760,K._wMin||0),H=yN+10;return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}"><rect width="${W.toFixed(0)}" height="${H.toFixed(0)}" fill="#ffffff"/>${K.o.join('')}</svg>`,w:Math.round(W),h:Math.round(H)}}
 function armVistaSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvgKit(F),{md,eixos,len}=G,fi=R.hcan,h=R.hA,hT=R.hT,k=Math.min(210,(mem?560:1000)/len,520/Math.max(h,0.5)),x0=90,yb=(mem?115:90)+h*k,X=m=>x0+m*k,Y=z=>yb-z*k;
   const nf=Math.max(1,Math.round(h/fi)),canF=new Set(R.canH.map(z=>Math.round((z-fi/2)/fi))),cintaF=f2=>(f2+0.5)*fi>hT-1e-6;
   K.T(20,24,`G – VISTA DO MURO PELO LADO INTERNO – CANALETAS ARMADAS${G.enr?' E ENRIJECEDORES':''}`,{b:1,fs:12});
@@ -1855,8 +1870,9 @@ function renderDet(R){
      <td>${r.req}</td><td>${r.ad}</td><td>${r.lap?`${f(r.lap.L,2)} m${r.lap.calc?' *':''}`:'–'}</td><td>${pill(r.ok)}</td></tr>`}).join('');
   const nf=rows.filter(r=>!r.ok).length;
   $('detVerdict').innerHTML=`<div class="verdict ${nf?'bad':'ok'}">${nf?`${nf} armadura(s) adotada(s) abaixo do necessário ou fora das regras de detalhamento.`:'Todas as armaduras adotadas atendem ao cálculo.'}</div>`;
-  {const sv=detSvg(R,D),inner=sv.svg.replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,''),W=930,H1=1150,H2=1070;
-   $('detDraw').innerHTML=`<svg class="dwg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Esboço do detalhamento das armaduras: corte do muro e seções" viewBox="0 0 ${W} ${H1+H2}" style="width:100%;max-width:1000px;height:auto;display:block;margin:0 auto"><rect width="${W}" height="${H1+H2}" fill="#ffffff"/><svg x="0" y="0" width="870" height="${H1}" viewBox="0 0 870 ${H1}">${inner}</svg><line x1="20" x2="${W-20}" y1="${H1+4}" y2="${H1+4}" stroke="#d3dbe3"/><svg x="0" y="${H1+10}" width="${W}" height="${H2}" viewBox="870 80 ${W} ${H2}">${inner}</svg></svg>`;}
+  {const cut=detSvg(R,D,{lead:true,bot:760}),sv=detSvg(R,D),strip=x=>x.replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,'');
+   const W=Math.max(930,Math.round(cut.w)),H1=Math.round(cut.h),H2=1070;
+   $('detDraw').innerHTML=`<svg class="dwg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Esboço do detalhamento das armaduras: corte do muro e seções" viewBox="0 0 ${W} ${H1+H2+10}" style="width:100%;max-width:820px;height:auto;display:block;margin:0 auto"><rect width="${W}" height="${H1+H2+10}" fill="#ffffff"/><svg x="0" y="0" width="${Math.round(cut.w)}" height="${H1}" viewBox="0 0 ${Math.round(cut.w)} ${H1}">${strip(cut.svg)}</svg><line x1="20" x2="${W-20}" y1="${H1+4}" y2="${H1+4}" stroke="#d3dbe3"/><svg x="0" y="${H1+10}" width="930" height="${H2}" viewBox="870 80 930 ${H2}">${strip(sv.svg)}</svg></svg>`;}
   $('armDwgPanel').hidden=!R.arm;if(R.arm){const ap=armPlanSvg(R,D,true),av=armVistaSvg(R,D,true),st=w=>`style="width:100%;max-width:${Math.round(w)}px;height:auto;display:block;margin:0 auto" `;
     $('armPlan').innerHTML=ap.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Planta baixa do muro armado: grauteamento vertical" ${st(ap.w)}`);
     $('armVista').innerHTML=av.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Vista do muro pelo lado interno: canaletas armadas" ${st(av.w)}`)}
