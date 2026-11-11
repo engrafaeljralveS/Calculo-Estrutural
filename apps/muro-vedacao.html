@@ -188,7 +188,14 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
           <div class="modelos">
             <div class="row"><input type="text" id="nomeModelo" placeholder="Nome do modelo (ex.: Muro lote 12 – divisa fundos)" aria-label="Nome do modelo"></div>
             <div class="row">
-              <button class="btn primary" type="button" id="expModelo">Exportar modelo (.json)</button>
+              <button class="btn primary" type="button" id="salvaLocal">Salvar no programa</button>
+              <select id="listaLocal" aria-label="Modelos salvos no programa" style="min-width:220px"></select>
+              <button class="btn" type="button" id="abreLocal">Abrir</button>
+              <button class="btn ghost" type="button" id="delLocal">Excluir</button>
+            </div>
+            <p class="note" style="margin:2px 0 8px">"Salvar no programa" guarda o modelo neste navegador, com o nome acima, sem baixar arquivo; depois é só escolher na lista e clicar em Abrir. Para levar a outro computador, use "Exportar" ou "Copiar modelo".</p>
+            <div class="row">
+              <button class="btn" type="button" id="expModelo">Exportar modelo (.json)</button>
               <button class="btn" type="button" id="copModelo">Copiar modelo</button>
               <button class="btn" type="button" id="impModeloBtn">Importar modelo</button>
               <input type="file" id="impModelo" accept=".json,application/json,text/plain" hidden>
@@ -2570,6 +2577,22 @@ $('impModelo').addEventListener('change',e=>{const fl=e.target.files&&e.target.f
   if(fl.size>2e6){sayM('Arquivo grande demais para um modelo.');return}
   const r=new FileReader();r.onload=()=>aplicarModelo(r.result,fl.name);r.onerror=()=>sayM('Não foi possível ler o arquivo.');r.readAsText(fl)});
 $('aplicaTxt').addEventListener('click',()=>{const t=$('modeloTxt').value.trim();if(!t){sayM('Cole o conteúdo do modelo no campo de texto.');return}aplicarModelo(t,'texto colado')});
+/* modelos guardados no navegador (sem download) */
+const KEYM=KEY+'-modelos';
+function lerLocais(){try{const a=JSON.parse(localStorage.getItem(KEYM)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function gravarLocais(a){try{localStorage.setItem(KEYM,JSON.stringify(a));return true}catch(e){return false}}
+function listarLocais(sel){const a=lerLocais(),el=$('listaLocal');
+  el.innerHTML=a.length?a.map((m,i)=>`<option value="${i}">${String(m.nome).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))} (${new Date(m.quando).toLocaleDateString('pt-BR')})</option>`).join(''):'<option value="">nenhum modelo salvo</option>';
+  if(sel!=null&&a.length)el.value=String(sel)}
+$('salvaLocal').addEventListener('click',()=>{const nome=(I.nomeModelo||'').trim();if(!nome){sayM('Digite um nome para o modelo no campo acima e clique em salvar de novo.');$('nomeModelo').focus();return}
+  const a=lerLocais(),i=a.findIndex(m=>m.nome===nome),item={nome,quando:Date.now(),txt:modeloJSON()};
+  if(i>=0&&!confirm(`Já existe um modelo “${nome}”. Substituir?`))return;
+  if(i>=0)a[i]=item;else a.push(item);a.sort((x,y)=>x.nome.localeCompare(y.nome,'pt-BR'));
+  if(!gravarLocais(a)){sayM('Não foi possível salvar neste navegador. Use "Copiar modelo".');return}
+  listarLocais(a.findIndex(m=>m.nome===nome));sayM(`Modelo “${nome}” salvo no programa. Para abrir depois, escolha na lista e clique em Abrir.`)});
+$('abreLocal').addEventListener('click',()=>{const a=lerLocais(),m=a[+$('listaLocal').value];if(!m){sayM('Nenhum modelo salvo para abrir.');return}aplicarModelo(m.txt,'modelos salvos no programa')});
+$('delLocal').addEventListener('click',()=>{const a=lerLocais(),i=+$('listaLocal').value,m=a[i];if(!m)return;if(!confirm(`Excluir o modelo “${m.nome}”?`))return;a.splice(i,1);gravarLocais(a);listarLocais(0);sayM(`Modelo “${m.nome}” excluído.`)});
+listarLocais(0);
 $('mostraTxt').addEventListener('click',()=>{$('modeloTxt').value=modeloJSON();$('modeloTxt').select();sayM('Modelo atual no campo de texto: copie e guarde.')});
 document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.det;if(!k)return;const [id,fld]=k.split('.');const v=+e.target.value;if(!(v>0))return;
   I.det=I.det||{};I.det[I.sys]=I.det[I.sys]||{};I.det[I.sys][id]={...(I.det[I.sys][id]||{}),[fld]:v};save();update()});
