@@ -976,6 +976,8 @@ function calc(){
      R.revA={Mdv:Mv,Md,d:R.cA,r,AsP,semAco:Md<=R.MrA,ok:Md<=R.MrA||(r.ok&&AsP>=r.As-1e-6)}}
     if(R.enr){const E={},lE=R.lenr,b=R.eenr,tf=R.t,Ht=R.tenr;R.E=E;
       const barE=BARRAS.find(x=>String(x[0])===String(I.phE))||BARRAS[3];E.phi=barE[0];
+      // bitola trocada na linha E1/E2 do detalhamento também vale para esta verificação
+      {const U=(I.det&&I.det[I.sys])||{},bb=k=>{const v=U[k]&&U[k].phi;return v&&BARRAS.some(x=>String(x[0])===String(v))?+v:E.phi};E.phiP=bb('E1');E.phiN=bb('E2')}
       const fsE=I.fsMode==='elu'?Math.min(I.fyk,500)/1.15/10:barE[1]*0.3077*G;E.fs=fsE;
       E.d=Ht-tf/2; // barras no furo da junta (face externa) e no furo da ponta da alma
       // momentos característicos no assentamento com sinal: + empurra para o interior (alma comprimida), − para a divisa (mesa comprimida)
@@ -994,7 +996,7 @@ function calc(){
        if(!E.mesa&&E.MdNeg<=E.MRdT){r.As=E.MdNeg*100/(fsE*(E.d-0.5*tf));r.z=E.d-0.5*tf;r.ok=true}
        if(E.MdNeg>E.MRdT)r.ok=false;}
       E.AsMinN=0.0015*(b*E.d+tf*(E.bm-b));E.AsN=E.rN.ok?Math.max(E.rN.As,E.MdNeg>0?E.AsMinN:0):NaN;
-      E.nP=Math.max(1,Math.ceil((E.AsP||0)/area(E.phi)-1e-9));E.nN=Math.max(1,Math.ceil((E.AsN||0)/area(E.phi)-1e-9));
+      E.nP=Math.max(1,Math.ceil((E.AsP||0)/area(E.phiP)-1e-9));E.nN=Math.max(1,Math.ceil((E.AsN||0)/area(E.phiN)-1e-9));
       E.okF=E.rP.ok&&E.rN.ok&&isFinite(E.AsP)&&isFinite(E.AsN);E.furoOk=E.nP<=2&&E.nN<=2;
       // cisalhamento (NBR 16868-1, 11.4): fvk = 0,35 + 17,5ρ ≤ 0,7 MPa; Asw/s = (Vd − Va)/(0,5·fyd·d)
       E.Vd=1.4*E.Vk;const rho=Math.max(E.AsP||0,E.AsN||0)/(b*E.d);E.fvk=Math.min(0.35+17.5*rho,0.7);
@@ -1006,7 +1008,7 @@ function calc(){
       {const A1=E.bm*tf,y1=tf/2,A2=b*(Ht-tf),y2=tf+(Ht-tf)/2,A=A1+A2,yc=(A1*y1+A2*y2)/A;
        E.Ig=E.bm*tf**3/12+A1*(yc-y1)**2+b*(Ht-tf)**3/12+A2*(yc-y2)**2;E.yc=yc; // cm⁴, cm
        const ftk=R.ftkN/10,yt=Math.max(yc,Ht-yc);E.Mr=ftk*E.Ig/yt/100; // kN·m
-       E.Ma=Math.max(E.MkPos,E.MkNeg);const nE=21000/(R.Ealv/10000),As=Math.max(E.nP,E.nN)*area(E.phi),nA=nE*As;
+       E.Ma=Math.max(E.MkPos,E.MkNeg);const nE=21000/(R.Ealv/10000),As=Math.max(E.nP*area(E.phiP),E.nN*area(E.phiN)),nA=nE*As;
        const kd=(-nA+Math.sqrt(nA*nA+2*b*nA*E.d))/b;E.Icr=b*kd**3/3+nA*(E.d-kd)**2;
        const k3=E.Ma>E.Mr?Math.pow(E.Mr/E.Ma,3):1;E.Ie=Math.min(E.Ig,k3*E.Ig+(1-k3)*E.Icr);E.fiss=E.Ma>E.Mr;}
       // pano entre enrijecedores: faixas horizontais biapoiadas, parcela (1 − fV) da pressão
@@ -1131,7 +1133,7 @@ function drawCorte(R){
    G.forEach(([e,ts])=>s+=lvl(18,Y(e),sgn(e),ts));}
   // legenda dos elementos (fora do desenho, para não sobrepor cargas)
   {const l1=`${R.Bl[1]}${R.arm?'':` · pilar ${f(R.bp,R.bp%1?1:0)}×${f(R.hp,0)}`} · ${R.arm?`parede de fundação ${f(R.bpe,0)} cm`:`pescoço ${f(R.bpe,0)}×${f(R.hpe,0)}`}`;
-   const zA=R.arm?Math.min(R.hA,R.ateA):0,l2=R.arm?`V1 Ø${f(R.phiA,1)} c/${f(R.espAd,0)} até ${sgn(NAe+zA)}${I.v1Full==='toda'?' (acima, construtiva)':''}${R.enr?` · enrijecedor ${f(R.eenr,0)}×${f(R.tenr,0)} a cada ${f(R.lenr)} m (tracejado), ${R.E.nP}+${R.E.nN} ${phiTxt(R.E.phi)}`:''}`:'';
+   const zA=R.arm?Math.min(R.hA,R.ateA):0,l2=R.arm?`V1 Ø${f(R.phiA,1)} c/${f(R.espAd,0)} até ${sgn(NAe+zA)}${I.v1Full==='toda'?' (acima, construtiva)':''}${R.enr?` · enrijecedor ${f(R.eenr,0)}×${f(R.tenr,0)} a cada ${f(R.lenr)} m (tracejado), ${R.E.nP} ${phiTxt(R.E.phiP)} + ${R.E.nN} ${phiTxt(R.E.phiN)}`:''}`:'';
    s+=`<text x="18" y="${yB+24}" class="t-muted" font-size="10">${l1}</text>`;
    l2.split(' · enrijecedor').forEach((t,i)=>{if(t)s+=`<text x="18" y="${yB+38+i*13}" class="t-st" font-size="10">${i?'enrijecedor'+t:t}</text>`});}
   s+=`<text x="${X(F1)-6}" y="${(Y(R.ytop)+Y(I.Nf))/2+4}" text-anchor="end" class="t-muted" font-size="10">hs ${f(I.hs)}</text>`;
@@ -1147,7 +1149,7 @@ function renderChips(R){
     ['Tombamento · deslizamento',`${f(R.FSt)} · ${f(R.FSd)}`,R.FSt>=(+I.FStMin||1.5)&&R.FSd>=(+I.FSdMin||1.5)]];
   if(!R.arm)C.push(['Pilar no NA',`KMD ${f(R.P1.KMD,3)} · λ ${f(R.P1.lam,0)}`,R.P1.ok&&R.P1.lamOk!==false],['Pescoço',`KMD ${f(R.P2.KMD,3)}`,R.P2.ok],['Pano de alvenaria',`${f(R.sigPar/1000,3)} / ${f(R.ftdP/1000,3)} MPa`,R.panoOk&&R.limE]);
   else C.push([R.enr?'Pano entre enrijecedores':'Alvenaria armada',`ξ ${f(R.xi,3)} · λ ${f(R.lamA,1)}`,R.xiOk&&R.lamAOk],['Parede de fundação',`KMD ${f(R.P2.KMD,3)}`,R.P2.ok]);
-  if(R.enr)C.push(['Enrijecedor',`Md ${f(Math.max(R.E.MdPos,R.E.MdNeg),1)} kN·m · ${R.E.nP}+${R.E.nN} ${phiTxt(R.E.phi)}`,R.E.ok]);
+  if(R.enr)C.push(['Enrijecedor',`Md ${f(Math.max(R.E.MdPos,R.E.MdNeg),1)} kN·m · ${R.E.nP} ${phiTxt(R.E.phiP)} + ${R.E.nN} ${phiTxt(R.E.phiN)}`,R.E.ok]);
   C.push(['Deslocamento topo',`${f(R.uTop,2)} / ${f(R.uLim,2)} cm`,R.uOk]);
   $('chips').innerHTML=C.map(([n,v,ok])=>`<div class="chip ${cls(ok)}"><span>${n}</span><b>${v}</b></div>`).join('');
 }
@@ -1419,8 +1421,8 @@ function renderChecks(R){
   html+=rowsAs.map(r=>{const u=r.bw===100?'/m':'';return `<tr><td>${r.lab}</td><td>${f(r.bw,0)} × ${f(r.d,1)}</td><td>${f(r.Md)}${u}</td><td>${f(r.KMD,3)}</td><td>${r.ok?f(r.As)+u:'—'}</td><td>${f(r.Asmin)}${u}</td><td>${r.txt}</td><td>${pill(r.ok)}</td></tr>`}).join('');
   if(R.CW){const W=R.CW,rw=(lab,F,pos)=>`<tr><td>${lab}</td><td>100 × ${f(W.d,1)}</td><td>${f(F.Md)}/m</td><td>${f(F.KMD,3)}</td><td>${F.ok?f(F.As)+'/m':'—'}</td><td>${f(F.Amin)}/m</td><td>${F.ok?`${phiTxt(W.phi)} c/${F.sp} ${pos}`:'—'}</td><td>${pill(F.ok&&F.sp>=5)}</td></tr>`;
    html+=rw('Parede de concreto – vertical, face do vizinho (base)',W.ext,'')+rw('Parede de concreto – vertical, face interna (base)',W.int,'')+rw('Parede de concreto – horizontal, face do vizinho (no pilar)',W.horE,'')+rw('Parede de concreto – horizontal, face interna (vão)',W.horI,'')+(W.no?`<tr><td>Nó parede–sapata (sapata, face inferior / superior)</td><td>100 × ${f(R.SB.d,1)}</td><td>${f(W.no.MdE)} / ${f(W.no.MdI)}</td><td>–</td><td>–</td><td>–</td><td>MRd ${f(W.no.MRdInf)} / ${f(W.no.MRdSup)}</td><td>${pill(W.no.ok)}</td></tr>`:'')}
-  if(R.enr){const E=R.E;html+=`<tr><td>Enrijecedor – barras na junta (vento para o interior)</td><td>${f(R.eenr,0)} × ${f(E.d,1)}</td><td>${f(E.MdPos)}</td><td>x/d ${f(E.rP.xi,3)}</td><td>${E.rP.ok?f(E.rP.As):'—'}</td><td>${f(E.AsMinP)}</td><td>${E.rP.ok?`${E.nP} ${phiTxt(E.phi)}`:'aumentar tenr'}</td><td>${pill(E.rP.ok&&E.nP<=2)}</td></tr>
-   <tr><td>Enrijecedor – barras na ponta (vento para a divisa)</td><td>${f(E.bm,0)} × ${f(E.d,1)} (T)</td><td>${f(E.MdNeg)}</td><td>x/d ${f(E.rN.xi,3)}</td><td>${E.rN.ok?f(E.rN.As):'—'}</td><td>${f(E.AsMinN)}</td><td>${E.rN.ok?`${E.nN} ${phiTxt(E.phi)}`:'aumentar tenr'}</td><td>${pill(E.rN.ok&&E.nN<=2)}</td></tr>
+  if(R.enr){const E=R.E;html+=`<tr><td>Enrijecedor – barras na junta (vento para o interior)</td><td>${f(R.eenr,0)} × ${f(E.d,1)}</td><td>${f(E.MdPos)}</td><td>x/d ${f(E.rP.xi,3)}</td><td>${E.rP.ok?f(E.rP.As):'—'}</td><td>${f(E.AsMinP)}</td><td>${E.rP.ok?`${E.nP} ${phiTxt(E.phiP)}`:'aumentar tenr'}</td><td>${pill(E.rP.ok&&E.nP<=2)}</td></tr>
+   <tr><td>Enrijecedor – barras na ponta (vento para a divisa)</td><td>${f(E.bm,0)} × ${f(E.d,1)} (T)</td><td>${f(E.MdNeg)}</td><td>x/d ${f(E.rN.xi,3)}</td><td>${E.rN.ok?f(E.rN.As):'—'}</td><td>${f(E.AsMinN)}</td><td>${E.rN.ok?`${E.nN} ${phiTxt(E.phiN)}`:'aumentar tenr'}</td><td>${pill(E.rN.ok&&E.nN<=2)}</td></tr>
    <tr><td>${E.PE.lab}</td><td>${f(E.PE.bw,0)} × ${f(E.PE.d,1)}</td><td>${f(E.PE.Md)}</td><td>${f(E.PE.KMD,3)}</td><td>${E.PE.ok?f(E.PE.As):'—'}</td><td>${f(E.PE.Asmin)}</td><td>${E.PE.txt}</td><td>${pill(E.PE.ok)}</td></tr>
    <tr><td>Pano – canaleta horizontal a cada ${f(E.eh)} m</td><td>${f(E.bc,0)} × ${f(R.t/2,1)}</td><td>${f(E.MdH*E.eh,3)}</td><td>x/d ${f(E.rH.xi,3)}</td><td>${E.rH.ok?f(E.AsH):'—'}</td><td>–</td><td>${E.nH} ${phiTxt(E.phH)}${E.hOk?' (construtiva)':''}</td><td>${pill(E.hOk||E.rH.ok)}</td></tr>`}
   if(R.arm)html+=`<tr><td>Sapata corrida – longitudinal</td><td>–</td><td>–</td><td>–</td><td>–</td><td>${f(R.SL.Asmin)}/m</td><td>Ø${f(I.phs,1)} c/${R.SL.sp} (distribuição)</td><td>${pill(true)}</td></tr>`;
@@ -1521,7 +1523,7 @@ function detDefaults(R){
   }else{
     D.V1={phi:R.phiA,s:R.espAd>0?R.espAd:R.mod}; D.N2={phi:I.phv,s:stw(R.P2.Asf)}; D.N13={n:2,phi:I.phv};
     D.V2={n:2,phi:R.phiA}; D.H1={n:R.nH1,phi:R.phH};
-    if(R.enr){const E=R.E;D.E1={n:E.nP,phi:E.phi};D.E2={n:E.nN,phi:E.phi};D.E3={phi:E.phH,s:E.sw};
+    if(R.enr){const E=R.E;D.E1={n:E.nP,phi:E.phiP};D.E2={n:E.nN,phi:E.phiN};D.E3={phi:E.phH,s:E.sw};
       D.E4={n:E.PE.nb,phi:E.phi};D.E5={phi:5,s:Math.floor(Math.min(15,R.eenr,12*E.phi/10))};}
   }
   D.N5={phi:I.phs,s:R.SB.sp};if(R.K)D.N21={phi:I.phs,s:R.K.sp}; D.N6={phi:I.phs,s:R.SBs?R.SBs.sp:20};
@@ -1571,7 +1573,7 @@ function detRows(R,D){
     rows.push({id:'V1',el:'Muro armado',pos:I.v1Full==='toda'?`Vertical nos furos grauteados, em toda a altura (cálculo até ${f(R.ateA)} m acima do NA)`:`Vertical nos furos grauteados, até ${f(R.ateA)} m acima do NA`,mode:'s',req:isFinite(R.AsA)?`${f(R.AsA)} cm²/m`:'—',ad:`${f(asv)} cm²/m`,ok:R.xiOk!==false&&isFinite(R.AsA)&&asv>=R.AsA-1e-6&&modOk&&o8v&&(!R.revA||R.revA.ok),note:[R.revA&&!R.revA.ok?'sentido inverso (d = c) não atende':'',modOk?'':`espaçamento deve ser múltiplo de ${R.mod} cm e ≤ ${f(6*R.t,0)} cm`,o8v?'':'aço acima de 8% do graute do furo (NBR 16868-1, 12.3)'].filter(Boolean).join('; '),lap:lapLen(D.V1.phi)});
     rows.push({id:'V2',el:'Muro armado',pos:'Construtiva: extremidades, cantos e lados das juntas de controle, furos grauteados em toda a altura',mode:'n',req:'≥ 2 barras',ad:`${D.V2.n} ${phiTxt(D.V2.phi)}`,ok:D.V2.n>=2&&R.ok8(1,D.V2.phi,R.Agr),lap:lapLen(D.V2.phi)});
     {const E=R.E,aH=D.H1.n*area(D.H1.phi),reqH=Math.max(R.AsHmin*R.ehG,R.enr&&!E.hOk&&E.rH.ok?E.AsH:0),o8h=R.ok8(D.H1.n,D.H1.phi,R.Acan),flexOk=!R.enr||E.hOk||E.rH.ok;
-     rows.push({id:'H1',el:'Canaletas horizontais',pos:`1ª fiada acima do NA, a cada ${f(R.ehI)} m no terço inferior e a cada ${f(R.ehG)} m acima (${R.canH.length} canaletas)${R.enr?', ancoradas nos enrijecedores':''}`,mode:'n',req:`${f(reqH)} cm² por canaleta (mín. 0,05%: ${f(R.AsHmin)} cm²/m)`,ad:`${f(aH)} cm²`,ok:flexOk&&aH>=reqH-1e-6&&o8h&&R.ehMod,note:[R.ehMod?'':'espaçamentos devem ser múltiplos da altura da fiada',o8h?'':'aço acima de 8% do graute da canaleta'].filter(Boolean).join('; '),lap:lapLen(D.H1.phi)});}
+     rows.push({id:'H1',el:'Canaletas horizontais',pos:`1ª fiada acima do NA, a cada ${f(R.ehI)} m no terço inferior e a cada ${f(R.ehG)} m acima (${R.canH.length} canaletas)${R.enr?', ancoradas nos enrijecedores':''}`,mode:'n',req:`${f(reqH)} cm² por canaleta (mín. 0,05%: ${f(R.AsHmin)} cm²/m)`,ad:`${f(aH)} cm²`,ok:flexOk&&aH>=reqH-1e-6&&o8h&&R.ehMod,note:[flexOk?'':`o pano entre enrijecedores não resiste à flexão horizontal nem com a canaleta armada: a alvenaria comprimida não basta (x/d > 0,45 ou Md acima do máximo), então aumentar o aço não resolve. Reduza a distância entre enrijecedores ou o espaçamento das canaletas (hoje ${f(E.eh)} m)`,R.ehMod?'':'espaçamentos devem ser múltiplos da altura da fiada',o8h?'':'aço acima de 8% do graute da canaleta'].filter(Boolean).join('; '),lap:lapLen(D.H1.phi)});}
     const as2=AsS(D.N2.phi,D.N2.s);
     rows.push({id:'N2',el:'Parede de fundação',pos:'Vertical, por face',mode:'s',req:`${f(R.P2.Asf)} cm²/m`,ad:`${f(as2)} cm²/m`,ok:R.P2.ok&&as2>=R.P2.Asf-1e-6&&D.N2.s<=20});
     rows.push({id:'N13',el:'Verga de topo',pos:'Canaleta grauteada',mode:'n',req:'≥ 2 barras',ad:`${D.N13.n} ${phiTxt(D.N13.phi)}`,ok:D.N13.n>=2,lap:lapLen(D.N13.phi)});
@@ -2267,8 +2269,8 @@ function memorialXML(R,figs,state){
       b.push(TXT(`O enrijecedor recebe a carga lateral da faixa de ${f(R.lenr)} m entre eixos, sem descontar a parcela vertical do pano (a favor da segurança). Como o vento atua nos dois sentidos, a seção trabalha ora com a ponta da alma comprimida (vento para o interior, seção retangular b = eenr), ora com a parede comprimida (vento para a divisa, seção T com mesa na parede).`));
       b.push(EQ('Esforços:',`Mk = ${f(E.MkPos,2)} kN·m (para o interior) e ${f(E.MkNeg,2)} kN·m (para a divisa); 2ª ordem Md2 = 1,4·Nk·hef²/(2000·tef) = ${f(E.Md2,2)} kN·m (Nk = ${f(E.Nk,2)} kN); Vk = ${f(E.Vk,2)} kN`));
       b.push(EQ('Altura útil:',`d = tenr − t/2 = ${f(R.tenr,0)} − ${f(R.t/2,1)} = ${f(E.d,1)} cm (barras nos furos da junta e da ponta)`));
-      b.push(EQ('Alma comprimida:',`fd = 0,7·fpk*/γm = ${f(E.fdW*10,2)} MPa; Md = ${f(E.MdPos,2)} kN·m ≤ MRd,máx = 0,3·fd·b·d² = ${f(E.rP.MRdMax,2)} kN·m; x/d = ${f(E.rP.xi,3)}; As = ${f(E.rP.As,2)} cm² (mín. 0,15%·b·d = ${f(E.AsMinP,2)}) → ${E.nP} ${phiTxt(E.phi)} na junta (${ST(E.rP.ok)})`));
-      b.push(EQ('Mesa comprimida:',`bm = ${f(E.bm,0)} cm (≤ b + 2·6t e ≤ H/3), tf = ${f(R.t,0)} cm, fd = 0,7·fpk/γm = ${f(E.fdF*10,2)} MPa; MRd ≤ fd·bm·tf·(d − tf/2) = ${f(E.MRdT,2)} kN·m; Md = ${f(E.MdNeg,2)} kN·m; As = ${f(E.rN.As,2)} cm² (mín. 0,15%·[b·d + tf(bm − b)] = ${f(E.AsMinN,2)}) → ${E.nN} ${phiTxt(E.phi)} na ponta (${ST(E.rN.ok)})`));
+      b.push(EQ('Alma comprimida:',`fd = 0,7·fpk*/γm = ${f(E.fdW*10,2)} MPa; Md = ${f(E.MdPos,2)} kN·m ≤ MRd,máx = 0,3·fd·b·d² = ${f(E.rP.MRdMax,2)} kN·m; x/d = ${f(E.rP.xi,3)}; As = ${f(E.rP.As,2)} cm² (mín. 0,15%·b·d = ${f(E.AsMinP,2)}) → ${E.nP} ${phiTxt(E.phiP)} na junta (${ST(E.rP.ok)})`));
+      b.push(EQ('Mesa comprimida:',`bm = ${f(E.bm,0)} cm (≤ b + 2·6t e ≤ H/3), tf = ${f(R.t,0)} cm, fd = 0,7·fpk/γm = ${f(E.fdF*10,2)} MPa; MRd ≤ fd·bm·tf·(d − tf/2) = ${f(E.MRdT,2)} kN·m; Md = ${f(E.MdNeg,2)} kN·m; As = ${f(E.rN.As,2)} cm² (mín. 0,15%·[b·d + tf(bm − b)] = ${f(E.AsMinN,2)}) → ${E.nN} ${phiTxt(E.phiN)} na ponta (${ST(E.rN.ok)})`));
       b.push(EQ('Cisalhamento:',`Vd = ${f(E.Vd,2)} kN; Va = fvk/γm·b·d = ${f(E.Va,2)} kN (fvk = ${f(E.fvk,2)} MPa); Asw/s = (Vd − Va)/(0,5·fyd·d) = ${f(E.AswCalc,2)} cm²/m, mínimo 0,07%·b = ${f(E.AswMin,2)} cm²/m; s ≤ 0,5d ≤ 40 cm → grampo ${phiTxt(+I.phH)} c/${E.sw} = ${f(E.AswProv,2)} cm²/m (${ST(E.vOk)})`));
       b.push(EQ('Rigidez:',`Ig = ${f(E.Ig,0)} cm⁴ (seção T bruta); Mr = ftk·Ig/yt = ${f(E.Mr,2)} kN·m; Ma = ${f(E.Ma,2)} kN·m → ${E.fiss?`inércia de Branson Ie = ${f(E.Ie,0)} cm⁴ (Icr = ${f(E.Icr,0)} cm⁴)`:'seção não fissurada'}`));
     }
