@@ -137,7 +137,7 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
 .v3box{position:relative;height:min(72vh,640px);min-height:360px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--paper);touch-action:none}
 .v3box canvas{display:block}.v3msg{position:absolute;inset:auto 0 0 0;padding:12px;text-align:center}
 .otm .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.otm .tbl td,.otm .tbl th{padding:4px 6px}.otm .tbl{margin:8px 0}.otm .otmAp{padding:3px 8px;font-size:12px}.otm td.txt{min-width:180px}
-.pzgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 14px;margin:8px 0}.pz{display:grid;grid-template-columns:1fr 90px 50px;gap:6px;align-items:center;font-size:12px;color:var(--muted)}.pz input{font:500 13px var(--mono);padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);width:100%}
+.pzgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 14px;margin:8px 0}.pz{display:grid;grid-template-columns:1fr 64px 90px 50px;gap:6px;align-items:center;font-size:12px;color:var(--muted)}.pz input{font:500 13px var(--mono);padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);width:100%}
 @media (max-width:560px){h1{font-size:28px}.steps button{padding:10px 8px}.field{grid-template-columns:1fr 92px 44px}.sysbar{grid-template-columns:1fr}}
 </style>
 
@@ -180,7 +180,18 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
           <div class="otm">
             <div class="row"><label class="otmsys">Testar <select id="otmSys"><option value="todos">os dois sistemas</option><option value="arm">só alvenaria armada</option><option value="armEnr">só alvenaria armada com enrijecedores</option></select></label><button class="btn primary" type="button" id="otmBtn">Dimensionar com menor custo</button><span class="note" id="otmStatus" role="status"></span></div>
             <div id="otmRes"></div>
-            <details><summary>Preços unitários usados na comparação (editáveis)</summary><div id="otmPrecos" class="pzgrid"></div><p class="note">Valores de referência para comparar soluções, na ordem de grandeza de composições do SINAPI; ajuste aos preços da sua região. O custo é uma estimativa por metro de muro (concreto, aço, fôrma, alvenaria, graute, escavação e reaterro).</p></details>
+            <details><summary>Preços unitários usados na comparação (editáveis)</summary><div class="sinapiBox">
+              <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+                <label style="font-size:12px">UF <select id="sinUF"><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option selected>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></label>
+                <label style="font-size:12px">Encargos <select id="sinDes"><option value="sd">sem desoneração</option><option value="cd">com desoneração</option></select></label>
+                <button class="btn primary" type="button" id="sinBtn">Atualizar preços (planilha SINAPI)</button>
+                <input type="file" id="sinFile" accept=".xlsx,.xls,.csv" hidden>
+                <a href="https://www.caixa.gov.br/poder-publico/modernizacao-gestao/sinapi/Paginas/default.aspx" target="_blank" rel="noopener" style="font-size:12px">baixar a planilha do mês no site da Caixa ↗</a>
+              </div>
+              <p class="note" id="sinRef"></p>
+              <p class="note" id="sinStatus" role="status"></p>
+            </div>
+            <div id="otmPrecos" class="pzgrid"></div><p class="note">O custo é uma estimativa por metro de muro (concreto, aço, fôrma, alvenaria, graute, escavação e reaterro), só para comparar soluções. O campo "cód." de cada item é o código da composição SINAPI usada na atualização; em branco, o programa procura pela descrição.</p></details>
           </div>
         </div>
         <div class="panel">
@@ -2715,9 +2726,75 @@ function renderOtm(L){const w=L[0];const it=Object.entries(w.c.it).filter(([,v])
    <p class="note">Outras soluções que atendem, da mais barata para a mais cara:</p>
    <div class="scroll"><table class="tbl"><tr><th>#</th><th>Solução</th><th>Sapata</th><th>R$/m</th><th></th></tr>${L.map((x,i)=>`<tr><td>${i+1}</td><td class="txt">${otmDesc(x.I)}</td><td>${f(x.I.B)} × ${f(x.I.hs)} m${x.I.sys==='pil'&&x.I.tipoSap==='iso'?` (L ${f(x.I.L)})`:''}</td><td>${f(x.c.tot,0)}</td><td>${i?`<button class="btn ghost otmAp" type="button" data-otm="${i}">Aplicar</button>`:'aplicada'}</td></tr>`).join('')}</table></div>`;
   $('otmRes').querySelectorAll('[data-otm]').forEach(b=>b.addEventListener('click',()=>{const x=L[+b.dataset.otm];const d=I.det;I={...x.I,det:{...(d||{})}};delete I.det[I.sys];save();fill();update();$('otmStatus').textContent=`Aplicada a solução ${+b.dataset.otm+1}.`}))}
-function renderPrecos(){const p=precos();$('otmPrecos').innerHTML=PRECO_LAB.map(([k,n,u])=>`<label class="pz"><span>${n}</span><input type="number" step="any" data-preco="${k}" value="${p[k]}"><small>${u}</small></label>`).join('')+'<button class="btn ghost" type="button" id="precoReset">Voltar aos preços de referência</button>';
+function renderPrecos(){const p=precos(),cod=sinCod(),ref=sinRefGet();$('otmPrecos').innerHTML=PRECO_LAB.map(([k,n,u])=>{const it=ref&&ref.itens&&ref.itens[k];return `<label class="pz" title="${it?('SINAPI '+it.cod+' – '+it.desc).replace(/"/g,'&quot;'):'preço de referência ou digitado'}"><span>${n}${it?' <b style="color:#1a7f37">✓</b>':''}</span><input type="text" inputmode="numeric" placeholder="cód." data-cod="${k}" value="${cod[k]||(it?it.cod:'')}" aria-label="Código SINAPI"${PRECO_SEMCOD.includes(k)?' disabled':''}><input type="number" step="any" data-preco="${k}" value="${p[k]}"><small>${u}</small></label>`}).join('')+'<button class="btn ghost" type="button" id="precoReset">Voltar aos preços de referência</button>';
+  $('otmPrecos').querySelectorAll('[data-cod]').forEach(el=>el.addEventListener('change',()=>{const c=sinCod();const v=el.value.replace(/\D/g,'');if(v)c[el.dataset.cod]=v;else delete c[el.dataset.cod];try{localStorage.setItem(KEY+'-precosCod',JSON.stringify(c))}catch(e){}}));
+  renderSinRef();
   $('otmPrecos').querySelectorAll('[data-preco]').forEach(el=>el.addEventListener('change',()=>{const p2=precos();p2[el.dataset.preco]=+el.value;try{localStorage.setItem(KEY+'-precos',JSON.stringify(p2))}catch(e){}}));
-  $('precoReset').addEventListener('click',()=>{try{localStorage.removeItem(KEY+'-precos')}catch(e){}renderPrecos()})}
+  $('precoReset').addEventListener('click',()=>{try{localStorage.removeItem(KEY+'-precos');localStorage.removeItem(KEY+'-precosRef')}catch(e){}renderPrecos()})}
+/* ---------- atualização de preços pela planilha SINAPI (Caixa) ---------- */
+const PRECO_SEMCOD=['fbk','fa2','fa8'];
+// procura pela descrição quando o item não tem código: todas as palavras de "t" devem aparecer; "u" = unidade esperada
+const SIN_BUSCA={
+  c25:{t:['CONCRETO FCK=25MPA','BETONEIRA'],u:'M3'},c30:{t:['CONCRETO FCK=30MPA','BETONEIRA'],u:'M3'},
+  aco:{t:['ARMACAO','CA-50','10,0MM'],u:'KG'},forma:{t:['FORMA','SAPATA','MADEIRA'],u:'M2'},
+  esc:{t:['ESCAVACAO MANUAL','VALA'],u:'M3'},reat:{t:['REATERRO MANUAL'],u:'M3'},graute:{t:['GRAUTE'],u:'M3'},
+  c14_39:{t:['ALVENARIA','BLOCO','CONCRETO','14X19X39'],u:'M2'},c19_39:{t:['ALVENARIA','BLOCO','CONCRETO','19X19X39'],u:'M2'},
+  k115_39:{t:['ALVENARIA','CERAMICO','11,5X19X'],u:'M2'},k14_39:{t:['ALVENARIA','CERAMICO','14X19X'],u:'M2'},k19_39:{t:['ALVENARIA','CERAMICO','19X19X'],u:'M2'}};
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const normS=x=>String(x==null?'':x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+const semEsp=x=>normS(x).replace(/\s+/g,'');
+function sinCod(){try{return JSON.parse(localStorage.getItem(KEY+'-precosCod')||'{}')||{}}catch(e){return {}}}
+function sinRefGet(){try{return JSON.parse(localStorage.getItem(KEY+'-precosRef')||'null')}catch(e){return null}}
+function renderSinRef(){const r=sinRefGet(),el=$('sinRef');if(!el)return;
+  el.innerHTML=r?`<b>Referência atual: SINAPI ${r.mes||'(mês não identificado)'} – ${r.uf} – ${r.deson==='cd'?'com':'sem'} desoneração</b> · ${r.n} de ${PRECO_LAB.length-PRECO_SEMCOD.length} itens atualizados em ${new Date(r.quando).toLocaleDateString('pt-BR')} (arquivo ${String(r.arquivo).replace(/</g,'&lt;')}). Itens com ✓ vieram da planilha; passe o mouse para ver a composição.`
+   :'<b>Referência atual: valores estimados</b> na ordem de grandeza das composições SINAPI (não vinculados a um mês nem a uma UF). Para usar o SINAPI do mês: baixe a planilha no site da Caixa e clique em "Atualizar preços".'}
+function loadXLSX(){return window.XLSX?Promise.resolve(window.XLSX):new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=()=>ok(window.XLSX);sc.onerror=()=>no(new Error('Não foi possível carregar o leitor de Excel.'));document.head.appendChild(sc)})}
+const numBR=v=>{if(typeof v==='number')return v;const t=String(v||'').trim().replace(/[R$\s]/g,'');if(!t)return NaN;return +(t.includes(',')?t.replace(/\./g,'').replace(',','.'):t)};
+function mesRef(nome,linhas){
+  const tx=[nome,...linhas.slice(0,12).flat().map(String)].join(' ');
+  let m=tx.match(/(20\d\d)[_\-\/.]?(0[1-9]|1[0-2])(?!\d)/);if(m)return `${MESES[+m[2]-1]}/${m[1]}`;
+  m=tx.match(/(0[1-9]|1[0-2])\s*[\/\-_]\s*(20\d\d)/);if(m)return `${MESES[+m[1]-1]}/${m[2]}`;
+  m=normS(tx).match(/(JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)\D{0,6}(20\d\d)/);
+  if(m)return `${MESES[['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'].indexOf(m[1])]}/${m[2]}`;return ''}
+// encontra a tabela de composições: linha de cabeçalho com "código", "descrição" e a coluna de preço (UF ou "custo total")
+function tabelaSin(rows,uf){
+  for(let i=0;i<Math.min(rows.length,40);i++){const h=rows[i].map(normS);
+    const ic=h.findIndex(x=>/CODIGO/.test(x)&&!/GRUPO|CLASSE|TIPO/.test(x)),id=h.findIndex(x=>/DESCRI/.test(x));if(ic<0||id<0)continue;
+    let ip=h.findIndex(x=>x.trim()===uf);if(ip<0)ip=h.findIndex(x=>/CUSTO\s*TOTAL|PRECO|CUSTO\s*\(R\$\)/.test(x));
+    if(ip<0){const sub=rows[i+1]?rows[i+1].map(normS):[];ip=sub.findIndex(x=>x.trim()===uf);if(ip>=0)i++}
+    if(ip<0)continue;const iu=h.findIndex(x=>/^UNID|UNIDADE/.test(x.trim()));return {i,ic,id,ip,iu}}
+  return null}
+async function atualizarSinapi(fl){
+  const st=t=>{$('sinStatus').textContent=t},uf=$('sinUF').value,des=$('sinDes').value;
+  try{st('Lendo a planilha…');let wb;
+    if(/\.csv$/i.test(fl.name)){const tx=await fl.text();const X=await loadXLSX().catch(()=>null);
+      if(X)wb=X.read(tx,{type:'string'});else throw new Error('Leitor de planilha indisponível.')}
+    else{const X=await loadXLSX();wb=X.read(await fl.arrayBuffer(),{type:'array'})}
+    const X=window.XLSX;
+    // abas de composições: prefere a de desoneração escolhida (ex.: CSD = composições sem desoneração; CCD = com)
+    const nomes=wb.SheetNames,alvo=des==='cd'?/^C.?CD|COM.?DESON/i:/^C.?SD|SEM.?DESON|NAO.?DESON/i;
+    const ord=[...nomes.filter(n=>alvo.test(normS(n).replace(/\s/g,''))),...nomes.filter(n=>/^C|COMPOS/i.test(normS(n))&&!alvo.test(normS(n))),...nomes];
+    let T=null,rows=null,aba='';
+    for(const n of [...new Set(ord)]){const r=X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''});const t=tabelaSin(r,uf);if(t){T=t;rows=r;aba=n;break}}
+    if(!T){st(`Não encontrei a tabela de composições com a coluna ${uf} nesta planilha. Use a planilha de referência do SINAPI (composições) baixada do site da Caixa.`);return}
+    const cods=sinCod(),porCod=new Map(),lista=[];
+    for(let i=T.i+1;i<rows.length;i++){const r=rows[i],c=String(r[T.ic]).replace(/\D/g,''),pr=numBR(r[T.ip]);if(!c||!(pr>0))continue;
+      const o={cod:c,desc:String(r[T.id]).trim(),un:T.iu>=0?semEsp(r[T.iu]).replace('²','2').replace('³','3'):'',pr,k:semEsp(r[T.id])};porCod.set(c,o);lista.push(o)}
+    if(!lista.length){st(`A coluna ${uf} não tem preços nesta aba (${aba}).`);return}
+    const p=precos(),itens={};let n=0;const falt=[];
+    PRECO_LAB.forEach(([k,nm])=>{if(PRECO_SEMCOD.includes(k))return;let o=cods[k]?porCod.get(String(cods[k])):null;
+      if(!o&&!cods[k]&&SIN_BUSCA[k]){const b=SIN_BUSCA[k],ts=b.t.map(semEsp);o=lista.find(x=>ts.every(t=>x.k.includes(t))&&(!x.un||!b.u||x.un.startsWith(b.u)))}
+      if(o){p[k]=Math.round(o.pr*100)/100;itens[k]={cod:o.cod,desc:o.desc};n++}else falt.push(nm)});
+    try{localStorage.setItem(KEY+'-precos',JSON.stringify(p));localStorage.setItem(KEY+'-precosRef',JSON.stringify({mes:mesRef(fl.name,rows),uf,deson:des,arquivo:fl.name,aba,quando:Date.now(),n,itens}))}catch(e){}
+    renderPrecos();
+    st(`${n} preços atualizados (aba ${aba}, coluna ${uf}).${falt.length?` Não encontrados, mantidos como estavam: ${falt.join('; ')}. Digite o código SINAPI no campo "cód." desses itens e atualize de novo.`:''}`);
+  }catch(e){st('Não foi possível ler a planilha: '+(e&&e.message||e))}}
+function initSinapi(){try{const u=localStorage.getItem(KEY+'-sinUF');if(u)$('sinUF').value=u;const d=localStorage.getItem(KEY+'-sinDes');if(d)$('sinDes').value=d}catch(e){}
+  $('sinUF').addEventListener('change',e=>{try{localStorage.setItem(KEY+'-sinUF',e.target.value)}catch(x){}});
+  $('sinDes').addEventListener('change',e=>{try{localStorage.setItem(KEY+'-sinDes',e.target.value)}catch(x){}});
+  $('sinBtn').addEventListener('click',()=>{$('sinFile').value='';$('sinFile').click()});
+  $('sinFile').addEventListener('change',e=>{const fl=e.target.files&&e.target.files[0];if(fl)atualizarSinapi(fl)});renderSinRef()}
+
 function update(){
   applySys();
   const R=calc();
@@ -2727,7 +2804,7 @@ function update(){
   if(V3.st&&!$('s5').hidden)v3build(R);
 }
 buildForm();update();
-$('otmBtn').addEventListener('click',otimizar);renderPrecos();
+$('otmBtn').addEventListener('click',otimizar);renderPrecos();initSinapi();
 try{const t=+localStorage.getItem(KEY+'-tab');if(t>=1&&t<=5)go(t)}catch(e){}
 </script>
 
