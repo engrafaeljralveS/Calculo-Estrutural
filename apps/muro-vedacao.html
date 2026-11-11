@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><script>/* ponte da suíte: downloads pela página principal (troca de mensagens); demais recursos repassados */(function(){try{if(window.claude||window.parent===window)return;var n=0,pend={};window.addEventListener("message",function(e){var d=e.data;if(!d||d.tipo!=="suite-claude-r"||!pend[d.id])return;var f=pend[d.id];delete pend[d.id];f(d);});function ask(m,ms){return new Promise(function(res){var id="c"+(++n)+Math.random().toString(36).slice(2);var t=setTimeout(function(){if(pend[id]){delete pend[id];res({nulo:true});}},ms);pend[id]=function(d){clearTimeout(t);res(d);};m.tipo="suite-claude";m.id=id;window.parent.postMessage(m,"*");});}function erro(x){var e=new Error(x.message||"erro");e.code=x.code;return e;}window.claude={use:function(cap){if(cap==="downloads")return ask({cap:cap,op:"probe"},6000).then(function(d){if(!d.ok)return null;return Object.freeze({save:function(a){return ask({cap:cap,op:"save",args:{filename:a.filename,data:a.data}},900000).then(function(d){if(d.erro)throw erro(d.erro);if(!d.ok)throw erro({code:"unavailable",message:"Download indisponível"});return d.r;});}});});try{var p=window.parent.claude;return p&&p.use?p.use(cap):Promise.resolve(null);}catch(e){return Promise.resolve(null);}}};}catch(e){}})();</script>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><script>/* ponte da suíte: downloads pela página principal (troca de mensagens); demais recursos repassados */(function(){try{if(window.claude||window.parent===window)return;var n=0,pend={};window.addEventListener("message",function(e){var d=e.data;if(!d||d.tipo!=="suite-claude-r"||!pend[d.id])return;var f=pend[d.id];delete pend[d.id];f(d);});function ask(m,ms){return new Promise(function(res){var id="c"+(++n)+Math.random().toString(36).slice(2);var t=setTimeout(function(){if(pend[id]){delete pend[id];res({nulo:true});}},ms);pend[id]=function(d){clearTimeout(t);res(d);};m.tipo="suite-claude";m.id=id;window.parent.postMessage(m,"*");});}function erro(x){var e=new Error(x.message||"erro");e.code=x.code;return e;}window.claude={use:function(cap){if(cap==="downloads")return ask({cap:cap,op:"probe"},15000).then(function(d){if(!d.ok)return null;return Object.freeze({save:function(a){return ask({cap:cap,op:"save",args:{filename:a.filename,data:a.data}},900000).then(function(d){if(d.erro)throw erro(d.erro);if(!d.ok)throw erro({code:"unavailable",message:"Download indisponível"});return d.r;});}});});try{var p=window.parent.claude;return p&&p.use?p.use(cap):Promise.resolve(null);}catch(e){return Promise.resolve(null);}}};}catch(e){}})();</script>
 <title>Muro de Vedação v14</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2332,6 +2332,8 @@ async function saveFile(nm,blob,say){
   const C=window.claude;
   if(C&&typeof C.use==='function'){let dl=null;try{dl=await C.use('downloads')}catch(e){}
     if(dl){const d2=await getDownloads(say);if(!d2)return false;await d2.save({filename:nm,data:blob});return true}}
+  // fora do site (ex.: dentro do artefato do Claude) o download direto do navegador é bloqueado sem aviso
+  if(!/(^|\.)github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname))return false;
   return browserSave(nm,blob);
 }
 async function getDownloads(say){
@@ -2385,7 +2387,7 @@ async function gerarMemorial(){
     const zip=new JSZip();Object.entries(parts).forEach(([k,v])=>zip.file(k,v));figs.filter(Boolean).forEach(g=>zip.file('word/media/'+g.name,g.buf));
     const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const d=new Date(),nm=`Memorial muro de vedacao ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.docx`;
-    if(await saveFile(nm,blob,say))say('Memorial salvo.');
+    if(await saveFile(nm,blob,say))say('Memorial salvo: confira a pasta Downloads do computador.');else say('Download indisponível nesta visualização. Abra o programa pelo site engrafaeljralves.github.io/Calculo-Estrutural, ou use "Copiar dados" e cole no chat.');
   }catch(e){const c=e&&e.code;say(c==='declined'?'Download cancelado.':c==='rate_limited'?'Já há um download aguardando confirmação.':'Não foi possível gerar o memorial. Tente de novo.')}
 }
 
@@ -2535,8 +2537,8 @@ async function exportarModelo(){
   btn.disabled=true;sayM('Preparando o arquivo… se aparecer a confirmação de download do Claude, clique em salvar.');
   let fim=false;const tmo=setTimeout(()=>{if(!fim)plano('A confirmação de download não apareceu. O modelo está no campo de texto abaixo: use "Copiar modelo" e cole num arquivo .json (ou aqui no chat).')},15000);
   try{const ok=await saveFile(nm,txt,sayM);fim=true;
-    if(!ok){plano('Download indisponível nesta visualização: o modelo foi colocado no campo de texto abaixo. Use "Copiar modelo" e salve num arquivo .json.');return}
-    sayM(`Modelo exportado: ${nm}`);
+    if(!ok){plano('Download indisponível nesta visualização: o modelo foi colocado no campo de texto abaixo. Use "Copiar modelo" e salve num arquivo .json, ou abra o programa pelo site engrafaeljralves.github.io/Calculo-Estrutural, onde o arquivo é baixado direto.');return}
+    sayM(`Modelo exportado: ${nm} — confira a pasta Downloads do computador. Se não aparecer, use "Copiar modelo".`);
   }catch(e){fim=true;const c=e&&e.code;if(c==='declined'){sayM('Exportação cancelada.');return}
     plano(`Não foi possível salvar o arquivo${c?` (${c})`:''}: o modelo foi colocado no campo de texto abaixo. Use "Copiar modelo" e salve num arquivo .json.`)}
   finally{clearTimeout(tmo);btn.disabled=false}
