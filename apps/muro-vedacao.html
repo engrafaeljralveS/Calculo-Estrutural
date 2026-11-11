@@ -88,15 +88,15 @@ svg .t-muted{fill:var(--muted)} svg .t-title{font-family:var(--display);font-siz
 svg .t-wind{fill:var(--wind)} svg .t-soil{fill:var(--soil)} svg .t-v{fill:var(--vcol)} svg .t-m{fill:var(--accent)} svg .t-div{fill:var(--divisa);font-weight:500}
 svg .t-ok{fill:var(--ok)} svg .t-bad{fill:var(--bad)} svg .t-st{fill:var(--steel)}
 #corte{width:100%;height:auto;max-height:calc(100vh - 230px)}
-#diag{min-width:440px;width:100%;height:auto}
-#vista{min-width:560px;width:100%;height:auto}
+#diag{width:100%;max-width:900px;height:auto;margin:0 auto}#diag text{font-size:12.5px}#diag .t-title{font-size:14px}
+#vista{width:100%;height:auto}
 .baserow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:20px;align-items:start}
 .beamrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
 #s2>.panel,#s2>.beamrow,#s2>.diagrow{margin-top:20px}
-#vista,#beamW svg{display:block;max-width:960px;margin:0 auto}
+#vista{display:block;max-width:820px;margin:0 auto}#beamW svg{display:block;max-width:960px;margin:0 auto}#baseDiag{width:100%;height:auto;max-width:1000px;margin:0 auto}
 .beamcol{display:grid;gap:20px}
 @media (max-width:900px){.baserow{grid-template-columns:1fr}}
-.diagrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.diagrow{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:980px){.diagrow{grid-template-columns:1fr}}
 .beam svg{width:100%;height:auto}
 .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
@@ -126,6 +126,8 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
 .memStatus{max-width:46ch}
 .detTab input,.detTab select{font:500 13px var(--mono);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
 .detTab td{vertical-align:middle}
+.wrapTab th,.wrapTab td{white-space:normal;padding:6px 7px}.wrapTab td.txt{min-width:0}
+.detTab{font-size:12.5px}.detTab th,.detTab td{white-space:normal;padding:6px 6px}.detTab td.txt{min-width:0;width:34%}.detTab td:nth-child(n+6){font-size:12px}.detTab input{width:58px!important}.detTab select{padding:3px 4px}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin-top:8px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:6px}
 .v3bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -218,17 +220,17 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
     <div class="diagrow">
       <div class="panel">
         <header><h3 id="diagTitle">Diagramas do pilar</h3><small id="diagSub"></small></header>
-        <div class="scroll"><svg id="diag" viewBox="0 0 760 560" role="img" aria-label="Diagramas de cortante e momento ao longo da altura"></svg></div>
+        <div><svg id="diag" viewBox="0 0 760 560" role="img" aria-label="Diagramas de cortante e momento ao longo da altura"></svg></div>
       </div>
       <div class="panel">
         <header><h3>Esforços por seção</h3><small>Característicos (sem majoração)</small></header>
-        <div class="scroll"><table id="tabSec"></table></div>
+        <div><table id="tabSec" class="wrapTab"></table></div>
         <div id="pilDim"></div>
       </div>
     </div>
     <div class="panel">
       <header><h3 id="vistaTitle">Seção típica: vista frontal e planta</h3><small id="vistaSub"></small></header>
-      <div class="scroll"><svg id="vista" viewBox="0 0 760 600" role="img" aria-label="Vista frontal e planta do trecho típico com o caminho das cargas horizontais"></svg></div>
+      <div><svg id="vista" viewBox="0 0 760 600" role="img" aria-label="Vista frontal e planta do trecho típico com o caminho das cargas horizontais"></svg></div>
     </div>
     <div class="beamrow">
       <div class="panel beam"><header><h3>Baldrame</h3><small id="bISub"></small></header><div id="beamI"></div></div>
@@ -238,8 +240,8 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
     <div class="panel" id="beamWPanel" hidden><header><h3>Parede de concreto (placa)</h3><small id="bWSub"></small></header><div id="beamW"></div></div>
     <div class="panel">
       <header><h3>Ações na base da sapata</h3><small id="baseSub"></small></header>
-      <div class="scroll"><svg id="baseDiag" class="fs" viewBox="0 0 1200 365" role="img" aria-label="Resultantes e pressões no solo em cada caso"></svg></div>
-      <div class="scroll"><table id="tabBase"></table></div>
+      <div><svg id="baseDiag" class="fs" viewBox="0 0 1200 365" role="img" aria-label="Resultantes e pressões no solo em cada caso"></svg></div>
+      <div><table id="tabBase" class="wrapTab"></table></div>
     </div>
     <div class="nav"><button class="btn" type="button" data-go="1">← Dados</button><button class="btn primary" type="button" data-go="3">Seguinte: verificações →</button></div>
   </section>
@@ -259,7 +261,7 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
     <div class="panel" hidden><div class="scroll"><table id="tabAs"></table></div></div>
     <p class="note">As armaduras adotadas e a verificação de cada uma contra a área exigida pelo cálculo estão na aba 4 – Detalhamento (tabela “Armaduras adotadas”), que é a base do memorial.</p>
     <div class="grid2">
-      <div class="panel"><header><h3>Cortante</h3><small>Modelo I</small></header><div class="scroll"><table id="tabV"></table></div></div>
+      <div class="panel"><header><h3>Cortante</h3><small>Modelo I</small></header><div class="scroll"><table id="tabV" class="wrapTab"></table></div></div>
       <div class="panel"><header><h3>Observações</h3></header><div id="obs" style="display:flex;flex-direction:column;gap:10px"></div></div>
     </div>
     <div class="panel">
@@ -276,8 +278,8 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
     <div class="lead"><div><h2>Detalhamento das armaduras</h2><p>Escolha as bitolas de cada elemento logo abaixo: elas valem também para as verificações. Os valores vêm preenchidos com o que o cálculo pede; altere quantidade, diâmetro e espaçamento linha a linha se precisar; cada linha confere o adotado contra o necessário e o desenho acompanha.</p></div><button class="btn ghost" type="button" id="detReset">Usar armaduras calculadas</button></div>
     <div id="detVerdict"></div>
     <div class="panel"><header><h3>Bitolas por elemento</h3><small>Escolhidas só aqui: o cálculo das verificações e a tabela abaixo usam estes diâmetros</small></header><div id="detBitolas"></div></div>
-    <div class="panel"><header><h3>Armaduras adotadas</h3><small>Traspasse de 1,00 m; para Ø ≥ 16 mm é calculado pela NBR 6118 (*)</small></header><div class="scroll"><table id="tabDet" class="detTab"></table></div></div>
-    <div class="panel" style="background:#ffffff"><header><h3 style="color:#16212c">Esboço do detalhamento</h3><small style="color:#5a6774">Vai para o memorial em Word</small></header><div class="scroll"><div id="detDraw" style="min-width:900px"></div></div></div>
+    <div class="panel"><header><h3>Armaduras adotadas</h3><small>Traspasse de 1,00 m; para Ø ≥ 16 mm é calculado pela NBR 6118 (*)</small></header><div><table id="tabDet" class="detTab"></table></div></div>
+    <div class="panel" style="background:#ffffff"><header><h3 style="color:#16212c">Esboço do detalhamento</h3><small style="color:#5a6774">Vai para o memorial em Word</small></header><div id="detDraw"></div></div>
     <div class="panel" style="background:#ffffff" id="armDwgPanel" hidden><header><h3 style="color:#16212c">Planta e vista do muro armado</h3><small style="color:#5a6774">Grauteamento vertical e canaletas armadas · vai para o memorial em Word</small></header><div class="scroll"><div id="armPlan" style="min-width:900px"></div><div id="armVista" style="min-width:900px;margin-top:18px"></div></div></div>
     <div class="panel"><header><h3>Drenagem</h3><small>Dreno longitudinal com manta geotêxtil, brita, areia e tubo PEAD corrugado perfurado</small></header><div id="drenForm" class="formcol"></div></div>
     <div class="panel" style="background:#ffffff"><header><h3 style="color:#16212c">Seção transversal típica e drenagem</h3><small style="color:#5a6774">Cotas, níveis e detalhe do dreno · vai para o memorial em Word</small></header><div class="scroll"><div id="secDraw" style="min-width:900px"></div></div></div>
@@ -1609,14 +1611,18 @@ function detSvg(R,D){
   const dimV=(x,y1,y2,s)=>{Ln(x,y1,x,y2,mut,.8);Ln(x-5,y1,x+5,y1,mut,.8);Ln(x-5,y2,x+5,y2,mut,.8);o.push(`<text x="${(x-8).toFixed(1)}" y="${((y1+y2)/2).toFixed(1)}" font-family="Arial" font-size="12" text-anchor="middle" fill="${mut}" transform="rotate(-90 ${(x-8).toFixed(1)} ${((y1+y2)/2).toFixed(1)})">${e(s)}</text>`)};
   o.push(`<rect width="${Wd}" height="${Hd}" fill="#ffffff"/>`);
   const sysT=R.arm?'ALVENARIA ESTRUTURAL ARMADA, SAPATA CORRIDA':`PILARES DE CONCRETO, SAPATA ${R.cor?'CORRIDA':'ISOLADA'} ${R.cen?'CENTRADA':'DE DIVISA'}`;
-  T(40,40,`ESBOÇO DO DETALHAMENTO DAS ARMADURAS – MURO DE VEDAÇÃO (${sysT})`,18,'start',ink,'bold');
+  T(40,40,`ESBOÇO DO DETALHAMENTO – MURO DE VEDAÇÃO (${sysT})`,15,'start',ink,'bold');
   T(40,62,`${R.Bl[1]}${R.arm?'':` · pilares ${f(R.bp,0)}×${f(R.hp,0)} cm a cada ${f(R.s)} m`} · concreto C${f(I.fck,0)} · aço CA-${f(I.fyk/10,0)} · cobrimento ${f(I.cob,1)} cm e 5 cm na sapata`,13,'start',mut);
   // ---- corte ----
   const yMax=I.NTopo+0.25,yMin=I.Nf-0.2-(R.K?R.K.hk:0),top=110,bot=1080,sc=(bot-top)/(yMax-yMin),xface=120+(R.cen?Math.max(0,-R.fx0*sc):0);
   const Y=v=>top+(yMax-v)*sc,X=m=>xface+m*sc;
   T(40,98,R.arm?'A – CORTE DO MURO':'A – CORTE NO EIXO DO PILAR',15,'start',ink,'bold');
-  o.push(`<rect x="${X(Math.min(R.fx0,0)-0.3).toFixed(1)}" y="${Y(I.NT).toFixed(1)}" width="${((I.B+0.6)*sc).toFixed(1)}" height="${(Y(yMin)-Y(I.NT)).toFixed(1)}" fill="${soilc}"/>`);
-  Ln(X(Math.min(R.fx0,0)-0.3),Y(I.NT),X(R.fx0+I.B+0.3),Y(I.NT),soill,1.6);
+  {// solo dos dois lados: vizinho (x < 0) até NT2 e lote interno (x > 0) até NT
+   const xa=X(Math.min(R.fx0,0)-0.3),x0=X(0),xb=X(Math.max(R.fx0+I.B,0.3)+0.3);
+   o.push(`<rect x="${xa.toFixed(1)}" y="${Y(I.NT2).toFixed(1)}" width="${(x0-xa).toFixed(1)}" height="${(Y(yMin)-Y(I.NT2)).toFixed(1)}" fill="${soilc}"/>`);
+   o.push(`<rect x="${x0.toFixed(1)}" y="${Y(I.NT).toFixed(1)}" width="${(xb-x0).toFixed(1)}" height="${(Y(yMin)-Y(I.NT)).toFixed(1)}" fill="${soilc}"/>`);
+   Ln(xa,Y(I.NT2),x0,Y(I.NT2),soill,1.6);Ln(x0,Y(I.NT),xb,Y(I.NT),soill,1.6);
+   T(xb-4,Y(I.NT)-6,'lote (interno)',11,'end',soill);}
   const bp=R.bp/100,bpe=R.bpe/100,ytop=R.ytop,hs=I.hs,B=I.B,F0=R.fx0,P0=R.px0,c=I.cob/100,ct=c+I.pht/1000,cs=0.05,t=R.t/100;
   Rc(X(F0),Y(ytop),B*sc,hs*sc); Rc(X(P0),Y(NAe),bpe*sc,(NAe-ytop)*sc);
   if(R.K&&D.N21){const K=R.K,xa=X(K.x0+0.05),xb=X(K.x0+K.bk-0.05),yb=Y(I.Nf-K.hk+0.05),yt=Y(I.Nf+hs-0.08);Rc(X(K.x0),Y(I.Nf),K.bk*sc,K.hk*sc);
@@ -1689,7 +1695,7 @@ function detSvg(R,D){
   T(X(F0+B/2),yi+40,R.cor?`N7 – ${detText('N7',D)} longitudinal, em cada face`:`N7 – ${detText('N7',D)} (${R.arm?'distribuição':'direção L'}, nas duas malhas)`,12,'middle',st2);
   T(X(F0+0.55),ybot-8,'ganchos de 30 cm sobre a malha inferior',11,'start',mut);
   dimH(X(F0),X(F0+B),Y(I.Nf)+70,`B = ${f(B)} m`); dimV(X(F0+B)+40,Y(ytop),Y(I.Nf),`hs ${f(hs)}`);
-  [[I.NTopo,'topo'],[I.NT,'terreno'],[NAe,R.cor?'topo pescoço':'NA'],[ytop,'topo sapata'],[I.Nf,'apoio']].forEach(([v,lab])=>{const y=Y(v),x0=46;o.push(`<path d="M${x0-5} ${(y-8).toFixed(1)}h10l-5 8z" fill="none" stroke="${ink}"/>`);Ln(x0-12,y,x0+12,y);T(x0+16,y+4,sgn(v),12);T(x0+16,y+17,lab,10,'start',mut)});
+  [[I.NTopo,'topo'],...(Math.abs(I.NT-I.NT2)>1e-6?[[I.NT,'terreno interno'],[I.NT2,'terreno vizinho']]:[[I.NT,'terreno']]),[NAe,R.cor?'topo pescoço':'NA'],[ytop,'topo sapata'],[I.Nf,'apoio']].forEach(([v,lab])=>{const y=Y(v),x0=46;o.push(`<path d="M${x0-5} ${(y-8).toFixed(1)}h10l-5 8z" fill="none" stroke="${ink}"/>`);Ln(x0-12,y,x0+12,y);T(x0+16,y+4,sgn(v),12);T(x0+16,y+17,lab,10,'start',mut)});
   // ---- seções ----
   const sec=(x0,y0,bwc,hc,nTop,nBot,phi,tit,sub,mid,scl=6)=>{const w=bwc*scl,h=hc*scl,cc=(I.cob+I.pht/10)*scl,r=Math.max(3.5,phi/20*scl);
     T(x0,y0-28,tit,15,'start',ink,'bold');T(x0,y0-10,sub,12,'start',mut);Rc(x0,y0,w,h);
@@ -1768,7 +1774,7 @@ const ARMC={blk:'#efe6d8',gr:'#bfc3c8',bar:'#c0392b',can:'#d6e4f2',st:'#1f5fa8'}
 function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvgKit(F),{md,t,eixos,len}=G,k=Math.min(230,(mem?620:1050)/len),x0=70,y0=mem?160:130,X=m=>x0+m*k,Y=m=>y0+m*k;
   K.T(20,24,'F – PLANTA BAIXA DO MURO ARMADO (1ª FIADA) – GRAUTEAMENTO VERTICAL',{b:1,fs:12});
   const sub1=K.TW(20,40,`${R.Bl[1]}${G.enr?` · enrijecedores ${f(R.eenr,0)} × ${f(R.tenr,0)} cm a cada ${G.dm(R.lenr)} m`:''} · furos grauteados: V1 ${G.txt('V1')} no muro${G.enr?' e todos os furos do enrijecedor':''}`,{fs:10},mem?80:200);
-  K.T(x0,y0-58,`lado ${R.EaE&&R.EaI&&R.EaI.M>R.EaE.M?'do lote (empuxo interno)':'do aterro / vizinho (empuxo)'} ↑`,{fs:9});
+  K.T(x0,y0-58,`lado do vizinho (divisa)${I.NT2>I.NT+1e-6?', com mais solo':''} ↑`,{fs:9});
   K.L(x0-20,y0-2,X(len)+20,y0-2,'#b3261e',1,'6 3');K.T(x0-22,y0-6,'face externa do muro',{fs:9});
   for(let m=0;m<len-1e-6;m+=2*md)K.R(X(m),Y(0),Math.min(2*md,len-m)*k-1,t*k,ARMC.blk,'#333333',0.8);
   const cw=(md-0.05)*k,ch=(t-0.06)*k;
@@ -1795,7 +1801,7 @@ function armPlanSvg(R,D,mem){const F=mem?1.4:1,G=armDrawCommon(R,D,mem),K=armSvg
    K.T(xd+8,(Y(xb)+Y(t))/2+3,`${v(R.t-xb*100)} (${ext?'d':'c'})`,{fs:9});
    K.dimV(xt,Y(0),Y(t),`${f(R.t,0)} cm`,false);
    K.T(xd-4,Y(0)-6,`face externa${ext?' (tracionada)':''}`,{fs:8,a:'start'});K.T(xd-4,Y(t)+12,`face interna${ext?'':' (tracionada)'}`,{fs:8,a:'start'});}
-  const yl=Y(G.tenr)+(G.enr?20:30);K.T(x0,yl,'lado interno ↓',{fs:9});
+  const yl=Y(G.tenr)+(G.enr?20:30);K.T(x0,yl,`lado interno (lote)${I.NT>I.NT2+1e-6?', com mais solo':''} ↓`,{fs:9});
   const ly=yl+60;K.legend(x0,ly,[{k:'rect',c:ARMC.gr,s:'#333333',t:'furo grauteado'},{k:'dot',c:ARMC.bar,t:'barra vertical'},{k:'rect',c:'#ffffff',s:'#333333',t:'furo vazio'},...(G.enr?[{k:'line',c:ARMC.st,t:'grampo do enrijecedor'}]:[])]);
 
   let yN=ly+30*F;yN+=K.TW(x0,yN,`Grauteamento vertical: V1 ${G.txt('V1')}${G.enr?' a partir do eixo de cada enrijecedor':''}, em toda a altura${G.enr?'; enrijecedor com todos os furos grauteados':''}.`,{fs:9},mem?95:200);
@@ -1841,19 +1847,20 @@ function renderDet(R){
   const D=detGet(R),rows=detRows(R,D);R.det={D,rows};
   const selPhi=(id,fld,v)=>`<select data-det="${id}.${fld}" aria-label="Diâmetro ${id}">${BAR_D.map(d=>`<option value="${d}"${Math.abs(d-v)<1e-6?' selected':''}>${String(d).replace('.',',')}</option>`).join('')}</select>`;
   const num=(id,fld,v,lab)=>`<input data-det="${id}.${fld}" type="number" min="1" step="1" value="${v}" aria-label="${lab}" style="width:70px">`;
-  $('tabDet').innerHTML=`<tr><th>Item</th><th>Elemento</th><th>Posição</th><th>Quant.</th><th>Ø (mm)</th><th>c/ (cm)</th><th>Necessário</th><th>Adotado</th><th>Traspasse</th><th></th></tr>`+
-   rows.map(r=>{const v=D[r.id]||D.N1;return `<tr><td><b>${r.id}</b></td><td>${r.el}</td><td class="txt">${r.pos}${r.note?`<br><span style="color:var(--bad)">${r.note}</span>`:''}</td>
+  $('tabDet').innerHTML=`<tr><th>Item</th><th>Elemento e posição</th><th>Quant.</th><th>Ø (mm)</th><th>c/ (cm)</th><th>Necessário</th><th>Adotado</th><th>Traspasse</th><th></th></tr>`+
+   rows.map(r=>{const v=D[r.id]||D.N1;return `<tr><td><b>${r.id}</b></td><td class="txt"><b style="color:var(--ink)">${r.el}</b> · ${r.pos}${r.note?`<br><span style="color:var(--bad)">${r.note}</span>`:''}</td>
      <td>${r.mode==='n'?num(r.id,'n',v.n,'Quantidade '+r.id):r.mode==='lock'?`${D.N1.n}`:'–'}</td>
      <td>${r.mode==='lock'?String(D.N1.phi).replace('.',','):selPhi(r.id,'phi',v.phi)}</td>
      <td>${r.mode==='s'?num(r.id,'s',v.s,'Espaçamento '+r.id):'–'}</td>
      <td>${r.req}</td><td>${r.ad}</td><td>${r.lap?`${f(r.lap.L,2)} m${r.lap.calc?' *':''}`:'–'}</td><td>${pill(r.ok)}</td></tr>`}).join('');
   const nf=rows.filter(r=>!r.ok).length;
   $('detVerdict').innerHTML=`<div class="verdict ${nf?'bad':'ok'}">${nf?`${nf} armadura(s) adotada(s) abaixo do necessário ou fora das regras de detalhamento.`:'Todas as armaduras adotadas atendem ao cálculo.'}</div>`;
-  const sv=detSvg(R,D);$('detDraw').innerHTML=sv.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Esboço do detalhamento das armaduras" style="width:${sv.w}px;max-width:none;height:auto;display:block" `);
-  $('armDwgPanel').hidden=!R.arm;if(R.arm){const ap=armPlanSvg(R,D),av=armVistaSvg(R,D),st=w=>`style="width:${w}px;max-width:none;height:auto;display:block" `;
+  {const sv=detSvg(R,D),inner=sv.svg.replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,''),W=930,H1=1150,H2=1070;
+   $('detDraw').innerHTML=`<svg class="dwg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Esboço do detalhamento das armaduras: corte do muro e seções" viewBox="0 0 ${W} ${H1+H2}" style="width:100%;max-width:1000px;height:auto;display:block;margin:0 auto"><rect width="${W}" height="${H1+H2}" fill="#ffffff"/><svg x="0" y="0" width="870" height="${H1}" viewBox="0 0 870 ${H1}">${inner}</svg><line x1="20" x2="${W-20}" y1="${H1+4}" y2="${H1+4}" stroke="#d3dbe3"/><svg x="0" y="${H1+10}" width="${W}" height="${H2}" viewBox="870 80 ${W} ${H2}">${inner}</svg></svg>`;}
+  $('armDwgPanel').hidden=!R.arm;if(R.arm){const ap=armPlanSvg(R,D,true),av=armVistaSvg(R,D,true),st=w=>`style="width:100%;max-width:${Math.round(w)}px;height:auto;display:block;margin:0 auto" `;
     $('armPlan').innerHTML=ap.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Planta baixa do muro armado: grauteamento vertical" ${st(ap.w)}`);
     $('armVista').innerHTML=av.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Vista do muro pelo lado interno: canaletas armadas" ${st(av.w)}`)}
-  const ss=secaoSvg(R);$('secDraw').innerHTML=ss.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Seção transversal típica e detalhe do dreno" style="width:${ss.w}px;max-width:none;height:auto;display:block" `);
+  const ss=secaoSvg(R);$('secDraw').innerHTML=ss.svg.replace('<svg ',`<svg class="dwg" role="img" aria-label="Seção transversal típica e detalhe do dreno" style="width:100%;max-width:${ss.w}px;height:auto;display:block;margin:0 auto" `);
 }
 
 /* ---------- seção transversal típica e detalhe do dreno ---------- */
