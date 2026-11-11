@@ -186,8 +186,9 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
                 <label style="font-size:12px">Encargos <select id="sinDes"><option value="sd">sem desoneração</option><option value="cd">com desoneração</option></select></label>
                 <button class="btn primary" type="button" id="sinBtn">Atualizar preços (planilha SINAPI)</button>
                 <input type="file" id="sinFile" accept=".xlsx,.xls,.csv" hidden>
-                <a href="https://www.caixa.gov.br/poder-publico/modernizacao-gestao/sinapi/Paginas/default.aspx" target="_blank" rel="noopener" style="font-size:12px">baixar a planilha do mês no site da Caixa ↗</a>
+                <button class="btn ghost" type="button" id="sinLink">Site do SINAPI (copiar endereço)</button>
               </div>
+              <p class="note" style="margin:4px 0">Onde baixar a planilha: <input type="text" id="sinUrl" readonly value="https://www.caixa.gov.br/sinapi" style="font:12px var(--mono);width:260px;padding:2px 6px;border:1px solid var(--line);border-radius:4px"> → cole o endereço no navegador → <i>Relatórios mensais / Referência de preços e custos</i> → escolha o mês, baixe e descompacte o arquivo .zip → aqui, clique em "Atualizar preços" e escolha a planilha .xlsx.</p>
               <p class="note" id="sinRef"></p>
               <p class="note" id="sinStatus" role="status"></p>
             </div>
@@ -2792,6 +2793,9 @@ async function atualizarSinapi(fl){
 function initSinapi(){try{const u=localStorage.getItem(KEY+'-sinUF');if(u)$('sinUF').value=u;const d=localStorage.getItem(KEY+'-sinDes');if(d)$('sinDes').value=d}catch(e){}
   $('sinUF').addEventListener('change',e=>{try{localStorage.setItem(KEY+'-sinUF',e.target.value)}catch(x){}});
   $('sinDes').addEventListener('change',e=>{try{localStorage.setItem(KEY+'-sinDes',e.target.value)}catch(x){}});
+  $('sinLink').addEventListener('click',async()=>{const u=$('sinUrl').value;let w=null;try{w=window.open(u,'_blank','noopener')}catch(e){}
+    let cp=false;try{await navigator.clipboard.writeText(u);cp=true}catch(e){$('sinUrl').focus();$('sinUrl').select()}
+    $('sinStatus').textContent=cp?'Endereço copiado: cole na barra do navegador (Ctrl+V) se o site não abriu sozinho.':'Selecione o endereço ao lado de "Onde baixar a planilha", copie (Ctrl+C) e cole na barra do navegador.'});
   $('sinBtn').addEventListener('click',()=>{$('sinFile').value='';$('sinFile').click()});
   $('sinFile').addEventListener('change',e=>{const fl=e.target.files&&e.target.files[0];if(fl)atualizarSinapi(fl)});renderSinRef()}
 
