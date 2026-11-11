@@ -176,7 +176,7 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
         <div class="panel">
           <header><h3>Dimensionamento otimizado</h3><small>Informe as cotas do terreno, do topo do muro e da fundação, o solo e o vento; o botão testa os dois sistemas e aplica a solução de menor custo que atende a todas as verificações</small></header>
           <div class="otm">
-            <div class="row"><button class="btn primary" type="button" id="otmBtn">Dimensionar com menor custo</button><span class="note" id="otmStatus" role="status"></span></div>
+            <div class="row"><label class="otmsys">Testar <select id="otmSys"><option value="todos">os dois sistemas</option><option value="arm">só alvenaria armada</option><option value="armEnr">só alvenaria armada com enrijecedores</option></select></label><button class="btn primary" type="button" id="otmBtn">Dimensionar com menor custo</button><span class="note" id="otmStatus" role="status"></span></div>
             <div id="otmRes"></div>
             <details><summary>Preços unitários usados na comparação (editáveis)</summary><div id="otmPrecos" class="pzgrid"></div><p class="note">Valores de referência para comparar soluções, na ordem de grandeza de composições do SINAPI; ajuste aos preços da sua região. O custo é uma estimativa por metro de muro (concreto, aço, fôrma, alvenaria, graute, escavação e reaterro).</p></details>
           </div>
@@ -2588,16 +2588,28 @@ function otmOk(R){const out={};try{renderChecks(R)}catch(e){return false}
   if(document.querySelectorAll('#s3 .pill.bad').length)return false;
   return detRows(R,detDefaults(R)).every(r=>r.ok!==false)}
 function otmStab(R){return R.FSt>=(+I.FStMin||1.5)&&R.FSd>=(+I.FSdMin||1.5)&&R.sigOk&&R.cW.every(c=>c.ok)&&R.perm.ok}
-function otmLayouts(){const L=[],dh=Math.abs(I.NT2-I.NT);
+function otmLayouts(mode){const L=[],dh=Math.abs(I.NT2-I.NT);
+  if(mode==='arm'||mode==='armEnr'){['c14_39','c19_39'].forEach(bloco=>{if(mode==='arm')L.push({sys:'arm',bloco,enr:'nao'});[1.2,1.6,2.0,2.4,2.8,3.2,3.6,4.0].forEach(lenr=>[39,59,79,99].forEach(tenr=>L.push({sys:'arm',bloco,enr:'sim',lenr,tenr})))});return L}
   ['cor','iso'].forEach(tipoSap=>[2.0,2.6,3.2,3.8].forEach(s=>['c14_39','c19_39','k14_39','k19_39'].forEach(bloco=>['nao','sim'].forEach(cintaInt=>{
     const pis=tipoSap==='cor'&&dh>0.3?['bloco','conc']:['bloco'];pis.forEach(pInf=>(pInf==='conc'?['nao']:['nao','sim']).forEach(canPI=>L.push({sys:'pil',tipoSap,s,bloco,cintaInt,pInf,canPI,bpw:Math.max(+I.bpw||0,+BLOCOS.find(b=>b[0]===bloco)[2])})))}))));
   ['c14_39','c19_39'].forEach(bloco=>{L.push({sys:'arm',bloco,enr:'nao'});[1.6,2.0,2.4,2.8,3.2].forEach(lenr=>[39,59,79,99].forEach(tenr=>L.push({sys:'arm',bloco,enr:'sim',lenr,tenr})))});
   return L}
 function otmMats(lay){const fb=lay.sys==='arm'||lay.canPI==='sim'?['4','6','8','10','12','14']:[String(I.fbk||'6')],M=[];
   fb.forEach(fbk=>['2','5','8'].forEach(fa=>[25,30].forEach(fck=>M.push({fbk,fa,fck}))));return M}
+function otmRefinaArm(J0,base){let best=null;
+  const pass=()=>{let R;try{R=calc()}catch(e){return null}return otmStab(R)&&otmOk(R)?R:null};
+  const EH=[1.2,1.0,0.8,0.6,0.4];
+  for(const phiA of ['10','12.5','16']){I={...J0,det:{},phiA,phH:'12.5',ehorI:0.4};
+    let ok=false;for(const eh of EH){I.ehor=eh;if(pass()){ok=true;break}}if(!ok)continue;
+    for(const ei of EH.filter(v=>v<=I.ehor)){I.ehorI=ei;if(pass())break;I.ehorI=0.4}
+    if(!pass())I.ehorI=0.4;
+    for(const ph of ['8','10','12.5']){I.phH=ph;if(pass())break}
+    const R=pass();if(!R)continue;const q=quantidades(R,detDefaults(R)),c=custo(q,R);
+    if(!best||c.tot<best.c.tot)best={I:{...I},c,q,espV:R.espAd}}
+  I=base;return best}
 let OTM=null;
 async function otimizar(){if(OTM)return;const btn=$('otmBtn'),st=$('otmStatus'),base={...I},det=I.det,res=[];OTM=true;btn.disabled=true;
-  const lays=otmLayouts(),tick=()=>new Promise(r=>setTimeout(r,0));let diag=null,nStruct=0;const NAeOf=J=>+J.NA;let t0=performance.now();
+  const mode=$('otmSys')?$('otmSys').value:'todos',lays=otmLayouts(mode),tick=()=>new Promise(r=>setTimeout(r,0));let diag=null,nStruct=0;const NAeOf=J=>+J.NA;let t0=performance.now();
   try{for(let li=0;li<lays.length;li++){const lay=lays[li];
       if(performance.now()-t0>40){st.textContent=`Testando soluções… ${li+1} de ${lays.length}`;await tick();t0=performance.now()}
       I={...base,...lay,det:{}};if(lay.sys==='pil'&&lay.tipoSap==='iso')I.L=Math.max(0.8,Math.min(2.0,lay.s-0.4));
@@ -2620,16 +2632,23 @@ async function otimizar(){if(OTM)return;const btn=$('otmBtn'),st=$('otmStatus'),
           for(const fa of ['2','5']){I.fa=fa;if(pass())break;I.fa='8'}
           for(const fb of fbks){I.fbk=fb;if(pass())break}
           if(I.sys==='arm'){I.ehor=0.6;if(!pass())I.ehor=0.4;for(const ph of ['8','10','12.5']){I.phH=ph;if(pass())break}}
-          const R=pass();if(!R)continue;const q=quantidades(R,detDefaults(R)),c=custo(q,R);got={I:{...I},c,q};break}
+          const R=pass();if(!R)continue;const q=quantidades(R,detDefaults(R)),c=custo(q,R);got={I:{...I},c,q,espV:R.arm?R.espAd:null};break}
         if(got&&(!best||got.c.tot<best.c.tot))best=got;else if(!got)nStruct++}if(best)break} // com solução numa profundidade, não desce mais
       if(best)res.push(best)}
   }finally{I=base;I.det=det;OTM=null;btn.disabled=false}
   if(!res.length){st.textContent=diag?`Nenhuma combinação atende. A estabilidade não fecha nem com sapata de 4,00 m e apoio até ${sgn(diag.Nf)}: FS ao deslizamento ${f(diag.FSd)} e ao tombamento ${f(diag.FSt)}. Considere o empuxo passivo (fator em Solo), apoio mais profundo, um dente sob a sapata ou contenção de outro tipo.`:'Nenhuma combinação testada atende a todas as verificações. Revise as cotas, o solo ou a tensão admissível.';update();return}
-  res.sort((a,b)=>a.c.tot-b.c.tot);const win=res[0];
+  res.sort((a,b)=>a.c.tot-b.c.tot);
+  // refino da alvenaria armada nas melhores soluções: bitola vertical (afasta os furos grauteados), espaçamento das canaletas e bitola horizontal
+  {const top=res.filter(x=>x.I.sys==='arm').slice(0,4);let k=0;
+   for(const x of top){k++;st.textContent=`Refinando grauteamento e canaletas… ${k} de ${top.length}`;await tick();
+     const r2=otmRefinaArm(x.I,base);if(r2&&r2.c.tot<x.c.tot-0.01)Object.assign(x,r2)}
+   I=base;I.det=det;res.sort((a,b)=>a.c.tot-b.c.tot)}
+  res.forEach(x=>{if(x.espV)x.I._espV=x.espV});
+  const win=res[0];
   I={...win.I,det:{...(base.det||{})}};delete I.det[I.sys];save();fill();update();
-  renderOtm(res.slice(0,6));st.textContent=`Aplicada a solução de menor custo entre ${res.length} que atendem (de ${lays.length} arranjos testados).`}
+  renderOtm(res.slice(0,6));st.textContent=`Aplicada a solução de menor custo entre ${res.length} que atendem (de ${lays.length} arranjos testados${mode==='todos'?'':mode==='arm'?', só alvenaria armada':', só alvenaria armada com enrijecedores'}).`}
 function otmDesc(J){const b=BLOCOS.find(x=>x[0]===J.bloco),bt=b?b[1].replace(/ × 19 × \d+ cm/,''):J.bloco;
-  const pre=J.chav==='sim'?`Chaveta ${f(+J.hk*100,0)} cm · apoio ${sgn(J.Nf)} · `:`Apoio ${sgn(J.Nf)} · `;return pre+(J.sys==='arm'?`Alvenaria armada · ${bt}${J.enr==='sim'?` · enrijecedores ${String(J.tenr)} cm a cada ${f(J.lenr)} m`:' · sem enrijecedores'} · fbk ${J.fbk} MPa`:
+  const pre=J.chav==='sim'?`Chaveta ${f(+J.hk*100,0)} cm · apoio ${sgn(J.Nf)} · `:`Apoio ${sgn(J.Nf)} · `;return pre+(J.sys==='arm'?`Alvenaria armada · ${bt}${J.enr==='sim'?` · enrijecedores ${String(J.tenr)} cm a cada ${f(J.lenr)} m`:' · sem enrijecedores'} · fbk ${J.fbk} MPa${J.phiA?` · vertical Ø${String(J.phiA).replace('.',',')}${J._espV?` em furos grauteados a cada ${f(J._espV,0)} cm`:''}`:''}${J.ehor?` · canaletas Ø${String(J.phH||'').replace('.',',')} a cada ${f(J.ehor)} m (terço inferior ${f(J.ehorI)} m)`:''}`:
    `Pilares a cada ${f(J.s)} m · sapata ${J.tipoSap==='cor'?'corrida':'isolada'} · ${bt}${J.cintaInt==='sim'?' · cinta intermediária':''}${J.pInf==='conc'?` · parede de concreto ${f(J.hcw)} m`:''}${J.canPI==='sim'?' · canaletas armadas':''}`)}
 function renderOtm(L){const w=L[0];const it=Object.entries(w.c.it).filter(([,v])=>v>0.5);
   $('otmRes').innerHTML=`<div class="verdict ok">Solução aplicada: ${otmDesc(w.I)} · B = ${f(w.I.B)} m, hs = ${f(w.I.hs)} m · C${w.I.fck} · argamassa ${({2:'1,5–3,4',5:'3,5–7,0',8:'> 7'})[w.I.fa]} MPa · <b>≈ R$ ${f(w.c.tot,0)} por metro de muro</b></div>
