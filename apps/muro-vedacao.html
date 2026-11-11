@@ -187,6 +187,7 @@ td.txt{font-family:var(--body);text-align:left;color:var(--muted);font-size:12.5
             <div class="row"><input type="text" id="nomeModelo" placeholder="Nome do modelo (ex.: Muro lote 12 – divisa fundos)" aria-label="Nome do modelo"></div>
             <div class="row">
               <button class="btn primary" type="button" id="expModelo">Exportar modelo (.json)</button>
+              <button class="btn" type="button" id="copModelo">Copiar modelo</button>
               <button class="btn" type="button" id="impModeloBtn">Importar modelo</button>
               <input type="file" id="impModelo" accept=".json,application/json,text/plain" hidden>
             </div>
@@ -2303,7 +2304,7 @@ function docxParts(R,figs,state){
 }
 // acesso ao download: confere a permissão e explica o que fazer quando não está disponível
 // Salva um arquivo: no claude.ai usa a capacidade de downloads; fora dele (GitHub Pages, arquivo local) usa o download do navegador.
-function browserSave(nm,blob){try{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=nm;a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},2000);return true}catch(e){return false}}
+function browserSave(nm,blob){try{if(typeof blob==='string')blob=new Blob([blob],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=nm;a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},2000);return true}catch(e){return false}}
 async function saveFile(nm,blob,say){
   const C=window.claude;
   if(C&&typeof C.use==='function'){let dl=null;try{dl=await C.use('downloads')}catch(e){}
@@ -2506,13 +2507,20 @@ function modeloJSON(){return JSON.stringify({formato:MODELO_FMT,versao:13,app:'M
 async function exportarModelo(){
   const txt=modeloJSON(),d=new Date(),dt=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const base=(I.nomeModelo||'modelo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\- ]+/g,' ').trim().replace(/\s+/g,' ').slice(0,60)||'modelo';
-  const nm=`Muro - ${base} - ${dt}.json`;
-  try{const ok=await saveFile(nm,new Blob([txt],{type:'application/json'}),sayM);
-    if(!ok){$('modeloTxt').value=txt;$('modeloTxt').closest('details').open=true;sayM('Download indisponível aqui: o modelo foi colocado no campo de texto abaixo. Copie e salve num arquivo .json.');return}
+  const nm=`Muro - ${base} - ${dt}.json`,btn=$('expModelo');
+  const plano=msg=>{$('modeloTxt').value=txt;$('modeloTxt').closest('details').open=true;sayM(msg)};
+  btn.disabled=true;sayM('Preparando o arquivo… se aparecer a confirmação de download do Claude, clique em salvar.');
+  let fim=false;const tmo=setTimeout(()=>{if(!fim)plano('A confirmação de download não apareceu. O modelo está no campo de texto abaixo: use "Copiar modelo" e cole num arquivo .json (ou aqui no chat).')},15000);
+  try{const ok=await saveFile(nm,txt,sayM);fim=true;
+    if(!ok){plano('Download indisponível nesta visualização: o modelo foi colocado no campo de texto abaixo. Use "Copiar modelo" e salve num arquivo .json.');return}
     sayM(`Modelo exportado: ${nm}`);
-  }catch(e){const c=e&&e.code;if(c==='declined'){sayM('Exportação cancelada.');return}
-    $('modeloTxt').value=txt;$('modeloTxt').closest('details').open=true;sayM('Não foi possível salvar o arquivo: o modelo foi colocado no campo de texto abaixo para copiar.')}
+  }catch(e){fim=true;const c=e&&e.code;if(c==='declined'){sayM('Exportação cancelada.');return}
+    plano(`Não foi possível salvar o arquivo${c?` (${c})`:''}: o modelo foi colocado no campo de texto abaixo. Use "Copiar modelo" e salve num arquivo .json.`)}
+  finally{clearTimeout(tmo);btn.disabled=false}
 }
+async function copiarModelo(){const txt=modeloJSON();
+  try{await navigator.clipboard.writeText(txt);sayM('Modelo copiado. Cole num arquivo de texto e salve com a extensão .json, ou cole aqui no chat.')}
+  catch(e){$('modeloTxt').value=txt;$('modeloTxt').closest('details').open=true;$('modeloTxt').focus();$('modeloTxt').select();sayM('Selecione o texto abaixo e copie (Ctrl+C).')}}
 function aplicarModelo(txt,origem){
   let o;try{o=JSON.parse(String(txt).replace(/^\uFEFF/,''))}catch(e){sayM('O conteúdo não é um modelo válido (JSON com erro).');return false}
   const dados=o&&typeof o==='object'?(o.dados&&typeof o.dados==='object'?o.dados:o):null;
@@ -2529,6 +2537,7 @@ function aplicarModelo(txt,origem){
 $('nomeModelo').value=I.nomeModelo||'';
 $('nomeModelo').addEventListener('input',e=>{I.nomeModelo=e.target.value;save()});
 $('expModelo').addEventListener('click',exportarModelo);
+$('copModelo').addEventListener('click',copiarModelo);
 $('impModeloBtn').addEventListener('click',()=>{$('impModelo').value='';$('impModelo').click()});
 $('impModelo').addEventListener('change',e=>{const fl=e.target.files&&e.target.files[0];if(!fl)return;
   if(fl.size>2e6){sayM('Arquivo grande demais para um modelo.');return}
