@@ -1,0 +1,770 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body><script>/* ponte da suíte: downloads pela página principal (troca de mensagens); demais recursos repassados */(function(){try{if(window.claude||window.parent===window)return;var n=0,pend={};window.addEventListener("message",function(e){var d=e.data;if(!d||d.tipo!=="suite-claude-r"||!pend[d.id])return;var f=pend[d.id];delete pend[d.id];f(d);});function ask(m,ms){return new Promise(function(res){var id="c"+(++n)+Math.random().toString(36).slice(2);var t=setTimeout(function(){if(pend[id]){delete pend[id];res({nulo:true});}},ms);pend[id]=function(d){clearTimeout(t);res(d);};m.tipo="suite-claude";m.id=id;window.parent.postMessage(m,"*");});}function erro(x){var e=new Error(x.message||"erro");e.code=x.code;return e;}window.claude={use:function(cap){if(cap==="downloads")return ask({cap:cap,op:"probe"},15000).then(function(d){if(!d.ok)return null;return Object.freeze({save:function(a){return ask({cap:cap,op:"save",args:{filename:a.filename,data:a.data}},900000).then(function(d){if(d.erro)throw erro(d.erro);if(!d.ok)throw erro({code:"unavailable",message:"Download indisponível"});return d.r;});}});});try{var p=window.parent.claude;return p&&p.use?p.use(cap):Promise.resolve(null);}catch(e){return Promise.resolve(null);}}};}catch(e){}})();</script><title>Estacas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: abas Sondagem → Verificação → Teoria. Dados à esquerda, resultados à direita. Paleta clara da suíte. */
+:root {
+  --bg: #f4f6f8; --surface: #ffffff; --field: #ffffff; --ink: #1f2b37; --muted: #5e6b78; --line: #d9e0e7; --soft: #eef2f5;
+  --accent: #2b6cb0; --accent-ink: #ffffff; --accent-soft: #e7f0f9;
+  --concrete: #cfd6dc; --concrete-line: #6b7884;
+  --clay: #d2a86e; --silt: #b9c08f; --sand: #ecd9a0; --water: #2f7fc4; --press: #c0612a;
+  --ok: #2e7d50; --ok-bg: #e6f4ec; --bad: #b83a2e; --bad-bg: #fbe8e5; --warn: #8c5d08; --warn-bg: #fbf1dc;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14.5px; line-height: 1.5; margin: 0;
+  padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1340px; margin: 0 auto; display: grid; gap: 14px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+h1 { font-family: var(--f-display); font-weight: 600; font-size: clamp(32px, 5vw, 44px); line-height: 1; margin: 0 0 6px; text-wrap: balance; }
+.sub { margin: 0; color: var(--muted); max-width: 80ch; }
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); flex-wrap: wrap; align-items: end; }
+.tabs [role=tab] { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 8px 16px 7px; font: 600 20px var(--f-display); letter-spacing: .03em; color: var(--muted); cursor: pointer; }
+.tabs [role=tab]:hover { color: var(--ink); }
+.tabs [role=tab][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font: 500 12px var(--f-mono); color: var(--accent); margin-right: 5px; }
+.app { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.app.wide { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
+@media (max-width: 980px) { .app, .app.wide { grid-template-columns: minmax(0, 1fr); } .inputs { position: static !important; max-height: none !important; } }
+.inputs { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 12px; font-size: 13px; }
+.inputs section + section { border-top: 1px solid var(--line); padding-top: 10px; }
+.inputs h2, .panel h2 { font-family: var(--f-display); font-weight: 600; margin: 0 0 6px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.inputs h2 { font-size: 17px; } .panel h2 { font-size: 21px; margin-bottom: 8px; }
+.inputs h2 .n, .panel h2 .n { color: var(--accent); font: 500 12px var(--f-mono); }
+.g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 8px; }
+.g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px 8px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: flex-end; }
+.field label { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+.inp { display: flex; border: 1px solid var(--line); background: var(--field); border-radius: 4px; }
+.inp:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.inp input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); padding: 4px 7px; font: 500 12.5px var(--f-mono); text-align: right; outline: none; }
+.inp input.txt { text-align: left; font-family: var(--f-body); }
+.inp .u { padding: 4px 6px; color: var(--muted); font-size: 10.5px; border-left: 1px solid var(--line); white-space: nowrap; display: flex; align-items: center; }
+.field.bad .inp { border-color: var(--bad); }
+.gnote { margin: 4px 0 0; font-size: 10.5px; line-height: 1.4; color: var(--muted); }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 6px 12px; font: 500 13px var(--f-body); cursor: pointer; }
+.btn:hover { background: var(--accent); color: var(--accent-ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .55; cursor: wait; }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+.filebtn { position: relative; display: inline-flex; }
+.filebtn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.results { display: grid; gap: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.panel h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+.status { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.status.ok { color: var(--ok); } .status.err { color: var(--bad); }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; }
+.card.bad { border-left-color: var(--bad); } .card.warn { border-left-color: var(--warn); } .card.info { border-left-color: var(--accent); }
+.card .t { font-size: 12.5px; color: var(--muted); }
+.card .v { font: 500 24px var(--f-mono); line-height: 1.15; }
+.card.bad .v { color: var(--bad); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 600; white-space: nowrap; justify-self: start; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.bad { background: var(--bad-bg); color: var(--bad); } .pill.warn { background: var(--warn-bg); color: var(--warn); } .pill.info { background: var(--accent-soft); color: var(--accent); }
+.warns { display: grid; gap: 6px; } .warns p { margin: 0; padding: 7px 11px; background: var(--warn-bg); color: var(--warn); border-radius: 4px; font-size: 13px; }
+.figscroll { overflow-x: auto; } .figscroll svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 6px; } .sw { width: 13px; height: 13px; display: inline-block; border: 1px solid var(--concrete-line); }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 7px; text-align: right; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th:first-child, td:first-child, .l { text-align: left; }
+th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; }
+td.num { font-family: var(--f-mono); font-size: 12.5px; white-space: nowrap; }
+.spt td { padding: 3px 4px; }
+.spt input, .spt select { font: 500 12.5px var(--f-mono); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; width: 100%; min-width: 0; }
+.spt input { text-align: right; width: 70px; }
+.spt select { font-family: var(--f-body); min-width: 120px; }
+.spt .swc i { width: 12px; height: 22px; display: block; border-radius: 2px; border: 1px solid var(--concrete-line); }
+.spt .rb { display: flex; gap: 4px; justify-content: flex-end; }
+.spt .rb button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 4px; padding: 2px 7px; font-size: 12px; cursor: pointer; }
+.spt .rb button:hover { color: var(--bad); border-color: var(--bad); }
+.spt .rb button.ins:hover { color: var(--accent); border-color: var(--accent); }
+.addrow { width: 100%; border: 1px dashed var(--line); background: var(--soft); color: var(--accent); border-radius: 4px; padding: 6px; font: 500 13px var(--f-body); cursor: pointer; margin-top: 6px; }
+.step { margin-bottom: 14px; }
+.step h3 { font: 600 16px var(--f-display); letter-spacing: .02em; text-transform: none; color: var(--ink); margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.step h3 small { font-family: var(--f-body); font-weight: 400; color: var(--muted); font-size: 12px; }
+.calc { font-family: var(--f-mono); font-size: 12.5px; background: var(--soft); border-radius: 4px; padding: 8px 10px; white-space: pre-wrap; overflow-x: auto; }
+.ref { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; max-width: 95ch; }
+.halo { paint-order: stroke; stroke: #ffffff; stroke-width: 3.5px; stroke-linejoin: round; }
+/* teoria (conteúdo da versão anterior) */
+.theory { max-width: 820px; margin-bottom: 22px; }
+.theory h2 { font-family: var(--f-display); font-size: 1.35rem; font-weight: 600; margin: 18px 0 6px; }
+.theory p { margin: 0 0 8px; }
+.eq { font-family: var(--f-mono); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 6px 0 10px; overflow-x: auto; white-space: pre; }
+.refs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.refs .card { border-left: 1px solid var(--line); padding: 14px 16px; min-width: 0; display: block; }
+.refs .card .tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 600; }
+.refs .card h3 { font-family: var(--f-display); font-size: 1.1rem; font-weight: 600; margin: 4px 0 2px; text-wrap: balance; }
+.refs .card .who { color: var(--muted); font-size: .82rem; margin-bottom: 8px; }
+.refs .card p { margin: 0 0 6px; font-size: .88rem; }
+.refs .card a { color: var(--accent); font-size: .84rem; word-break: break-all; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>
+.tabp[hidden]{display:none!important}
+.spt input{width:58px}
+.spt select{min-width:150px}
+.spt tr.ponta td{background:var(--accent-soft)}
+.spt tr.ponta td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.res td.sel,.res th.sel{font-weight:600;color:var(--accent)}
+.res tr.media td{border-top:2px solid var(--ink);font-weight:600}
+.res tr.off td{color:var(--muted);text-decoration:line-through}
+.res td.chk{text-align:center}
+.graf{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media (max-width:760px){.graf{grid-template-columns:minmax(0,1fr)}}
+.graf svg{display:block;width:100%;height:auto}
+.graf figure.larga svg{max-width:820px;margin:0 auto}
+.graf figure{margin:0;border:1px solid var(--line);border-radius:6px;padding:8px;background:#fff;min-width:0}
+.graf figure.larga{grid-column:1/-1}
+.graf figcaption{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted);margin-top:4px}
+.leg i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+#memo{background:#fff;border:1px solid var(--line);border-radius:8px;padding:26px 32px;max-width:960px;margin:0 auto;font-size:13px}
+#memo h2{font-family:var(--f-display);font-size:24px;margin:0 0 6px;border-bottom:2px solid var(--ink)}
+#memo h3{font-family:var(--f-display);font-size:19px;color:var(--accent);margin:20px 0 6px}
+#memo p{margin:4px 0;max-width:90ch}
+#memo .eq{font:12px/1.55 var(--f-mono);margin:4px 0 4px 12px;white-space:pre-wrap}
+#memo .eq b{color:var(--accent)}
+#memo table{font-size:11.5px;margin:6px 0 10px}
+#memo th,#memo td{border:1px solid var(--line);padding:2px 5px}
+#memo th{background:var(--soft);text-transform:none;letter-spacing:0;font-size:11px;white-space:normal}
+#memo tr.sel td{background:var(--accent-soft)}
+#memo .cab{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 14px;border:1px solid var(--line);padding:8px 10px;font-size:12px;margin:8px 0 12px}
+.coef td{padding:2px 3px}.coef input{width:64px;font:500 12px var(--f-mono);text-align:right;border:1px solid var(--line);border-radius:3px;padding:2px 4px}
+.coef select{font-size:12px;border:1px solid var(--line);border-radius:3px;padding:2px}
+.coef th{white-space:normal;font-size:10.5px;text-transform:none;letter-spacing:0}
+#memo th{text-align:center}
+.modelos select{min-width:200px;border:1px solid var(--line);border-radius:4px;padding:5px}
+textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px solid var(--line);border-radius:4px;padding:6px}
+@media print{body{background:#fff;padding:0}.noprint,.tabs,header.top{display:none!important}.tabp{display:block!important}.tabp:not(#pMemo){display:none!important}#memo{border:0;padding:0;max-width:none}#memo h3{break-after:avoid}#memo .bloco{break-inside:avoid}}
+</style>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Fundações profundas · NBR 6122:2022</p>
+    <h1>Estacas</h1>
+    <p class="sub">Capacidade de carga de estaca isolada a partir da sondagem SPT, por cinco métodos semiempíricos: P.P.C. Velloso, Aoki-Velloso, Décourt-Quaresma, Teixeira e Alonso.</p>
+  </header>
+  <div class="tabs noprint" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="pCalc"><span class="n">1</span>Cálculo</button>
+    <button role="tab" aria-selected="false" data-tab="pMemo"><span class="n">2</span>Memorial</button>
+    <button role="tab" aria-selected="false" data-tab="pCoef"><span class="n">3</span>Coeficientes</button>
+  </div>
+
+  <section class="tabp" id="pCalc">
+    <div class="app wide">
+      <aside class="inputs">
+        <section>
+          <h2><span class="n">A</span>Identificação</h2>
+          <div class="g2">
+            <div class="field"><label for="obra">Projeto / obra</label><div class="inp"><input class="txt" id="obra"></div></div>
+            <div class="field"><label for="cidade">Local</label><div class="inp"><input class="txt" id="cidade"></div></div>
+            <div class="field"><label for="edificacao">Edificação / pilar</label><div class="inp"><input class="txt" id="edificacao"></div></div>
+            <div class="field"><label for="sondagem">Sondagem</label><div class="inp"><input class="txt" id="sondagem"></div></div>
+          </div>
+        </section>
+        <section>
+          <h2><span class="n">B</span>Estaca</h2>
+          <div class="g2">
+            <div class="field" style="grid-column:1/-1"><label for="tipo">Tipo de estaca</label><div class="inp"><select id="tipo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select></div></div>
+            <div class="field"><label for="secao">Seção</label><div class="inp"><select id="secao" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="circular">circular</option><option value="quadrada">quadrada</option></select></div></div>
+            <div class="field"><label for="D_mm" id="lblD">Diâmetro D</label><div class="inp"><input id="D_mm" type="number" step="10" min="100"><span class="u">mm</span></div></div>
+            <div class="field"><label for="L">Comprimento L (cota da ponta)</label><div class="inp"><select id="L" style="flex:1;border:0;padding:5px;font:inherit;background:transparent;text-align:right"></select><span class="u">m</span></div></div>
+            <div class="field"><label for="carga">Solicitação</label><div class="inp"><select id="carga" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="compressao">compressão</option><option value="tracao">tração</option></select></div></div>
+            <div class="field"><label for="CS">Fator de segurança global, FSg</label><div class="inp"><input id="CS" type="number" step="0.1" min="1"><span class="u">–</span></div></div>
+            <div class="field"><label for="NA">Nível d'água (vazio = não encontrado)</label><div class="inp"><input id="NA" type="number" step="0.1" min="0"><span class="u">m</span></div></div>
+          </div>
+          <p class="gnote">FSg = 2,0 para métodos semiempíricos (NBR 6122:2022, item 6.2.1.2.1). O comprimento é escolhido em metros inteiros, na cota final de uma camada da sondagem.</p>
+        </section>
+        <section>
+          <h2><span class="n">C</span>Sondagem SPT</h2>
+          <p class="gnote" style="margin:0 0 6px">Uma linha por metro; a cota é o fim do metro. A linha destacada é a da ponta.</p>
+          <div class="tw"><table class="spt"><thead><tr><th>Cota (m)</th><th>N<sub>SPT</sub></th><th>Tipo de solo</th><th></th></tr></thead><tbody id="sptBody"></tbody></table></div>
+          <div class="btnrow" style="margin-top:8px">
+            <button class="btn sm" type="button" id="addRow">+ metro</button>
+            <button class="btn sm" type="button" id="delRow">− último metro</button>
+            <button class="btn sm" type="button" id="btnCola">Colar do Excel</button>
+            <button class="btn sm" type="button" id="btnImg">Ler laudo (imagem)</button><input type="file" id="fileImg" accept="image/png,image/jpeg,image/webp" hidden>
+          </div>
+          <div id="wCola" hidden style="margin-top:8px">
+            <textarea class="cola" id="txtCola" placeholder="Cole duas colunas: N e tipo de solo (ex.: 7	silte arenoso). Uma linha por metro, começando no 1º metro."></textarea>
+            <div class="btnrow"><button class="btn sm primary" type="button" id="aplCola">Aplicar</button><button class="btn sm" type="button" id="fecCola">Fechar</button></div>
+          </div>
+          <p class="status" id="sonStatus"></p>
+        </section>
+        <section class="modelos">
+          <h2><span class="n">D</span>Modelos</h2>
+          <div class="btnrow">
+            <button class="btn sm primary" type="button" id="salvaLocal">Salvar no programa</button>
+            <select id="listaLocal" aria-label="Modelos salvos"></select>
+            <button class="btn sm" type="button" id="abreLocal">Abrir</button>
+            <button class="btn sm" type="button" id="delLocal">Excluir</button>
+          </div>
+          <div class="btnrow" style="margin-top:6px">
+            <button class="btn sm" type="button" id="expJson">Exportar (.json)</button>
+            <button class="btn sm" type="button" id="impJsonBtn">Importar (.json)</button><input type="file" id="impJson" accept=".json,application/json,text/plain" hidden>
+            <button class="btn sm" type="button" id="exemplo">Restaurar exemplo</button>
+          </div>
+          <details style="margin-top:6px"><summary style="font-size:12px;cursor:pointer;color:var(--accent)">Modelo como texto (copiar ou colar)</summary>
+            <textarea class="cola" id="txtModelo"></textarea>
+            <div class="btnrow"><button class="btn sm" type="button" id="copModelo">Copiar modelo</button><button class="btn sm" type="button" id="aplModelo">Aplicar texto colado</button></div>
+          </details>
+          <p class="gnote">"Salvar no programa" guarda o modelo neste navegador, pelo nome do projeto e da sondagem. O .json é o mesmo formato do aplicativo de referência.</p>
+          <p class="status" id="modStatus"></p>
+        </section>
+      </aside>
+      <div class="results">
+        <div class="verdicts" id="cards"></div>
+        <div class="warns" id="warns"></div>
+        <div class="panel">
+          <h2><span class="n">1</span>Resumo por método</h2>
+          <div class="tw"><table class="res" id="tabRes"></table></div>
+          <p class="gnote">Desmarque um método para tirá-lo da média. Qadm autor: critério de segurança de cada autor. Qadm norma: Qu/FSg.</p>
+        </div>
+        <div class="panel">
+          <h2><span class="n">2</span>Gráficos</h2>
+          <div class="graf" id="graf"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tabp" id="pMemo" hidden>
+    <div class="btnrow noprint" style="justify-content:center;margin-bottom:10px">
+      <button class="btn primary" type="button" id="btnWord">Gerar memorial Word</button>
+      <button class="btn" type="button" id="btnPrint">Imprimir / PDF</button>
+      <span class="status" id="memoStatus" style="margin:0"></span>
+    </div>
+    <article id="memo"></article>
+  </section>
+
+  <section class="tabp" id="pCoef" hidden>
+    <div class="panel">
+      <h2><span class="n">1</span>Coeficientes por tipo de solo</h2>
+      <p class="gnote" style="margin:0 0 8px">Valores em tf/m² (K, a, a′, C, α Teixeira e β Alonso) e % (α Aoki-Velloso). Os campos podem ser editados; a mudança vale para todos os cálculos e fica guardada neste navegador.<br><b>Conferidos com o memorial de referência</b> (estaca escavada): argila arenosa, silte argiloso, silte arenoso e areia argilosa em todos os métodos. Os demais vêm da literatura dos autores ou foram adotados por semelhança: confira com a sua planilha antes de usar.</p>
+      <div class="tw"><table class="coef" id="tabSolos"></table></div>
+    </div>
+    <div class="panel">
+      <h2><span class="n">2</span>Coeficientes por tipo de estaca</h2>
+      <div class="tw"><table class="coef" id="tabTipos"></table></div>
+    </div>
+    <div class="panel">
+      <h2><span class="n">3</span>Teixeira (1996): α por solo e por estaca (tf/m²)</h2>
+      <div class="tw"><table class="coef" id="tabTeix"></table></div>
+      <div class="btnrow" style="margin-top:10px"><button class="btn" type="button" id="coefReset">Restaurar coeficientes padrão</button><span class="status" id="coefStatus" style="margin:0"></span></div>
+    </div>
+  </section>
+</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const f = (x, d = 2) => (x == null || !isFinite(x)) ? "—" : Number(x).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const KEY = "estacas-v1";
+const VERSAO = "v1.0";
+
+/* ---------- coeficientes padrão (editáveis na aba Coeficientes) ---------- */
+// g: grupo de Décourt (argila / silte = intermediário / areia); K e C em tf/m²; al = α de Aoki-Velloso em %;
+// a e ap = a e a′ de P.P.C. Velloso (tf/m², expoentes 1); tx = categoria de Teixeira; bA = β de Alonso (tf/m²)
+const SOLOS_DEF = [
+  { c: "AREI", n: "Areia", g: "areia", K: 100, al: 1.4, C: 40, a: 60, ap: 0.85, tx: 6, bA: 20 },
+  { c: "ARES", n: "Areia siltosa", g: "areia", K: 80, al: 2.0, C: 35, a: 55, ap: 0.85, tx: 5, bA: 20 },
+  { c: "ARSA", n: "Areia silto-argilosa", g: "areia", K: 70, al: 2.4, C: 35, a: 50, ap: 0.85, tx: 5, bA: 20 },
+  { c: "AREA", n: "Areia argilosa", g: "areia", K: 60, al: 3.0, C: 35, a: 45, ap: 0.85, tx: 4, bA: 20 },
+  { c: "ARAS", n: "Areia argilo-siltosa", g: "areia", K: 50, al: 2.8, C: 35, a: 45, ap: 0.85, tx: 4, bA: 20 },
+  { c: "SILT", n: "Silte", g: "silte", K: 40, al: 3.0, C: 20, a: 40, ap: 0.80, tx: 3, bA: 15 },
+  { c: "SAR", n: "Silte arenoso", g: "silte", K: 55, al: 2.2, C: 25, a: 40, ap: 0.80, tx: 3, bA: 15 },
+  { c: "SARA", n: "Silte areno-argiloso", g: "silte", K: 45, al: 2.8, C: 25, a: 35, ap: 0.75, tx: 3, bA: 15 },
+  { c: "SAG", n: "Silte argiloso", g: "silte", K: 23, al: 3.4, C: 20, a: 30, ap: 0.70, tx: 1, bA: 15 },
+  { c: "SAGA", n: "Silte argilo-arenoso", g: "silte", K: 25, al: 3.0, C: 20, a: 30, ap: 0.70, tx: 1, bA: 15 },
+  { c: "ARGI", n: "Argila", g: "argila", K: 20, al: 6.0, C: 12, a: 10, ap: 0.63, tx: 0, bA: 10 },
+  { c: "ARGA", n: "Argila arenosa", g: "argila", K: 35, al: 2.4, C: 12, a: 15, ap: 0.63, tx: 2, bA: 10 },
+  { c: "ARGAS", n: "Argila areno-siltosa", g: "argila", K: 30, al: 2.8, C: 12, a: 15, ap: 0.63, tx: 2, bA: 10 },
+  { c: "ARGS", n: "Argila siltosa", g: "argila", K: 22, al: 4.0, C: 12, a: 10, ap: 0.63, tx: 0, bA: 10 },
+  { c: "ARGSA", n: "Argila silto-arenosa", g: "argila", K: 33, al: 3.0, C: 12, a: 12, ap: 0.63, tx: 0, bA: 10 }
+];
+// Teixeira (1996): α em tf/m² por categoria de solo e coluna de estaca
+const TEIX_CAT = ["Argila siltosa", "Silte argiloso", "Argila arenosa", "Silte arenoso", "Areia argilosa", "Areia siltosa", "Areia", "Areia com pedregulhos"];
+const TEIX_COL = ["Pré-moldada e metálica", "Franki", "Escavada", "Raiz"];
+const TEIX_DEF = [[11, 10, 10, 10], [16, 12, 11, 11], [21, 16, 13, 14], [26, 21, 16, 16], [30, 24, 20, 19], [36, 30, 24, 22], [40, 34, 27, 26], [44, 38, 31, 29]];
+// por tipo de estaca: F1, F2 (Aoki-Velloso); X = fator de execução de P.P.C. Velloso (atrito e ponta);
+// dA e dB = α (ponta) e β (atrito) de Décourt (1996) para argila / intermediário / areia;
+// tc = coluna de Teixeira; tb = β de Teixeira (tf/m²); aA = α de Alonso; cr = estaca cravada (deslocamento)
+const TIPOS_DEF = [
+  { id: 1, n: "Franki", F1: 2.5, F2: 5.0, X: 1.0, dA: [1, 1, 1], dB: [1, 1, 1], tc: 1, tb: 0.5, aA: 0.65, cr: 1 },
+  { id: 2, n: "Metálica", F1: 1.75, F2: 3.5, X: 1.0, dA: [1, 1, 1], dB: [1, 1, 1], tc: 0, tb: 0.4, aA: 0.65, cr: 1 },
+  { id: 3, n: "Pré-moldada de concreto", F1: 1.75, F2: 3.5, X: 1.0, dA: [1, 1, 1], dB: [1, 1, 1], tc: 0, tb: 0.4, aA: 0.65, cr: 1 },
+  { id: 4, n: "Escavada sem revestimento", F1: 3.0, F2: 6.0, X: 0.5, dA: [0.85, 0.60, 0.50], dB: [0.80, 0.65, 0.50], tc: 2, tb: 0.4, aA: 0.56, cr: 0 },
+  { id: 5, n: "Escavada com fluido estabilizante", F1: 3.5, F2: 7.0, X: 0.5, dA: [0.85, 0.60, 0.50], dB: [0.90, 0.75, 0.60], tc: 2, tb: 0.4, aA: 0.56, cr: 0 },
+  { id: 6, n: "Hélice contínua", F1: 3.0, F2: 6.0, X: 0.5, dA: [0.30, 0.30, 0.30], dB: [1.0, 1.0, 1.0], tc: 2, tb: 0.4, aA: 0.65, cr: 0 },
+  { id: 7, n: "Raiz", F1: 2.0, F2: 4.0, X: 0.5, dA: [0.85, 0.60, 0.50], dB: [1.5, 1.5, 1.5], tc: 3, tb: 0.6, aA: 0.65, cr: 0 },
+  { id: 8, n: "Strauss", F1: 4.2, F2: 3.9, X: 0.5, dA: [0.85, 0.60, 0.50], dB: [0.80, 0.65, 0.50], tc: 2, tb: 0.4, aA: 0.56, cr: 0 }
+];
+const GI = { argila: 0, silte: 1, areia: 2 }, GN = ["argila", "intermediário (silte)", "areia"];
+const clone = o => JSON.parse(JSON.stringify(o));
+let CO = { solos: clone(SOLOS_DEF), teix: clone(TEIX_DEF), tipos: clone(TIPOS_DEF) };
+try { const c = JSON.parse(localStorage.getItem(KEY + "-coef") || "null"); if (c && c.solos && c.teix && c.tipos && c.solos.length === SOLOS_DEF.length && c.tipos.length === TIPOS_DEF.length) CO = c; } catch (e) { }
+const saveCoef = () => { try { localStorage.setItem(KEY + "-coef", JSON.stringify(CO)); } catch (e) { } };
+const solo = c => CO.solos.find(s => s.c === c) || CO.solos[0];
+const tipoE = id => CO.tipos.find(t => t.id === +id) || CO.tipos[3];
+
+/* ---------- dados ---------- */
+const EXEMPLO = { obra: "Exemplo", cidade: "", edificacao: "", sondagem: "SP-01", tipo: 4, D_mm: 350, L: 8, Vbase_L: 0, NA: null, CS: 2, secao: "circular", carga: "compressao",
+  spt: [[2, "ARGA"], [3, "ARGA"], [5, "SAG"], [7, "SAR"], [9, "SAR"], [11, "SAR"], [14, "AREA"], [16, "AREA"], [19, "AREA"], [22, "AREA"], [25, "AREA"], [27, "AREA"], [30, "AREA"], [33, "AREA"], [37, "AREA"]].map(([N, s]) => ({ N, solo: s })) };
+let st = clone(EXEMPLO), excl = {};
+try { const s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && Array.isArray(s.spt) && s.spt.length) { st = Object.assign(clone(EXEMPLO), s); excl = s._excl || {}; } } catch (e) { }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, st, { _excl: excl }))); } catch (e) { } };
+
+/* ---------- cálculo ---------- */
+const METODOS = [["ppc", "P.P.C. Velloso"], ["aoki", "Aoki-Velloso"], ["dec", "Décourt-Quaresma"], ["teix", "Teixeira"], ["alo", "Alonso"]];
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+function geom(s) {
+  const D = (+s.D_mm || 0) / 1000, q = s.secao === "quadrada";
+  return { D, U: q ? 4 * D : Math.PI * D, Ap: q ? D * D : Math.PI * D * D / 4, q };
+}
+function calc(s, Lp) {
+  const G = geom(s), T = tipoE(s.tipo), tr = s.carga === "tracao", n = s.spt.length, t = Lp - 1;
+  const lay = s.spt.map((r, i) => ({ z: i + 1, N: Math.max(0, +r.N || 0), s: solo(r.solo) }));
+  const atr = lay.slice(0, t), win = (nA, nB) => ({ ac: lay.slice(Math.max(0, t - nA), t), ab: lay.slice(t, Math.min(n, t + nB)) });
+  const out = {}, FS = +s.CS || 2;
+  { // P.P.C. Velloso (1981)
+    const lam = tr ? 0.7 : 1, lamp = tr ? 0 : 1, nA = Math.max(1, Math.round(8 * G.D)), nB = Math.max(1, Math.round(3.5 * G.D)), w = win(nA, nB);
+    const fl = l => l.s.ap * Math.min(l.N, 40), qp = l => l.s.a * Math.min(l.N, 40);
+    const S = atr.reduce((a, l) => a + fl(l), 0), qa = avg(w.ac.map(qp)), qb = avg(w.ab.map(qp));
+    const beta = 1.016 - 0.016 * (G.D * 100 / 3.6), Ql = T.X * lam * G.U * S, Qp = T.X * lamp * beta * G.Ap * 0.5 * (qa + qb), Qu = Ql + Qp;
+    out.ppc = { Ql, Qp, Qu, aut: Qu / 2.5, autT: "Qu/2,5", S, qa, qb, beta, lam, lamp, nA, nB, w, fl, qp };
+  }
+  { // Aoki-Velloso (1975)
+    const Nc = l => Math.min(l.N, 40), ak = l => l.s.al / 100 * l.s.K, tip = lay[t];
+    const S = atr.reduce((a, l) => a + ak(l) * Nc(l), 0), KN = tip ? tip.s.K * Nc(tip) : 0;
+    const Ql = G.U / T.F2 * S, Qp = tr ? 0 : G.Ap / T.F1 * KN, Qu = Ql + Qp;
+    out.aoki = { Ql, Qp, Qu, aut: Qu / 2, autT: "Qu/2", S, KN, ak, Nc };
+  }
+  { // Décourt-Quaresma (1978) e Décourt (1996)
+    const Nc = l => clamp(l.N, 3, 50), rl = l => T.dB[GI[l.s.g]] * (Nc(l) / 3 + 1), qp = l => T.dA[GI[l.s.g]] * l.s.C * Nc(l);
+    const S = atr.reduce((a, l) => a + rl(l), 0), rm = atr.length ? S / atr.length : 0, pw = lay.slice(Math.max(0, t - 1), Math.min(n, t + 2)), Sp = pw.reduce((a, l) => a + qp(l), 0);
+    const Ql = rm * Lp * G.U, Qp = tr ? 0 : (pw.length ? Sp / pw.length : 0) * G.Ap, Qu = Ql + Qp;
+    out.dec = { Ql, Qp, Qu, aut: tr ? Ql / 1.3 : Ql / 1.3 + Qp / 4, autT: tr ? "Ql/1,3" : "Ql/1,3 + Qp/4", S, rm, Sp, np: pw.length, pw, rl, qp, Nc };
+  }
+  { // Teixeira (1996)
+    const Nc = l => clamp(l.N, 4, 40), nA = Math.max(1, Math.round(4 * G.D)), nB = Math.max(1, Math.round(1 * G.D)), w = win(nA, nB), qp = l => CO.teix[l.s.tx][T.tc] * Nc(l);
+    const SN = atr.reduce((a, l) => a + Nc(l), 0), qa = avg(w.ac.map(qp)), qb = avg(w.ab.map(qp));
+    const Ql = T.tb * SN * G.U, Qp = tr ? 0 : G.Ap * 0.5 * (qa + qb), Qu = Ql + Qp, crv = T.cr && !tr;
+    out.teix = { Ql, Qp, Qu, aut: crv || tr ? Qu / 2 : Ql / 1.5 + Qp / 4, autT: crv || tr ? "Qu/2" : "Ql/1,5 + Qp/4", SN, qa, qb, nA, nB, w, qp, Nc };
+  }
+  { // Alonso (1996)
+    const Nc = l => Math.min(l.N, 40), nA = Math.max(1, Math.round(8 * G.D)), nB = Math.max(1, Math.round(3 * G.D)), w = win(nA, nB), qp = l => l.s.bA * Nc(l);
+    const SN = atr.reduce((a, l) => a + Nc(l), 0), qa = avg(w.ac.map(qp)), qb = avg(w.ab.map(qp));
+    const Ql = T.aA * 0.662 * SN * G.U, Qp = tr ? 0 : 0.5 * (qa + qb) * G.Ap, Qu = Ql + Qp;
+    out.alo = { Ql, Qp, Qu, aut: tr ? Qu / 2 : Math.min(Qu / 2, Ql / 0.8), autT: tr ? "Qu/2" : "mín(Qu/2; Ql/0,8)", SN, qa, qb, nA, nB, w, qp, Nc };
+  }
+  METODOS.forEach(([k]) => { out[k].nor = out[k].Qu / FS; });
+  const inc = METODOS.filter(([k]) => !excl[k]).map(([k]) => out[k]);
+  const med = {}; ["Ql", "Qp", "Qu", "aut", "nor"].forEach(q => med[q] = avg(inc.map(o => o[q])));
+  return { G, T, tr, lay, t, Lp, out, med, FS, ninc: inc.length };
+}
+
+/* ---------- interface: dados ---------- */
+const FIELDS = ["obra", "cidade", "edificacao", "sondagem", "D_mm", "CS", "NA"];
+function fillForm() {
+  $("tipo").innerHTML = CO.tipos.map(t => `<option value="${t.id}">${esc(t.n)}</option>`).join("");
+  FIELDS.forEach(k => { $(k).value = st[k] == null ? "" : st[k]; });
+  $("tipo").value = st.tipo; $("secao").value = st.secao || "circular"; $("carga").value = st.carga || "compressao";
+}
+function optsL() {
+  const n = st.spt.length, max = Math.max(2, n - 1);
+  st.L = clamp(Math.round(+st.L || 2), 2, max);
+  $("L").innerHTML = Array.from({ length: max - 1 }, (_, i) => i + 2).map(z => `<option value="${z}"${z === st.L ? " selected" : ""}>${z}</option>`).join("");
+}
+const soloOpts = sel => CO.solos.map(s => `<option value="${s.c}"${s.c === sel ? " selected" : ""}>${esc(s.n)}</option>`).join("");
+const COR = { areia: "#e3c27a", silte: "#b9c08f", argila: "#c9996b" };
+function renderSpt() {
+  $("sptBody").innerHTML = st.spt.map((r, i) => `<tr class="${i + 1 === +st.L ? "ponta" : ""}"><td class="num">${i + 1}</td><td><input type="number" min="0" step="1" data-i="${i}" data-k="N" value="${esc(r.N)}" aria-label="N SPT do metro ${i + 1}"></td><td><select data-i="${i}" data-k="solo" aria-label="Solo do metro ${i + 1}">${soloOpts(r.solo)}</select></td><td><i style="display:inline-block;width:12px;height:18px;border-radius:2px;background:${COR[solo(r.solo).g]}"></i></td></tr>`).join("");
+}
+function lerForm() {
+  st.obra = $("obra").value; st.cidade = $("cidade").value; st.edificacao = $("edificacao").value; st.sondagem = $("sondagem").value;
+  st.tipo = +$("tipo").value; st.secao = $("secao").value; st.carga = $("carga").value;
+  st.D_mm = +$("D_mm").value || 0; st.CS = +$("CS").value || 2; st.L = +$("L").value || st.L;
+  const na = $("NA").value.trim(); st.NA = na === "" ? null : +na.replace(",", ".");
+}
+
+/* ---------- interface: resultados ---------- */
+let last = null;
+function update() {
+  optsL(); renderSpt();
+  $("lblD").textContent = st.secao === "quadrada" ? "Lado b" : "Diâmetro D";
+  const w = [];
+  if (!(st.D_mm >= 100)) w.push("Informe a dimensão da estaca (mínimo 100 mm).");
+  if (st.spt.length < 3) w.push("A sondagem precisa de pelo menos 3 metros.");
+  if (w.length) { $("warns").innerHTML = w.map(x => `<p>${esc(x)}</p>`).join(""); save(); return; }
+  const R = calc(st, +st.L); last = R;
+  const curvas = []; for (let Lp = 2; Lp <= st.spt.length - 1; Lp++) { const r = calc(st, Lp); curvas.push({ L: Lp, m: r.med.nor, o: Object.fromEntries(METODOS.map(([k]) => [k, r.out[k].nor])) }); }
+  R.curvas = curvas;
+  const avisos = [];
+  if (R.t + 1 >= st.spt.length) avisos.push("Não há sondagem abaixo da ponta: os métodos que usam camadas abaixo da ponta ficam incompletos.");
+  if (R.tr) avisos.push("Tração: só o atrito lateral resiste (Qp = 0); em P.P.C. Velloso o atrito é reduzido por λ = 0,7.");
+  if (st.NA != null && isFinite(st.NA)) avisos.push(`Nível d'água a ${f(st.NA)} m: os métodos semiempíricos já consideram o efeito da água pelo N_SPT; registrado só no memorial.`);
+  const tip = R.lay[R.t]; if (tip && tip.N < 5) avisos.push(`Ponta em solo com N = ${tip.N} (fraco). Avalie um comprimento maior.`);
+  $("warns").innerHTML = avisos.map(x => `<p>${esc(x)}</p>`).join("");
+  const m = R.med;
+  $("cards").innerHTML = [
+    ["Qadm (norma) – média", f(m.nor) + " tf", `Qu/FSg, FSg = ${f(R.FS, 1)}`, "info"],
+    ["Menor Qadm (norma)", f(Math.min(...METODOS.filter(([k]) => !excl[k]).map(([k]) => R.out[k].nor))) + " tf", "entre os métodos na média", "warn"],
+    ["Qu médio", f(m.Qu) + " tf", `Ql ${f(m.Ql)} + Qp ${f(m.Qp)}`, "info"],
+    ["Estaca", `${R.T.n}`, `${R.G.q ? "b" : "Ø"} ${f(st.D_mm, 0)} mm · L = ${st.L} m · ${R.tr ? "tração" : "compressão"}`, "info"]
+  ].map(([t, v, s, c]) => `<div class="card ${c}"><span class="t">${t}</span><span class="v" style="${v.length > 14 ? "font-size:17px" : ""}">${esc(v)}</span><span class="t">${esc(s)}</span></div>`).join("");
+  $("tabRes").innerHTML = `<thead><tr><th>Na média</th><th>Método</th><th>Ql (tf)</th><th>Qp (tf)</th><th>Qu (tf)</th><th>Qadm autor (tf)</th><th class="sel">Qadm norma (tf)</th></tr></thead><tbody>` +
+    METODOS.map(([k, nm]) => { const o = R.out[k]; return `<tr class="${excl[k] ? "off" : ""}"><td class="chk"><input type="checkbox" data-m="${k}"${excl[k] ? "" : " checked"} aria-label="Incluir ${nm} na média"></td><td class="l">${nm}</td><td class="num">${f(o.Ql)}</td><td class="num">${f(o.Qp)}</td><td class="num">${f(o.Qu)}</td><td class="num" title="${o.autT}">${f(o.aut)}</td><td class="num sel">${f(o.nor)}</td></tr>`; }).join("") +
+    `<tr class="media"><td></td><td class="l">Média (${R.ninc} métodos)</td><td class="num">${f(m.Ql)}</td><td class="num">${f(m.Qp)}</td><td class="num">${f(m.Qu)}</td><td class="num">${f(m.aut)}</td><td class="num sel">${f(m.nor)}</td></tr></tbody>`;
+  $("graf").innerHTML = `<figure class="larga"><figcaption>Ruptura por método: atrito + ponta, e Qadm da norma</figcaption>${svgBarras(R)}<div class="leg"><span><i style="background:#2b6cb0"></i>atrito lateral Ql</span><span><i style="background:#d9902f"></i>ponta Qp</span><span><i style="background:#2e7d50"></i>Qadm (FSg da norma)</span></div></figure>` +
+    `<figure class="larga"><figcaption>Perfil de sondagem e estaca</figcaption><div style="max-width:380px;margin:0 auto">${svgPerfil(R)}</div></figure>` +
+    `<figure class="larga"><figcaption>Qadm (norma) × comprimento</figcaption>${svgCurvas(R)}<div class="leg">${METODOS.map(([k, nm], i) => `<span><i style="background:${CURC[i]}"></i>${nm}</span>`).join("")}<span><i style="background:#1f2b37"></i>média</span></div></figure>`;
+  renderMemo(R); save();
+}
+
+/* ---------- gráficos ---------- */
+const CURC = ["#7a6ab0", "#2b6cb0", "#2e7d50", "#b5651d", "#b83a2e"];
+function svgBarras(R) {
+  const W = 560, rows = METODOS.map(([k, nm]) => [nm, R.out[k]]).concat([["Média", R.med]]), H = 24 + rows.length * 30 + 26, x0 = 120, x1 = W - 50;
+  const mx = Math.max(...rows.map(r => r[1].Qu)) * 1.1 || 1, step = [5, 10, 20, 25, 50, 100, 200, 500].find(s => mx / s <= 6) || 1000, X = v => x0 + (x1 - x0) * v / (Math.ceil(mx / step) * step);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Capacidade de carga por método" font-family="Arial" font-size="11">`;
+  for (let v = 0; v <= Math.ceil(mx / step) * step + 1e-9; v += step) s += `<line x1="${X(v)}" x2="${X(v)}" y1="14" y2="${H - 24}" stroke="#d9e0e7"/><text x="${X(v)}" y="${H - 10}" text-anchor="middle" fill="#5e6b78">${v}</text>`;
+  rows.forEach(([nm, o], i) => {
+    const y = 18 + i * 30, b = i === rows.length - 1 ? 1 : 0.85;
+    s += `<text x="${x0 - 6}" y="${y + 12}" text-anchor="end" fill="#1f2b37"${i === rows.length - 1 ? ' font-weight="700"' : ""}>${nm}</text>`;
+    s += `<rect x="${x0}" y="${y}" width="${X(o.Ql) - x0}" height="17" fill="#2b6cb0" opacity="${b}"/><rect x="${X(o.Ql)}" y="${y}" width="${X(o.Ql + o.Qp) - X(o.Ql)}" height="17" fill="#d9902f" opacity="${b}"/>`;
+    s += `<line x1="${X(o.nor)}" x2="${X(o.nor)}" y1="${y - 3}" y2="${y + 20}" stroke="#2e7d50" stroke-width="3"/><text x="${X(o.Qu) + 5}" y="${y + 13}" fill="#1f2b37">${f(o.Qu, 1)}</text>`;
+  });
+  return s + `<text x="${(x0 + x1) / 2}" y="${H}" text-anchor="middle" fill="#5e6b78">tf</text></svg>`;
+}
+function svgPerfil(R) {
+  const n = R.lay.length, hz = Math.min(24, Math.max(12, 360 / n)), W = 300, H = 34 + n * hz + 10, x0 = 70, x1 = 260, mxN = Math.max(40, ...R.lay.map(l => l.N)), X = N => x0 + (x1 - x0) * Math.min(N, mxN) / mxN, Y = z => 26 + z * hz;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Perfil de sondagem com a estaca" font-family="Arial" font-size="10">`;
+  for (let v = 0; v <= mxN; v += 10) s += `<line x1="${X(v)}" x2="${X(v)}" y1="${Y(0)}" y2="${Y(n)}" stroke="#d9e0e7"/><text x="${X(v)}" y="20" text-anchor="middle" fill="#5e6b78">${v}</text>`;
+  s += `<text x="${x1 + 4}" y="10" text-anchor="end" fill="#5e6b78">N_SPT</text>`;
+  R.lay.forEach(l => { s += `<rect x="${x0}" y="${Y(l.z - 1) + 1}" width="${Math.max(1, X(l.N) - x0)}" height="${hz - 2}" fill="${COR[l.s.g]}"/><text x="${X(l.N) + 3}" y="${Y(l.z) - hz / 2 + 4}" fill="#1f2b37">${l.N}</text><text x="${x0 - 6}" y="${Y(l.z) - hz / 2 + 4}" text-anchor="end" fill="#5e6b78">${l.z}</text>`; });
+  s += `<rect x="24" y="${Y(0)}" width="14" height="${Y(R.Lp) - Y(0)}" fill="#2b6cb0" opacity=".85"/><line x1="18" x2="${x1}" y1="${Y(R.Lp)}" y2="${Y(R.Lp)}" stroke="#2b6cb0" stroke-dasharray="4 3"/><text x="${x1}" y="${Y(R.Lp) - 4}" text-anchor="end" fill="#2b6cb0">ponta L = ${R.Lp} m</text>`;
+  if (st.NA != null && isFinite(st.NA)) s += `<line x1="18" x2="${x1}" y1="${Y(st.NA)}" y2="${Y(st.NA)}" stroke="#2f7fc4" stroke-width="1.5"/><text x="20" y="${Y(st.NA) - 3}" fill="#2f7fc4">NA ${f(st.NA)} m</text>`;
+  const gs = [...new Set(R.lay.map(l => l.s.g))];
+  gs.forEach((g, i) => { s += `<rect x="${x0 + i * 70}" y="${H - 9}" width="9" height="9" fill="${COR[g]}"/><text x="${x0 + 12 + i * 70}" y="${H - 1}" fill="#5e6b78">${g}</text>`; });
+  return s + `<text x="10" y="${Y(n / 2)}" transform="rotate(-90 10 ${Y(n / 2)})" text-anchor="middle" fill="#5e6b78">cota (m)</text></svg>`;
+}
+function svgCurvas(R) {
+  const C = R.curvas, W = 520, H = 300, x0 = 46, x1 = 505, y0 = 266, y1 = 14;
+  if (C.length < 2) return "";
+  const mx = Math.max(...C.flatMap(c => Object.values(c.o))) * 1.05 || 1, step = [5, 10, 20, 25, 50, 100, 200].find(s => mx / s <= 6) || 500, top = Math.ceil(mx / step) * step;
+  const X = L => x0 + (x1 - x0) * (L - C[0].L) / (C[C.length - 1].L - C[0].L), Y = v => y0 - (y0 - y1) * v / top;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Carga admissível pela norma em função do comprimento" font-family="Arial" font-size="10">`;
+  for (let v = 0; v <= top + 1e-9; v += step) s += `<line x1="${x0}" x2="${x1}" y1="${Y(v)}" y2="${Y(v)}" stroke="#d9e0e7"/><text x="${x0 - 5}" y="${Y(v) + 3}" text-anchor="end" fill="#5e6b78">${v}</text>`;
+  const sk = Math.ceil(C.length / 8);
+  C.forEach((c, i) => { if (i % sk === 0 || i === C.length - 1) s += `<text x="${X(c.L)}" y="${y0 + 14}" text-anchor="middle" fill="#5e6b78">${c.L}</text>`; });
+  METODOS.forEach(([k], i) => { s += `<polyline fill="none" stroke="${CURC[i]}" stroke-width="1.6"${excl[k] ? ' stroke-dasharray="2 3" opacity=".6"' : ""} points="${C.map(c => `${X(c.L).toFixed(1)},${Y(c.o[k]).toFixed(1)}`).join(" ")}"/>`; });
+  s += `<polyline fill="none" stroke="#1f2b37" stroke-width="2.4" stroke-dasharray="6 3" points="${C.map(c => `${X(c.L).toFixed(1)},${Y(c.m).toFixed(1)}`).join(" ")}"/>`;
+  s += `<line x1="${X(R.Lp)}" x2="${X(R.Lp)}" y1="${y1}" y2="${y0}" stroke="#2b6cb0" stroke-dasharray="2 3"/><text x="${X(R.Lp) + 4}" y="${y1 + 10}" fill="#2b6cb0">L = ${R.Lp} m</text>`;
+  return s + `<text x="${(x0 + x1) / 2}" y="${H - 4}" text-anchor="middle" fill="#5e6b78">comprimento L (m)</text><text x="11" y="${(y0 + y1) / 2}" transform="rotate(-90 11 ${(y0 + y1) / 2})" text-anchor="middle" fill="#5e6b78">Qadm (tf)</text></svg>`;
+}
+
+/* ---------- memorial (blocos usados na tela e no Word) ---------- */
+function memoBlocks(R) {
+  const B = [], G = R.G, T = R.T, o = R.out, Ld = R.lay, tr = R.tr;
+  const cab = [["Projeto", st.obra], ["Local", st.cidade], ["Edificação/pilar", st.edificacao], ["Sondagem", st.sondagem], ["Data", new Date().toLocaleDateString("pt-BR")], ["Unidades", "tf, m"]];
+  B.push({ t: "titulo", v: "Memorial de cálculo — capacidade de carga de estaca (SPT)" }, { t: "cab", v: cab });
+  B.push({ t: "h", v: "1. Dados e hipóteses" });
+  B.push({ t: "p", v: `Estaca ${T.n.toLowerCase()}, seção ${G.q ? "quadrada, lado" : "circular, Ø"} ${f(st.D_mm, 0)} mm, comprimento L = ${R.Lp} m, solicitação de ${tr ? "tração" : "compressão"}.` });
+  B.push({ t: "eq", v: [`U = ${G.q ? "4·b" : "π·D"} = ${f(G.U, 3)} m    Ap = ${f(G.Ap, 4)} m²    D considerado = ${f(G.D, 3)} m`] });
+  B.push({ t: "p", v: `Sondagem em camadas de 1 m; a cota indica o fim de cada metro. O metro da cota L é o da ponta. Fator de segurança global da norma: FSg = ${f(R.FS, 1)} (NBR 6122:2022, item 6.2.1.2.1, método semiempírico).` });
+  B.push({ t: "p", v: `Nível d'água: ${st.NA != null && isFinite(st.NA) ? f(st.NA) + " m" : "não encontrado na sondagem (ou não informado)"}.` });
+  const sel = i => i === R.t;
+  B.push({ t: "tab", head: ["Cota (m)", "N_SPT", "Tipo de solo"], rows: Ld.map(l => [l.z, l.N, l.s.n]), sel, al: ["r", "r", "l"] });
+  const ATR = i => i < R.t, inW = (w, i, part) => w[part].some(l => l.z === i + 1);
+  // 2 PPC
+  { const m = o.ppc;
+    B.push({ t: "h", v: "2. Método P.P.C. Velloso" });
+    B.push({ t: "p", v: `N limitado a 40. Coeficientes a′ (atrito) e a (ponta) por solo, com expoentes iguais a 1. Fator de execução X = ${f(T.X)} (atrito e ponta). λ = ${f(m.lam)} no atrito e ${f(m.lamp)} na ponta (${tr ? "tração" : "compressão"}). Ponta: ${m.nA} m acima (8D) e ${m.nB} m a partir da cota da ponta (3,5D).` });
+    B.push({ t: "tab", head: ["Cota", "N", "Solo", "N cons.", "a′·N (tf/m²)", "a·N acima (tf/m²)", "a·N abaixo (tf/m²)"], sel, al: ["r", "r", "l", "r", "r", "r", "r"],
+      rows: Ld.map((l, i) => [l.z, l.N, l.s.n, Math.min(l.N, 40), ATR(i) ? f(m.fl(l)) : "", inW(m.w, i, "ac") ? f(m.qp(l)) : "", inW(m.w, i, "ab") ? f(m.qp(l)) : ""]) });
+    B.push({ t: "eq", v: [`Ql = X·λ·U·Σ(a′·N) = ${f(T.X)}·${f(m.lam)}·${f(G.U, 3)}·${f(m.S)} = **${f(m.Ql)} tf**`,
+      `β = 1,016 − 0,016·(D/3,6 cm) = 1,016 − 0,016·(${f(G.D * 100, 1)}/3,6) = ${f(m.beta, 3)}`,
+      `q̄p acima = ${f(m.qa)} tf/m²    q̄p abaixo = ${f(m.qb)} tf/m²`,
+      `Qp = X·λp·β·Ap·½(q̄p acima + q̄p abaixo) = ${f(T.X)}·${f(m.lamp)}·${f(m.beta, 3)}·${f(G.Ap, 4)}·½·(${f(m.qa)} + ${f(m.qb)}) = **${f(m.Qp)} tf**`,
+      `Qu = ${f(m.Ql)} + ${f(m.Qp)} = **${f(m.Qu)} tf**    Qadm (autor) = ${m.autT} = **${f(m.aut)} tf**    Qadm (norma) = Qu/${f(R.FS, 1)} = **${f(m.nor)} tf**`] }); }
+  // 3 Aoki
+  { const m = o.aoki;
+    B.push({ t: "h", v: "3. Método Aoki-Velloso" });
+    B.push({ t: "p", v: `N limitado a 40. K e α por tipo de solo; F1 = ${f(T.F1, 3)} e F2 = ${f(T.F2, 3)} para ${T.n.toLowerCase()}. Atrito somado até o metro anterior ao da ponta; ponta com o N do metro da ponta.` });
+    B.push({ t: "tab", head: ["Cota", "N", "Solo", "N cons.", "α·K (tf/m²)", "α·K·N (tf/m²)", "K·N ponta (tf/m²)"], sel, al: ["r", "r", "l", "r", "r", "r", "r"],
+      rows: Ld.map((l, i) => [l.z, l.N, l.s.n, m.Nc(l), f(m.ak(l), 3), ATR(i) ? f(m.ak(l) * m.Nc(l)) : "", i === R.t ? f(l.s.K * m.Nc(l)) : ""]) });
+    B.push({ t: "eq", v: [`Ql = (U/F2)·Σ(α·K·N·Δl) = (${f(G.U, 3)}/${f(T.F2, 3)})·${f(m.S)}·1 m = **${f(m.Ql)} tf**`,
+      `Qp = (Ap/F1)·K·N = (${f(G.Ap, 4)}/${f(T.F1, 3)})·${f(m.KN)}${tr ? " → 0 (tração)" : ""} = **${f(m.Qp)} tf**`,
+      `Qu = **${f(m.Qu)} tf**    Qadm (autor) = ${m.autT} = **${f(m.aut)} tf**    Qadm (norma) = **${f(m.nor)} tf**`] }); }
+  // 4 Décourt
+  { const m = o.dec;
+    B.push({ t: "h", v: "4. Método Décourt-Quaresma" });
+    B.push({ t: "p", v: `N limitado entre 3 e 50. rℓ = β·(N/3 + 1) nas ${R.t} camadas acima da ponta; atrito médio aplicado em todo o comprimento L. Ponta com a média de α·C·N no metro da ponta, no anterior e no seguinte. β (atrito) = ${T.dB.map(x => f(x)).join(" / ")} e α (ponta) = ${T.dA.map(x => f(x)).join(" / ")} para argila / intermediário / areia (Décourt, 1996).` });
+    B.push({ t: "tab", head: ["Cota", "N", "Solo", "N cons.", "β·(N/3+1) (tf/m²)", "α·C·N (tf/m²)"], sel, al: ["r", "r", "l", "r", "r", "r"],
+      rows: Ld.map((l, i) => [l.z, l.N, l.s.n, m.Nc(l), ATR(i) ? f(m.rl(l)) : "", m.pw.includes(l) ? f(m.qp(l)) : ""]) });
+    B.push({ t: "eq", v: [`r̄ℓ = Σ/${R.t} = ${f(m.S)}/${R.t} = ${f(m.rm)} tf/m²`, `Ql = r̄ℓ·L·U = ${f(m.rm)}·${R.Lp}·${f(G.U, 3)} = **${f(m.Ql)} tf**`,
+      `Qp = (Σα·C·N/${m.np})·Ap = (${f(m.Sp)}/${m.np})·${f(G.Ap, 4)}${tr ? " → 0 (tração)" : ""} = **${f(m.Qp)} tf**`,
+      `Qu = **${f(m.Qu)} tf**    Qadm (autor) = ${m.autT} = **${f(m.aut)} tf**    Qadm (norma) = **${f(m.nor)} tf**`] }); }
+  // 5 Teixeira
+  { const m = o.teix;
+    B.push({ t: "h", v: "5. Método Teixeira" });
+    B.push({ t: "p", v: `N entre 4 e 40. β = ${f(T.tb)} tf/m² para o tipo de estaca; α da coluna "${TEIX_COL[T.tc]}". Ponta: média de α·N em ${m.nA} m acima da ponta (4D) e em ${m.nB} m a partir da cota da ponta (1D), no mínimo uma camada de cada lado.` });
+    B.push({ t: "tab", head: ["Cota", "N", "Solo", "N cons.", "N no atrito", "α·N acima (tf/m²)", "α·N abaixo (tf/m²)"], sel, al: ["r", "r", "l", "r", "r", "r", "r"],
+      rows: Ld.map((l, i) => [l.z, l.N, l.s.n, m.Nc(l), ATR(i) ? f(m.Nc(l)) : "", inW(m.w, i, "ac") ? f(m.qp(l)) : "", inW(m.w, i, "ab") ? f(m.qp(l)) : ""]) });
+    B.push({ t: "eq", v: [`Ql = β·ΣN·U = ${f(T.tb)}·${f(m.SN, 0)}·${f(G.U, 3)} = **${f(m.Ql)} tf**`,
+      `Qp = Ap·½·(média acima + média abaixo) = ${f(G.Ap, 4)}·½·(${f(m.qa)} + ${f(m.qb)})${tr ? " → 0 (tração)" : ""} = **${f(m.Qp)} tf**`,
+      `Qu = **${f(m.Qu)} tf**    Qadm (autor) = ${m.autT} = **${f(m.aut)} tf**    Qadm (norma) = **${f(m.nor)} tf**`] }); }
+  // 6 Alonso
+  { const m = o.alo;
+    B.push({ t: "h", v: "6. Método Alonso" });
+    B.push({ t: "p", v: `N limitado a 40. Atrito rℓ = α·0,662·N com α = ${f(T.aA)}. Ponta: média de β·N em ${m.nA} m acima (8D) e ${m.nB} m a partir da cota da ponta (3D); β = 20 / 15 / 10 tf/m² para areias / siltes / argilas.` });
+    B.push({ t: "tab", head: ["Cota", "N", "Solo", "N cons.", "N no atrito", "β·N acima (tf/m²)", "β·N abaixo (tf/m²)"], sel, al: ["r", "r", "l", "r", "r", "r", "r"],
+      rows: Ld.map((l, i) => [l.z, l.N, l.s.n, m.Nc(l), ATR(i) ? f(m.Nc(l)) : "", inW(m.w, i, "ac") ? f(m.qp(l)) : "", inW(m.w, i, "ab") ? f(m.qp(l)) : ""]) });
+    B.push({ t: "eq", v: [`Ql = α·0,662·ΣN·U = ${f(T.aA)}·0,662·${f(m.SN, 0)}·${f(G.U, 3)} = **${f(m.Ql)} tf**`,
+      `Qp = ½·(${f(m.qa)} + ${f(m.qb)})·${f(G.Ap, 4)}${tr ? " → 0 (tração)" : ""} = **${f(m.Qp)} tf**`,
+      `Qu = **${f(m.Qu)} tf**    Qadm (autor) = ${m.autT} = **${f(m.aut)} tf**    Qadm (norma) = **${f(m.nor)} tf**`] }); }
+  // 7 resumo
+  B.push({ t: "h", v: "7. Resumo" });
+  B.push({ t: "tab", head: ["Método", "Ql (tf)", "Qp (tf)", "Qu (tf)", "Qadm autor (tf)", `Qadm norma, FSg ${f(R.FS, 1)} (tf)`], al: ["l", "r", "r", "r", "r", "r"],
+    rows: METODOS.map(([k, nm]) => [nm + (excl[k] ? " (fora da média)" : ""), f(o[k].Ql), f(o[k].Qp), f(o[k].Qu), f(o[k].aut), "**" + f(o[k].nor) + "**"]).concat([[`**Média dos processos (${R.ninc})**`, f(R.med.Ql), f(R.med.Qp), f(R.med.Qu), f(R.med.aut), "**" + f(R.med.nor) + "**"]]) });
+  B.push({ t: "h", v: "8. Gráficos" });
+  B.push({ t: "fig", v: svgBarras(R), cap: "Ruptura por método: atrito (azul) + ponta (laranja); traço verde = Qadm da norma.", w: 1 });
+  B.push({ t: "fig", v: svgPerfil(R), cap: "Perfil de sondagem e estaca.", w: 0.5 });
+  B.push({ t: "fig", v: svgCurvas(R), cap: "Qadm (norma) × comprimento: " + METODOS.map(([, nm], i) => `${nm} (${["roxo", "azul", "verde", "marrom", "vermelho"][i]})`).join(", ") + "; média tracejada.", w: 0.9 });
+  B.push({ t: "p", v: "Referências: NBR 6122:2022 (item 6.2.1.2.1); Aoki e Velloso (1975); Décourt e Quaresma (1978) e Décourt (1996); Teixeira (1996); P.P.C. Velloso (1981); Alonso (1996). Coeficientes conforme a aba Coeficientes do aplicativo Estacas " + VERSAO + "." });
+  return B;
+}
+const bold = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/_SPT/g, "<sub>SPT</sub>");
+function renderMemo(R) {
+  $("memo").innerHTML = memoBlocks(R).map(b => {
+    if (b.t === "titulo") return `<h2>${esc(b.v)}</h2>`;
+    if (b.t === "cab") return `<div class="cab">${b.v.map(([k, v]) => `<div><b>${k}:</b> ${esc(v || "")}</div>`).join("")}</div>`;
+    if (b.t === "h") return `<h3>${esc(b.v)}</h3>`;
+    if (b.t === "p") return `<p>${bold(b.v)}</p>`;
+    if (b.t === "eq") return `<div class="eq">${b.v.map(bold).join("\n")}</div>`;
+    if (b.t === "tab") return `<div class="tw"><table><thead><tr>${b.head.map((h, j) => `<th style="text-align:${b.al[j] === "l" ? "left" : "center"}">${bold(h)}</th>`).join("")}</tr></thead><tbody>${b.rows.map((r, i) => `<tr class="${b.sel && b.sel(i) ? "sel" : ""}">${r.map((c, j) => `<td style="text-align:${b.al[j] === "l" ? "left" : "right"}">${bold(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    if (b.t === "fig") return `<figure style="margin:8px auto;max-width:${Math.round(b.w * 100)}%">${b.v}<figcaption style="font-size:11px;color:var(--muted);text-align:center">${esc(b.cap)}</figcaption></figure>`;
+    return "";
+  }).join("");
+}
+
+/* ---------- Word ---------- */
+function xesc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function svgToPng(svg, W, H, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement('canvas'); c.width = Math.round(W * scale); c.height = Math.round(H * scale); const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); c.toBlob(b => b ? b.arrayBuffer().then(a => resolve(new Uint8Array(a))) : reject(new Error('png')), 'image/png'); };
+    img.onerror = () => reject(new Error('svg'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  const enc = new TextEncoder(), chunks = [], cd = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  files.forEach(f => {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    chunks.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    cd.push(new Uint8Array(ch.buffer), name); off += 30 + name.length + data.length;
+  });
+  const cdSize = cd.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  const all = chunks.concat(cd, [new Uint8Array(end.buffer)]), out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
+  let q = 0; all.forEach(b => { out.set(b, q); q += b.length; }); return out;
+}
+const wPar = (runs, o = {}) => `<w:p><w:pPr>${o.keep ? '<w:keepNext/>' : ''}<w:spacing w:before="${o.before || 0}" w:after="${o.after || 0}"/><w:jc w:val="${o.al || 'left'}"/></w:pPr>${runs}</w:p>`;
+function wCell(w, content, o = {}) {
+  const bd = o.bottom ? `<w:tcBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="${o.bottom}"/></w:tcBorders>` : '';
+  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.span ? `<w:gridSpan w:val="${o.span}"/>` : ''}${bd}${o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : ''}<w:vAlign w:val="center"/></w:tcPr>${content}</w:tc>`;
+}
+function wTbl(widths, rows) {
+  return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="20" w:type="dxa"/><w:left w:w="50" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/><w:right w:w="50" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
+}
+const wRow = cells => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.join('')}</w:tr>`;
+
+
+async function buildDocx(R) {
+  const imgs = [], W0 = 10206;
+  const run = (t, o = {}) => String(t).split(/(\*\*.+?\*\*|_SPT)/).filter(x => x).map(p => { const b = p.startsWith("**"), sub = p === "_SPT", tx = b ? p.slice(2, -2) : sub ? "SPT" : p;
+    return `<w:r><w:rPr>${b || o.b ? "<w:b/>" : ""}${o.i ? "<w:i/>" : ""}${o.color ? `<w:color w:val="${o.color}"/>` : ""}${o.mono ? '<w:rFonts w:ascii="Courier New" w:hAnsi="Courier New"/>' : ""}<w:sz w:val="${o.sz || 20}"/><w:szCs w:val="${o.sz || 20}"/>${sub ? '<w:vertAlign w:val="subscript"/>' : ""}</w:rPr><w:t xml:space="preserve">${xesc(tx)}</w:t></w:r>`; }).join("");
+  const imgRun = (idx, cx) => { const im = imgs[idx - 1], cy = Math.round(cx * im.H / im.W); return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idx}" name="Figura ${idx}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idx}" name="fig${idx}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`; };
+  const body = [];
+  for (const b of memoBlocks(R)) {
+    if (b.t === "titulo") body.push(wPar(run(b.v, { b: true, sz: 24 }), { after: 120 }));
+    else if (b.t === "cab") { const cells = b.v.map(([k, v]) => wCell(3402, wPar(run(`**${k}:** ${v || ""}`, { sz: 18 })), {})); body.push(wTbl([3402, 3402, 3402], [wRow(cells.slice(0, 3)), wRow(cells.slice(3, 6))]) + wPar("", { after: 120 })); }
+    else if (b.t === "h") body.push(wPar(run(b.v, { b: true, sz: 22, color: "2b6cb0" }), { before: 220, after: 80, keep: true }));
+    else if (b.t === "p") body.push(wPar(run(b.v, { sz: 20 }), { after: 80 }));
+    else if (b.t === "eq") b.v.forEach((l, i) => body.push(wPar(run(l, { sz: 18 }), { after: i === b.v.length - 1 ? 120 : 20 })));
+    else if (b.t === "tab") {
+      const nc = b.head.length, wl = b.al.map(a => a === "l" ? 2.2 : 1), sw = wl.reduce((a, x) => a + x, 0), ws = wl.map(x => Math.floor(W0 * x / sw));
+      const cell = (j, c, hd, sel) => wCell(ws[j], wPar(run(c, { sz: 16, b: hd }), { al: hd ? "center" : b.al[j] === "l" ? "left" : "right" }), { bottom: "d9e0e7", fill: hd ? "eef2f5" : sel ? "e7f0f9" : undefined });
+      body.push(wTbl(ws, [wRow(b.head.map((h, j) => cell(j, h, true)))].concat(b.rows.map((r, i) => wRow(r.map((c, j) => cell(j, c, false, b.sel && b.sel(i))))))) + wPar("", { after: 100 }));
+    } else if (b.t === "fig") {
+      const vb = b.v.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), W = +vb[1], H = +vb[2];
+      const svg = b.v.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ').replace(/(<svg[^>]*>)/, '$1<rect width="100%" height="100%" fill="#ffffff"/>');
+      imgs.push({ png: await svgToPng(svg, W, H, 2), W, H });
+      body.push(wPar(imgRun(imgs.length, Math.round(W0 * 635 * b.w)), { al: "center", keep: true }) + wPar(run(`Figura ${imgs.length} · ${b.cap}`, { sz: 18, i: true, color: "5e6b78" }), { al: "center", after: 160 }));
+    }
+  }
+  const sect = '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850" w:header="400" w:footer="400" w:gutter="0"/></w:sectPr>';
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${body.join("")}${sect}</w:body></w:document>`;
+  const NS = "http://schemas.openxmlformats.org/";
+  const rels = imgs.map((_, i) => `<Relationship Id="rIdImg${i + 1}" Type="${NS}officeDocument/2006/relationships/image" Target="media/fig${i + 1}.png"/>`).join("");
+  return zipStore([
+    { name: "[Content_Types].xml", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>` },
+    { name: "_rels/.rels", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${NS}officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>` },
+    { name: "word/_rels/document.xml.rels", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rIdSt" Type="${NS}officeDocument/2006/relationships/styles" Target="styles.xml"/>${rels}</Relationships>` },
+    { name: "word/styles.xml", data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>` },
+    { name: "word/document.xml", data: doc }
+  ].concat(imgs.map((im, i) => ({ name: `word/media/fig${i + 1}.png`, data: im.png }))));
+}
+
+/* ---------- salvar arquivos ---------- */
+const naoBaixaDireto = () => !/(^|\.)github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+async function saveFile(nome, data, mime) {
+  let dl = null; try { dl = window.claude && await window.claude.use("downloads"); } catch (e) { }
+  if (dl) { await dl.save({ filename: nome, data }); return true; }
+  if (naoBaixaDireto()) return false;
+  const url = URL.createObjectURL(new Blob([data], { type: mime })), a = document.createElement("a");
+  a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); return true;
+}
+const SITE = "engrafaeljralves.github.io/Calculo-Estrutural";
+async function gerarWord() {
+  const m = $("memoStatus"), b = $("btnWord"); if (!last) return;
+  b.disabled = true; m.className = "status"; m.textContent = "Gerando o memorial…";
+  try {
+    const bytes = await buildDocx(last), nome = `memorial-estaca-${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}-${(st.sondagem || "SP").replace(/[^\w.-]+/g, "_")}-L${last.Lp}.docx`;
+    const ok = await saveFile(nome, bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    m.className = ok ? "status ok" : "status err"; m.textContent = ok ? `Memorial salvo: ${nome} — confira a pasta Downloads.` : `Download indisponível nesta visualização. Use "Imprimir / PDF" ou abra o programa pelo site ${SITE}.`;
+  } catch (e) { m.className = "status err"; m.textContent = e && e.code === "declined" ? "Download cancelado." : "Não foi possível gerar o memorial: " + (e && e.message || e); }
+  finally { b.disabled = false; }
+}
+
+/* ---------- modelos ---------- */
+const sayM = t => { $("modStatus").textContent = t; };
+const modeloObj = () => ({ obra: st.obra, cidade: st.cidade, edificacao: st.edificacao, sondagem: st.sondagem, tipo: st.tipo, D_mm: st.D_mm, L: st.L, Vbase_L: 0, NA: st.NA, CS: st.CS, secao: st.secao, carga: st.carga, spt: st.spt.map(r => ({ N: +r.N, solo: r.solo })) });
+const modeloJSON = () => JSON.stringify(modeloObj(), null, 1);
+function aplicarModelo(txt, origem) {
+  let o; try { o = JSON.parse(String(txt).replace(/^﻿/, "")); } catch (e) { sayM("O conteúdo não é um modelo válido (JSON com erro)."); return false; }
+  if (!o || !Array.isArray(o.spt) || !o.spt.length) { sayM("O arquivo não tem a sondagem (lista spt)."); return false; }
+  const n = Object.assign(clone(EXEMPLO), o);
+  n.spt = o.spt.map(r => ({ N: Math.max(0, +r.N || 0), solo: CO.solos.some(s => s.c === r.solo) ? r.solo : (soloDeTexto(r.solo) || "ARGI") }));
+  n.tipo = CO.tipos.some(t => t.id === +o.tipo) ? +o.tipo : 4; n.NA = o.NA == null || o.NA === "" ? null : +o.NA;
+  st = n; fillForm(); update(); sayM(`Modelo ${st.obra ? `“${st.obra}” ` : ""}aberto${origem ? ` (${origem})` : ""}.`); return true;
+}
+const KEYM = KEY + "-modelos";
+const lerLocais = () => { try { const a = JSON.parse(localStorage.getItem(KEYM) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+function listarLocais(sel) { const a = lerLocais(); $("listaLocal").innerHTML = a.length ? a.map((m, i) => `<option value="${i}">${esc(m.nome)}</option>`).join("") : '<option value="">nenhum modelo salvo</option>'; if (sel != null && a.length) $("listaLocal").value = String(sel); }
+
+/* ---------- sondagem: colar e ler imagem ---------- */
+const norm = x => String(x == null ? "" : x).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+function soloDeTexto(t) {
+  const x = norm(t); if (!x) return null;
+  const byC = CO.solos.find(s => s.c.toLowerCase() === x); if (byC) return byC.c;
+  let best = null; CO.solos.forEach(s => { const nm = norm(s.n); if (x.includes(nm) && (!best || nm.length > norm(best.n).length)) best = s; });
+  if (best) return best.c;
+  if (/areia/.test(x)) return "AREI"; if (/silte/.test(x)) return "SILT"; if (/argila/.test(x)) return "ARGI"; return null;
+}
+function aplicarCola() {
+  const ls = $("txtCola").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean), out = []; let ult = "ARGI";
+  ls.forEach(l => { const p = l.split(/\t|;|\s{2,}/).map(x => x.trim()).filter(Boolean); let N = NaN, s = null;
+    p.forEach(c => { if (!isFinite(N) && /^\d+([.,]\d+)?$/.test(c)) N = Math.round(+c.replace(",", ".")); else if (!s) s = soloDeTexto(c); });
+    if (!isFinite(N)) { const m = l.match(/\d+/); if (m) { N = +m[0]; s = s || soloDeTexto(l.replace(m[0], "")); } }
+    if (isFinite(N)) { ult = s || ult; out.push({ N, solo: ult }); } });
+  if (out.length < 3) { $("sonStatus").className = "status err"; $("sonStatus").textContent = "Não reconheci pelo menos 3 linhas com N e solo."; return; }
+  st.spt = out; update(); $("wCola").hidden = true; $("sonStatus").className = "status ok"; $("sonStatus").textContent = `${out.length} metros aplicados. Confira os tipos de solo na tabela.`;
+}
+let sample = null;
+async function lerImagem(file) {
+  const s = $("sonStatus"); s.className = "status"; s.textContent = "Lendo o laudo… pode levar até um minuto."; $("btnImg").disabled = true;
+  const prompt = `A imagem é um boletim de sondagem à percussão (SPT, NBR 6484). Responda APENAS com um objeto JSON:
+{"furo":"SP-01","nivel_agua_m":1.2,"leituras":[{"prof_m":1.0,"n_spt":2,"tipo":"Argila arenosa"}]}
+Regras: uma leitura por metro, na ordem; n_spt = golpes dos 30 cm finais (se golpes/penetração acima de 30 cm, use os golpes; peso próprio = 0). "tipo" deve ser exatamente um destes: ${CO.solos.map(x => x.n).join(", ")} — o mais próximo da descrição (ignore cores). nivel_agua_m = null se não houver. Não invente leituras ilegíveis.`;
+  try {
+    const d = await sample.json(prompt, { images: [file] }), L = Array.isArray(d && d.leituras) ? d.leituras : [];
+    const rows = L.filter(r => isFinite(+r.n_spt)).map(r => ({ N: Math.round(+r.n_spt), solo: soloDeTexto(r.tipo) || "ARGI" }));
+    if (rows.length < 3) throw { code: "vazio" };
+    st.spt = rows; if (d.furo) st.sondagem = String(d.furo); st.NA = d.nivel_agua_m == null ? null : +d.nivel_agua_m; fillForm(); update();
+    s.className = "status ok"; s.textContent = `Laudo lido: ${rows.length} metros. Confira cada valor com o boletim antes de usar.`;
+  } catch (e) { s.className = "status err"; s.textContent = e && e.code === "not_granted" ? "O uso do Claude não foi permitido nesta página." : e && e.code === "rate_limited" ? "Limite de uso atingido; tente de novo em alguns minutos." : "Não foi possível ler o laudo. Tente uma imagem mais nítida, recortada na tabela."; }
+  finally { $("btnImg").disabled = false; $("fileImg").value = ""; }
+}
+
+/* ---------- aba Coeficientes ---------- */
+function renderCoef() {
+  const num = (path, v, step = "any") => `<input type="number" step="${step}" data-c="${path}" value="${v}">`;
+  $("tabSolos").innerHTML = `<thead><tr><th>Solo</th><th>Cód.</th><th>Grupo (Décourt)</th><th>Aoki K</th><th>Aoki α (%)</th><th>Velloso a (ponta)</th><th>Velloso a′ (atrito)</th><th>Décourt C</th><th>Teixeira: categoria</th><th>Alonso β</th></tr></thead><tbody>` +
+    CO.solos.map((s, i) => `<tr><td class="l">${esc(s.n)}</td><td class="l num">${s.c}</td><td><select data-c="solos.${i}.g">${["argila", "silte", "areia"].map(g => `<option value="${g}"${g === s.g ? " selected" : ""}>${g === "silte" ? "intermediário" : g}</option>`).join("")}</select></td><td>${num(`solos.${i}.K`, s.K)}</td><td>${num(`solos.${i}.al`, s.al)}</td><td>${num(`solos.${i}.a`, s.a)}</td><td>${num(`solos.${i}.ap`, s.ap)}</td><td>${num(`solos.${i}.C`, s.C)}</td><td><select data-c="solos.${i}.tx">${TEIX_CAT.map((c, j) => `<option value="${j}"${j === +s.tx ? " selected" : ""}>${c}</option>`).join("")}</select></td><td>${num(`solos.${i}.bA`, s.bA)}</td></tr>`).join("") + "</tbody>";
+  $("tabTipos").innerHTML = `<thead><tr><th>Estaca</th><th>Aoki F1</th><th>Aoki F2</th><th>Velloso X</th><th>Décourt α arg / int / areia</th><th>Décourt β arg / int / areia</th><th>Teixeira coluna</th><th>Teixeira β</th><th>Alonso α</th></tr></thead><tbody>` +
+    CO.tipos.map((t, i) => `<tr><td class="l">${t.id}. ${esc(t.n)}</td><td>${num(`tipos.${i}.F1`, t.F1)}</td><td>${num(`tipos.${i}.F2`, t.F2)}</td><td>${num(`tipos.${i}.X`, t.X)}</td><td style="white-space:nowrap">${[0, 1, 2].map(j => num(`tipos.${i}.dA.${j}`, t.dA[j])).join("")}</td><td style="white-space:nowrap">${[0, 1, 2].map(j => num(`tipos.${i}.dB.${j}`, t.dB[j])).join("")}</td><td><select data-c="tipos.${i}.tc">${TEIX_COL.map((c, j) => `<option value="${j}"${j === +t.tc ? " selected" : ""}>${c}</option>`).join("")}</select></td><td>${num(`tipos.${i}.tb`, t.tb)}</td><td>${num(`tipos.${i}.aA`, t.aA)}</td></tr>`).join("") + "</tbody>";
+  $("tabTeix").innerHTML = `<thead><tr><th>Solo</th>${TEIX_COL.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` + TEIX_CAT.map((c, i) => `<tr><td class="l">${c}</td>${TEIX_COL.map((_, j) => `<td>${num(`teix.${i}.${j}`, CO.teix[i][j])}</td>`).join("")}</tr>`).join("") + "</tbody>";
+}
+document.addEventListener("change", e => {
+  const p = e.target.dataset && e.target.dataset.c; if (!p) return;
+  const ks = p.split("."), last = ks.pop(); let o = CO; ks.forEach(k => o = o[k]);
+  const v = e.target.tagName === "SELECT" && last === "g" ? e.target.value : +e.target.value;
+  if (typeof v === "number" && !isFinite(v)) return; o[last] = v; saveCoef(); update(); $("coefStatus").textContent = "Coeficiente alterado e guardado neste navegador.";
+});
+
+/* ---------- eventos ---------- */
+document.querySelectorAll("[role=tab]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[role=tab]").forEach(x => x.setAttribute("aria-selected", String(x === b)));
+  document.querySelectorAll(".tabp").forEach(p => p.hidden = p.id !== b.dataset.tab);
+  try { localStorage.setItem(KEY + "-tab", b.dataset.tab); } catch (e) { }
+}));
+["obra", "cidade", "edificacao", "sondagem", "D_mm", "CS", "NA"].forEach(k => $(k).addEventListener("input", () => { lerForm(); update(); }));
+["tipo", "secao", "carga", "L"].forEach(k => $(k).addEventListener("change", () => { lerForm(); update(); }));
+$("sptBody").addEventListener("change", e => { const i = +e.target.dataset.i, k = e.target.dataset.k; if (!(i >= 0)) return; st.spt[i][k] = k === "N" ? Math.max(0, Math.round(+e.target.value || 0)) : e.target.value; update(); });
+$("addRow").addEventListener("click", () => { const l = st.spt[st.spt.length - 1] || { N: 10, solo: "ARGI" }; st.spt.push({ N: l.N, solo: l.solo }); update(); });
+$("delRow").addEventListener("click", () => { if (st.spt.length > 3) { st.spt.pop(); update(); } });
+$("btnCola").addEventListener("click", () => { $("wCola").hidden = false; $("txtCola").focus(); });
+$("fecCola").addEventListener("click", () => { $("wCola").hidden = true; });
+$("aplCola").addEventListener("click", aplicarCola);
+$("btnImg").addEventListener("click", () => { $("fileImg").click(); });
+$("fileImg").addEventListener("change", e => { const fl = e.target.files && e.target.files[0]; if (fl && sample) lerImagem(fl); });
+$("tabRes").addEventListener("change", e => { const k = e.target.dataset.m; if (!k) return; if (e.target.checked) delete excl[k]; else excl[k] = 1; if (METODOS.every(([m]) => excl[m])) { delete excl[k]; e.target.checked = true; } update(); });
+$("btnWord").addEventListener("click", gerarWord);
+$("btnPrint").addEventListener("click", () => window.print());
+$("exemplo").addEventListener("click", () => { st = clone(EXEMPLO); excl = {}; fillForm(); update(); sayM("Exemplo restaurado."); });
+$("coefReset").addEventListener("click", () => { CO = { solos: clone(SOLOS_DEF), teix: clone(TEIX_DEF), tipos: clone(TIPOS_DEF) }; saveCoef(); renderCoef(); fillForm(); update(); $("coefStatus").textContent = "Coeficientes padrão restaurados."; });
+$("salvaLocal").addEventListener("click", () => {
+  const nome = [st.obra, st.edificacao, st.sondagem, `L${st.L}`].filter(Boolean).join(" · ") || "modelo", a = lerLocais(), i = a.findIndex(m => m.nome === nome), item = { nome, quando: Date.now(), txt: modeloJSON() };
+  if (i >= 0) a[i] = item; else a.push(item); a.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
+  try { localStorage.setItem(KEYM, JSON.stringify(a)); } catch (e) { sayM("Não foi possível salvar neste navegador."); return; }
+  listarLocais(a.findIndex(m => m.nome === nome)); sayM(`Salvo no programa: “${nome}”.`);
+});
+$("abreLocal").addEventListener("click", () => { const m = lerLocais()[+$("listaLocal").value]; if (m) aplicarModelo(m.txt, "salvo no programa"); else sayM("Nenhum modelo salvo."); });
+$("delLocal").addEventListener("click", () => { const a = lerLocais(), i = +$("listaLocal").value, m = a[i]; if (!m || !confirm(`Excluir “${m.nome}”?`)) return; a.splice(i, 1); try { localStorage.setItem(KEYM, JSON.stringify(a)); } catch (e) { } listarLocais(0); sayM("Modelo excluído."); });
+$("expJson").addEventListener("click", async () => {
+  const nome = `estaca_${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}_L${st.L}.json`;
+  try { const ok = await saveFile(nome, modeloJSON(), "application/json"); if (ok) sayM(`Exportado: ${nome} — confira a pasta Downloads.`); else { $("txtModelo").value = modeloJSON(); $("txtModelo").closest("details").open = true; sayM(`Download indisponível aqui: o modelo está no campo de texto (use "Salvar no programa" ou "Copiar modelo"), ou abra pelo site ${SITE}.`); } }
+  catch (e) { sayM(e && e.code === "declined" ? "Exportação cancelada." : "Não foi possível exportar."); }
+});
+$("impJsonBtn").addEventListener("click", () => { $("impJson").value = ""; $("impJson").click(); });
+$("impJson").addEventListener("change", e => { const fl = e.target.files && e.target.files[0]; if (!fl) return; const r = new FileReader(); r.onload = () => aplicarModelo(r.result, fl.name); r.readAsText(fl); });
+$("copModelo").addEventListener("click", async () => { const t = modeloJSON(); $("txtModelo").value = t; try { await navigator.clipboard.writeText(t); sayM("Modelo copiado."); } catch (e) { $("txtModelo").select(); sayM("Selecione o texto e copie (Ctrl+C)."); } });
+$("aplModelo").addEventListener("click", () => { const t = $("txtModelo").value.trim(); if (t) aplicarModelo(t, "texto colado"); else sayM("Cole o modelo no campo de texto."); });
+
+fillForm(); renderCoef(); listarLocais(0); update();
+try { const t = localStorage.getItem(KEY + "-tab"); const b = t && document.querySelector(`[data-tab="${t}"]`); if (b) b.click(); } catch (e) { }
+(async () => { try { sample = window.claude ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
+  if (!sample) { $("btnImg").hidden = true; } })();
+
+</script>
+</body></html>
