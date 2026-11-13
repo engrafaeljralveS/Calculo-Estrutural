@@ -152,12 +152,13 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
   <header class="top">
     <p class="eyebrow">Fundações profundas · NBR 6122:2022</p>
     <h1>Estacas</h1>
-    <p class="sub">Capacidade de carga de estaca isolada a partir da sondagem SPT, por cinco métodos semiempíricos: P.P.C. Velloso, Aoki-Velloso, Décourt-Quaresma, Teixeira e Alonso.</p>
+    <p class="sub">Capacidade de carga pela sondagem SPT (P.P.C. Velloso, Aoki-Velloso, Décourt-Quaresma, Teixeira e Alonso) e armadura da estaca armada: compressão, tração, momento, carga horizontal (Hetenyi ou Miche), estribos e comprimento armado.</p>
   </header>
   <div class="tabs noprint" role="tablist">
-    <button role="tab" aria-selected="true" data-tab="pCalc"><span class="n">1</span>Cálculo</button>
-    <button role="tab" aria-selected="false" data-tab="pMemo"><span class="n">2</span>Memorial</button>
-    <button role="tab" aria-selected="false" data-tab="pCoef"><span class="n">3</span>Coeficientes</button>
+    <button role="tab" aria-selected="true" data-tab="pCalc"><span class="n">1</span>Capacidade</button>
+    <button role="tab" aria-selected="false" data-tab="pArm"><span class="n">2</span>Armadura</button>
+    <button role="tab" aria-selected="false" data-tab="pMemo"><span class="n">3</span>Memoriais</button>
+    <button role="tab" aria-selected="false" data-tab="pCoef"><span class="n">4</span>Coeficientes</button>
   </div>
 
   <section class="tabp" id="pCalc">
@@ -238,7 +239,75 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
     </div>
   </section>
 
+  <section class="tabp" id="pArm" hidden>
+    <div class="app wide">
+      <aside class="inputs">
+        <section>
+          <h2><span class="n">A</span>Identificação</h2>
+          <div class="g2">
+            <div class="field"><label for="aObra">Projeto / obra</label><div class="inp"><input class="txt" id="aObra"></div></div>
+            <div class="field"><label for="aElem">Estaca / pilar</label><div class="inp"><input class="txt" id="aElem"></div></div>
+          </div>
+        </section>
+        <section>
+          <h2><span class="n">B</span>Esforços característicos</h2>
+          <div class="g2">
+            <div class="field"><label for="aN">Compressão, N</label><div class="inp"><input id="aN" type="number" step="0.5" min="0"><span class="u">tf</span></div></div>
+            <div class="field"><label for="aT">Tração, T</label><div class="inp"><input id="aT" type="number" step="0.5" min="0"><span class="u">tf</span></div></div>
+            <div class="field"><label for="aM">Momento no topo, M</label><div class="inp"><input id="aM" type="number" step="0.05" min="0"><span class="u">tf·m</span></div></div>
+            <div class="field"><label for="aH">Força horizontal, H</label><div class="inp"><input id="aH" type="number" step="0.1" min="0"><span class="u">tf</span></div></div>
+            <div class="field" style="grid-column:1/-1"><label for="aAtr">Atrito lateral total da estaca (para o comprimento a armar à compressão)</label><div class="inp"><input id="aAtr" type="number" step="0.5" min="0"><span class="u">tf</span></div></div>
+          </div>
+        </section>
+        <section>
+          <h2><span class="n">C</span>Estaca e materiais</h2>
+          <div class="g2">
+            <div class="field" style="grid-column:1/-1"><label for="aTipo">Tipo de estaca (NBR 6122:2022, Tabela 4)</label><div class="inp"><select id="aTipo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select></div></div>
+            <div class="field"><label for="aD">Diâmetro D</label><div class="inp"><input id="aD" type="number" step="5" min="15"><span class="u">cm</span></div></div>
+            <div class="field"><label for="aL">Comprimento L</label><div class="inp"><input id="aL" type="number" step="0.5" min="1"><span class="u">m</span></div></div>
+            <div class="field"><label for="aFck">f<sub>ck</sub> do concreto</label><div class="inp"><input id="aFck" type="number" step="1" min="10"><span class="u">MPa</span></div></div>
+            <div class="field"><label for="aE">Módulo do concreto, E</label><div class="inp"><input id="aE" type="number" step="500" min="1000"><span class="u">MPa</span></div></div>
+            <div class="field"><label for="aGcModo">γc</label><div class="inp"><select id="aGcModo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="norma">da Tabela 4</option><option value="manual">informado</option></select></div></div>
+            <div class="field"><label for="aGc">γc informado</label><div class="inp"><input id="aGc" type="number" step="0.1" min="1"><span class="u">–</span></div></div>
+            <div class="field"><label for="aC">Cobrimento até o centro da barra, c</label><div class="inp"><input id="aC" type="number" step="0.5" min="2"><span class="u">cm</span></div></div>
+            <div class="field"><label for="aCAA">Classe de agressividade</label><div class="inp"><select id="aCAA" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option>I</option><option>II</option><option>III</option><option>IV</option></select></div></div>
+            <div class="field"><label for="aFiL">Barra longitudinal (CA-50)</label><div class="inp"><select id="aFiL" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select><span class="u">mm</span></div></div>
+            <div class="field"><label for="aFiT">Estribo</label><div class="inp"><select id="aFiT" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select><span class="u">mm</span></div></div>
+            <div class="field"><label for="aCaT">Aço do estribo</label><div class="inp"><select id="aCaT" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="25">CA-25</option><option value="50">CA-50</option><option value="60">CA-60</option></select></div></div>
+          </div>
+        </section>
+        <section>
+          <h2><span class="n">D</span>Solo (carga horizontal)</h2>
+          <div class="g2">
+            <div class="field"><label for="aSolo">Solo junto ao topo</label><div class="inp"><select id="aSolo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select></div></div>
+            <div class="field"><label for="aSit">Situação</label><div class="inp"><select id="aSit" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option>Seca</option><option>Submersa</option></select></div></div>
+          </div>
+          <p class="gnote">Hetenyi (reação constante) para argilas; Miche (reação crescente com a profundidade) para areias, siltes e argila muito mole. Coeficientes na aba Coeficientes.</p>
+        </section>
+        <section>
+          <div class="btnrow"><button class="btn sm" type="button" id="aTraz">Trazer D e L da aba Capacidade</button><button class="btn sm" type="button" id="aEx">Restaurar exemplo</button></div>
+          <p class="status" id="aStatus"></p>
+        </section>
+      </aside>
+      <div class="results">
+        <div class="verdicts" id="aCards"></div>
+        <div class="warns" id="aWarns"></div>
+        <div class="panel">
+          <h2><span class="n">1</span>Armadura por esforço</h2>
+          <div class="tw"><table class="res" id="aTab"></table></div>
+        </div>
+        <div class="panel">
+          <h2><span class="n">2</span>Desenhos e gráficos</h2>
+          <div class="graf" id="aGraf" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="tabp" id="pMemo" hidden>
+    <div class="btnrow noprint" style="justify-content:center;margin-bottom:6px">
+      <div class="tabs" role="group" aria-label="Memorial" style="border:0"><button class="btn sm primary" type="button" data-memo="cap">Capacidade de carga</button><button class="btn sm" type="button" data-memo="arm">Armadura</button></div>
+    </div>
     <div class="btnrow noprint" style="justify-content:center;margin-bottom:10px">
       <button class="btn primary" type="button" id="btnWord">Gerar memorial Word</button>
       <button class="btn" type="button" id="btnPrint">Imprimir / PDF</button>
@@ -260,6 +329,16 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
     <div class="panel">
       <h2><span class="n">3</span>Teixeira (1996): α por solo e por estaca (tf/m²)</h2>
       <div class="tw"><table class="coef" id="tabTeix"></table></div>
+    </div>
+    <div class="panel">
+      <h2><span class="n">4</span>Armadura: NBR 6122:2022, Tabela 4</h2>
+      <p class="gnote" style="margin:0 0 8px">fck máximo de projeto, γc, armadura mínima, comprimento mínimo armado (0 = armadura integral) e tensão média abaixo da qual a estaca só comprimida dispensa armadura de cálculo (0 = sempre armar). <b>Broca</b>: valores do memorial de referência (γc = 3,1, fck até 25 MPa, 0,5 %, 50 kgf/cm²). <b>Demais: confira com a sua edição da norma.</b></p>
+      <div class="tw"><table class="coef" id="tabT4"></table></div>
+    </div>
+    <div class="panel">
+      <h2><span class="n">5</span>Armadura: reação horizontal do solo</h2>
+      <p class="gnote" style="margin:0 0 8px">Hetenyi: kh constante (kgf/cm³), reação por metro = kh·D. Miche: nh (kgf/cm³), reação = nh·z (valores de Terzaghi para areias). Argila média = 0,8 kgf/cm³ como no memorial de referência; os demais são valores de ordem de grandeza.</p>
+      <div class="tw"><table class="coef" id="tabSH"></table></div>
       <div class="btnrow" style="margin-top:10px"><button class="btn" type="button" id="coefReset">Restaurar coeficientes padrão</button><span class="status" id="coefStatus" style="margin:0"></span></div>
     </div>
   </section>
@@ -429,7 +508,7 @@ function update() {
   $("graf").innerHTML = `<figure class="larga"><figcaption>Ruptura por método: atrito + ponta, e Qadm da norma</figcaption>${svgBarras(R)}<div class="leg"><span><i style="background:#2b6cb0"></i>atrito lateral Ql</span><span><i style="background:#d9902f"></i>ponta Qp</span><span><i style="background:#2e7d50"></i>Qadm (FSg da norma)</span></div></figure>` +
     `<figure class="larga"><figcaption>Perfil de sondagem e estaca</figcaption><div style="max-width:380px;margin:0 auto">${svgPerfil(R)}</div></figure>` +
     `<figure class="larga"><figcaption>Qadm (norma) × comprimento</figcaption>${svgCurvas(R)}<div class="leg">${METODOS.map(([k, nm], i) => `<span><i style="background:${CURC[i]}"></i>${nm}</span>`).join("")}<span><i style="background:#1f2b37"></i>média</span></div></figure>`;
-  renderMemo(R); save();
+  if (memoModo === "cap") renderMemo(); save();
 }
 
 /* ---------- gráficos ---------- */
@@ -546,8 +625,10 @@ function memoBlocks(R) {
   return B;
 }
 const bold = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/_SPT/g, "<sub>SPT</sub>");
-function renderMemo(R) {
-  $("memo").innerHTML = memoBlocks(R).map(b => {
+let memoModo = "cap";
+const blocosAtuais = () => memoModo === "arm" ? (lastA ? memoBlocksArm(lastA) : []) : (last ? memoBlocks(last) : []);
+function renderMemo() {
+  $("memo").innerHTML = blocosAtuais().map(b => {
     if (b.t === "titulo") return `<h2>${esc(b.v)}</h2>`;
     if (b.t === "cab") return `<div class="cab">${b.v.map(([k, v]) => `<div><b>${k}:</b> ${esc(v || "")}</div>`).join("")}</div>`;
     if (b.t === "h") return `<h3>${esc(b.v)}</h3>`;
@@ -599,13 +680,13 @@ function wTbl(widths, rows) {
 const wRow = cells => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.join('')}</w:tr>`;
 
 
-async function buildDocx(R) {
+async function buildDocx(blocos) {
   const imgs = [], W0 = 10206;
   const run = (t, o = {}) => String(t).split(/(\*\*.+?\*\*|_SPT)/).filter(x => x).map(p => { const b = p.startsWith("**"), sub = p === "_SPT", tx = b ? p.slice(2, -2) : sub ? "SPT" : p;
     return `<w:r><w:rPr>${b || o.b ? "<w:b/>" : ""}${o.i ? "<w:i/>" : ""}${o.color ? `<w:color w:val="${o.color}"/>` : ""}${o.mono ? '<w:rFonts w:ascii="Courier New" w:hAnsi="Courier New"/>' : ""}<w:sz w:val="${o.sz || 20}"/><w:szCs w:val="${o.sz || 20}"/>${sub ? '<w:vertAlign w:val="subscript"/>' : ""}</w:rPr><w:t xml:space="preserve">${xesc(tx)}</w:t></w:r>`; }).join("");
   const imgRun = (idx, cx) => { const im = imgs[idx - 1], cy = Math.round(cx * im.H / im.W); return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idx}" name="Figura ${idx}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idx}" name="fig${idx}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdImg${idx}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`; };
   const body = [];
-  for (const b of memoBlocks(R)) {
+  for (const b of blocos) {
     if (b.t === "titulo") body.push(wPar(run(b.v, { b: true, sz: 24 }), { after: 120 }));
     else if (b.t === "cab") { const cells = b.v.map(([k, v]) => wCell(3402, wPar(run(`**${k}:** ${v || ""}`, { sz: 18 })), {})); body.push(wTbl([3402, 3402, 3402], [wRow(cells.slice(0, 3)), wRow(cells.slice(3, 6))]) + wPar("", { after: 120 })); }
     else if (b.t === "h") body.push(wPar(run(b.v, { b: true, sz: 22, color: "2b6cb0" }), { before: 220, after: 80, keep: true }));
@@ -646,10 +727,10 @@ async function saveFile(nome, data, mime) {
 }
 const SITE = "engrafaeljralves.github.io/Calculo-Estrutural";
 async function gerarWord() {
-  const m = $("memoStatus"), b = $("btnWord"); if (!last) return;
+  const m = $("memoStatus"), b = $("btnWord"); if (memoModo === "arm" ? !lastA : !last) return;
   b.disabled = true; m.className = "status"; m.textContent = "Gerando o memorial…";
   try {
-    const bytes = await buildDocx(last), nome = `memorial-estaca-${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}-${(st.sondagem || "SP").replace(/[^\w.-]+/g, "_")}-L${last.Lp}.docx`;
+    const bytes = await buildDocx(blocosAtuais()), nome = memoModo === "arm" ? `memorial-armadura-estaca-${(ar.obra || "obra").replace(/[^\w.-]+/g, "_")}-D${ar.D}.docx` : `memorial-estaca-${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}-${(st.sondagem || "SP").replace(/[^\w.-]+/g, "_")}-L${last.Lp}.docx`;
     const ok = await saveFile(nome, bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     m.className = ok ? "status ok" : "status err"; m.textContent = ok ? `Memorial salvo: ${nome} — confira a pasta Downloads.` : `Download indisponível nesta visualização. Use "Imprimir / PDF" ou abra o programa pelo site ${SITE}.`;
   } catch (e) { m.className = "status err"; m.textContent = e && e.code === "declined" ? "Download cancelado." : "Não foi possível gerar o memorial: " + (e && e.message || e); }
@@ -658,11 +739,13 @@ async function gerarWord() {
 
 /* ---------- modelos ---------- */
 const sayM = t => { $("modStatus").textContent = t; };
-const modeloObj = () => ({ obra: st.obra, cidade: st.cidade, edificacao: st.edificacao, sondagem: st.sondagem, tipo: st.tipo, D_mm: st.D_mm, L: st.L, Vbase_L: 0, NA: st.NA, CS: st.CS, secao: st.secao, carga: st.carga, spt: st.spt.map(r => ({ N: +r.N, solo: r.solo })) });
+const modeloObj = () => ({ obra: st.obra, cidade: st.cidade, edificacao: st.edificacao, sondagem: st.sondagem, tipo: st.tipo, D_mm: st.D_mm, L: st.L, Vbase_L: 0, NA: st.NA, CS: st.CS, secao: st.secao, carga: st.carga, spt: st.spt.map(r => ({ N: +r.N, solo: r.solo })), armadura: armObj() });
 const modeloJSON = () => JSON.stringify(modeloObj(), null, 1);
 function aplicarModelo(txt, origem) {
   let o; try { o = JSON.parse(String(txt).replace(/^﻿/, "")); } catch (e) { sayM("O conteúdo não é um modelo válido (JSON com erro)."); return false; }
+  if (o && !Array.isArray(o.spt) && ("fiL" in o || "fck" in o)) { aplicarArm(o); sayM(`Armadura ${o.obra ? `“${o.obra}” ` : ""}aberta na aba Armadura${origem ? ` (${origem})` : ""}.`); return true; }
   if (!o || !Array.isArray(o.spt) || !o.spt.length) { sayM("O arquivo não tem a sondagem (lista spt)."); return false; }
+  if (o.armadura && typeof o.armadura === "object") aplicarArm(o.armadura);
   const n = Object.assign(clone(EXEMPLO), o);
   n.spt = o.spt.map(r => ({ N: Math.max(0, +r.N || 0), solo: CO.solos.some(s => s.c === r.solo) ? r.solo : (soloDeTexto(r.solo) || "ARGI") }));
   n.tipo = CO.tipos.some(t => t.id === +o.tipo) ? +o.tipo : 4; n.NA = o.NA == null || o.NA === "" ? null : +o.NA;
@@ -713,13 +796,17 @@ function renderCoef() {
     CO.solos.map((s, i) => `<tr><td class="l">${esc(s.n)}</td><td class="l num">${s.c}</td><td><select data-c="solos.${i}.g">${["argila", "silte", "areia"].map(g => `<option value="${g}"${g === s.g ? " selected" : ""}>${g === "silte" ? "intermediário" : g}</option>`).join("")}</select></td><td>${num(`solos.${i}.K`, s.K)}</td><td>${num(`solos.${i}.al`, s.al)}</td><td>${num(`solos.${i}.a`, s.a)}</td><td>${num(`solos.${i}.ap`, s.ap)}</td><td>${num(`solos.${i}.C`, s.C)}</td><td><select data-c="solos.${i}.tx">${TEIX_CAT.map((c, j) => `<option value="${j}"${j === +s.tx ? " selected" : ""}>${c}</option>`).join("")}</select></td><td>${num(`solos.${i}.bA`, s.bA)}</td></tr>`).join("") + "</tbody>";
   $("tabTipos").innerHTML = `<thead><tr><th>Estaca</th><th>Aoki F1</th><th>Aoki F2</th><th>Velloso X</th><th>Décourt α arg / int / areia</th><th>Décourt β arg / int / areia</th><th>Teixeira coluna</th><th>Teixeira β</th><th>Alonso α</th></tr></thead><tbody>` +
     CO.tipos.map((t, i) => `<tr><td class="l">${t.id}. ${esc(t.n)}</td><td>${num(`tipos.${i}.F1`, t.F1)}</td><td>${num(`tipos.${i}.F2`, t.F2)}</td><td>${num(`tipos.${i}.X`, t.X)}</td><td style="white-space:nowrap">${[0, 1, 2].map(j => num(`tipos.${i}.dA.${j}`, t.dA[j])).join("")}</td><td style="white-space:nowrap">${[0, 1, 2].map(j => num(`tipos.${i}.dB.${j}`, t.dB[j])).join("")}</td><td><select data-c="tipos.${i}.tc">${TEIX_COL.map((c, j) => `<option value="${j}"${j === +t.tc ? " selected" : ""}>${c}</option>`).join("")}</select></td><td>${num(`tipos.${i}.tb`, t.tb)}</td><td>${num(`tipos.${i}.aA`, t.aA)}</td></tr>`).join("") + "</tbody>";
+  $("tabT4").innerHTML = `<thead><tr><th>Estaca</th><th>fck máx (MPa)</th><th>γc</th><th>Armadura mínima (%)</th><th>Comprimento mínimo armado (m)</th><th>Tensão p/ dispensa (MPa)</th></tr></thead><tbody>` +
+    CO.tab4.map((t, i) => `<tr><td class="l">${esc(t.n)}</td>${["fck", "gc", "rho", "Lmin", "sig"].map(k => `<td>${num(`tab4.${i}.${k}`, t[k])}</td>`).join("")}</tr>`).join("") + "</tbody>";
+  $("tabSH").innerHTML = `<thead><tr><th>Solo</th><th>Método</th><th>Seco (kgf/cm³)</th><th>Submerso (kgf/cm³)</th></tr></thead><tbody>` +
+    CO.soloH.map((t, i) => `<tr><td class="l">${esc(t.n)}</td><td class="l">${t.m === "H" ? "Hetenyi (kh)" : "Miche (nh)"}</td><td>${num(`soloH.${i}.seca`, t.seca)}</td><td>${num(`soloH.${i}.sub`, t.sub)}</td></tr>`).join("") + "</tbody>";
   $("tabTeix").innerHTML = `<thead><tr><th>Solo</th>${TEIX_COL.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` + TEIX_CAT.map((c, i) => `<tr><td class="l">${c}</td>${TEIX_COL.map((_, j) => `<td>${num(`teix.${i}.${j}`, CO.teix[i][j])}</td>`).join("")}</tr>`).join("") + "</tbody>";
 }
 document.addEventListener("change", e => {
   const p = e.target.dataset && e.target.dataset.c; if (!p) return;
   const ks = p.split("."), last = ks.pop(); let o = CO; ks.forEach(k => o = o[k]);
   const v = e.target.tagName === "SELECT" && last === "g" ? e.target.value : +e.target.value;
-  if (typeof v === "number" && !isFinite(v)) return; o[last] = v; saveCoef(); update(); $("coefStatus").textContent = "Coeficiente alterado e guardado neste navegador.";
+  if (typeof v === "number" && !isFinite(v)) return; o[last] = v; saveCoef(); update(); updateArm(); $("coefStatus").textContent = "Coeficiente alterado e guardado neste navegador.";
 });
 
 /* ---------- eventos ---------- */
@@ -742,7 +829,7 @@ $("tabRes").addEventListener("change", e => { const k = e.target.dataset.m; if (
 $("btnWord").addEventListener("click", gerarWord);
 $("btnPrint").addEventListener("click", () => window.print());
 $("exemplo").addEventListener("click", () => { st = clone(EXEMPLO); excl = {}; fillForm(); update(); sayM("Exemplo restaurado."); });
-$("coefReset").addEventListener("click", () => { CO = { solos: clone(SOLOS_DEF), teix: clone(TEIX_DEF), tipos: clone(TIPOS_DEF) }; saveCoef(); renderCoef(); fillForm(); update(); $("coefStatus").textContent = "Coeficientes padrão restaurados."; });
+$("coefReset").addEventListener("click", () => { CO = { solos: clone(SOLOS_DEF), teix: clone(TEIX_DEF), tipos: clone(TIPOS_DEF), tab4: clone(TAB4_DEF), soloH: clone(SOLOH_DEF) }; saveCoef(); renderCoef(); fillForm(); update(); fillArm(); updateArm(); $("coefStatus").textContent = "Coeficientes padrão restaurados."; });
 $("salvaLocal").addEventListener("click", () => {
   const nome = [st.obra, st.edificacao, st.sondagem, `L${st.L}`].filter(Boolean).join(" · ") || "modelo", a = lerLocais(), i = a.findIndex(m => m.nome === nome), item = { nome, quando: Date.now(), txt: modeloJSON() };
   if (i >= 0) a[i] = item; else a.push(item); a.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
@@ -761,7 +848,286 @@ $("impJson").addEventListener("change", e => { const fl = e.target.files && e.ta
 $("copModelo").addEventListener("click", async () => { const t = modeloJSON(); $("txtModelo").value = t; try { await navigator.clipboard.writeText(t); sayM("Modelo copiado."); } catch (e) { $("txtModelo").select(); sayM("Selecione o texto e copie (Ctrl+C)."); } });
 $("aplModelo").addEventListener("click", () => { const t = $("txtModelo").value.trim(); if (t) aplicarModelo(t, "texto colado"); else sayM("Cole o modelo no campo de texto."); });
 
-fillForm(); renderCoef(); listarLocais(0); update();
+/* =================== ARMADURA DA ESTACA =================== */
+// unidades internas: kgf, cm (1 MPa = 10 kgf/cm²; 1 tf = 1000 kgf)
+const BARRAS = [5, 6.3, 8, 10, 12.5, 16, 20, 25];
+const aB = fi => Math.PI * fi * fi / 400, mB = fi => 0.006165 * fi * fi;
+// NBR 6122:2022, Tabela 4 (editável): fck máximo de projeto (MPa), γc, armadura mínima (% de Ac), comprimento mínimo armado (m; 0 = armadura integral),
+// tensão média abaixo da qual a estaca comprimida dispensa armadura de cálculo (MPa; 0 = sempre armar)
+const TAB4_DEF = [
+  { k: "broca", n: "Broca", fck: 25, gc: 3.1, rho: 0.5, Lmin: 2, sig: 5 },
+  { k: "escSF", n: "Escavada sem fluido estabilizante", fck: 15, gc: 1.9, rho: 0.4, Lmin: 2, sig: 5 },
+  { k: "escCF", n: "Escavada com fluido estabilizante", fck: 20, gc: 1.8, rho: 0.4, Lmin: 4, sig: 6 },
+  { k: "helice", n: "Hélice contínua", fck: 20, gc: 1.8, rho: 0.4, Lmin: 4, sig: 6 },
+  { k: "strauss", n: "Strauss", fck: 15, gc: 1.9, rho: 0.4, Lmin: 2, sig: 5 },
+  { k: "franki", n: "Franki", fck: 20, gc: 1.8, rho: 0.4, Lmin: 0, sig: 0 },
+  { k: "raiz", n: "Raiz", fck: 20, gc: 1.6, rho: 0.5, Lmin: 0, sig: 0 }
+];
+// reação horizontal do solo (editável): H = Hetenyi, kh constante (kgf/cm³); M = Miche, nh (kgf/cm³), reação = nh·z
+const SOLOH_DEF = [
+  { k: "argMM", n: "Argila muito mole", m: "M", seca: 0.055, sub: 0.055 },
+  { k: "argMo", n: "Argila mole", m: "H", seca: 0.4, sub: 0.4 },
+  { k: "argMe", n: "Argila média", m: "H", seca: 0.8, sub: 0.8 },
+  { k: "argRi", n: "Argila rija", m: "H", seca: 1.6, sub: 1.6 },
+  { k: "argDu", n: "Argila dura", m: "H", seca: 3.2, sub: 3.2 },
+  { k: "silF", n: "Silte fofo", m: "M", seca: 0.22, sub: 0.13 },
+  { k: "silC", n: "Silte compacto", m: "M", seca: 0.66, sub: 0.44 },
+  { k: "arF", n: "Areia fofa", m: "M", seca: 0.22, sub: 0.13 },
+  { k: "arM", n: "Areia medianamente compacta", m: "M", seca: 0.66, sub: 0.44 },
+  { k: "arC", n: "Areia compacta", m: "M", seca: 1.76, sub: 1.07 }
+];
+if (!CO.tab4 || CO.tab4.length !== TAB4_DEF.length) CO.tab4 = clone(TAB4_DEF);
+if (!CO.soloH || CO.soloH.length !== SOLOH_DEF.length) CO.soloH = clone(SOLOH_DEF);
+const AR_EX = { obra: "Exemplo", elemento: "", N: 26, atrito: 18, T: 15, M: 0.1, H: 0, D: 40, L: 15, fck: 30, c: 5, E: 21000, tipo: "broca", solo: "argMe", situacao: "Submersa", fiL: 12.5, fiT: 6.3, caT: 25, gcModo: "norma", gc: 3.1, CAA: "II" };
+let ar = clone(AR_EX);
+try { const a = JSON.parse(localStorage.getItem(KEY + "-arm") || "null"); if (a && a.D) ar = Object.assign(clone(AR_EX), a); } catch (e) { }
+const saveAr = () => { try { localStorage.setItem(KEY + "-arm", JSON.stringify(ar)); } catch (e) { } };
+
+// Matlock e Reese (1960), estaca longa com topo livre: coeficientes de momento Am (força H) e Bm (momento M0) e de deslocamento
+const MR_Z = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 3.0, 4.0, 5.0];
+const MR_AM = [0, 0.100, 0.197, 0.290, 0.377, 0.458, 0.529, 0.592, 0.646, 0.689, 0.723, 0.762, 0.765, 0.737, 0.685, 0.614, 0.193, -0.020, -0.026];
+const MR_BM = [1, 1.000, 0.999, 0.994, 0.987, 0.976, 0.960, 0.939, 0.914, 0.885, 0.852, 0.775, 0.688, 0.594, 0.498, 0.404, 0.059, -0.042, -0.026];
+const interp = (X, Y, x) => { if (x >= X[X.length - 1]) return Y[Y.length - 1]; let i = 0; while (X[i + 1] < x) i++; const t = (x - X[i]) / (X[i + 1] - X[i]); return Y[i] + t * (Y[i + 1] - Y[i]); };
+
+// seção circular, ELU (NBR 6118): bloco retangular 0,85·fcd em 0,8x, εcu = 3,5‰, aço até 10‰; barras distribuídas no círculo de raio rs
+function mrdCirc(As, Nd, D, rs, fcd, fyd) {
+  const R = D / 2, nb = 16, Es = 2.1e6, ns = 80, bars = Array.from({ length: nb }, (_, i) => R - rs * Math.cos(2 * Math.PI * i / nb));
+  const ymax = R + rs, w = y => 2 * Math.sqrt(Math.max(0, R * R - (y - R) * (y - R)));
+  const forcas = x => {
+    let eps = y => 0.0035 * (x - y) / x;
+    if (eps(ymax) < -0.010) eps = y => -0.010 * (y - x) / (ymax - x);
+    const hb = Math.min(0.8 * x, D); let C = 0, MC = 0;
+    for (let i = 0; i < ns; i++) { const y0 = hb * i / ns, y1 = hb * (i + 1) / ns, ym = (y0 + y1) / 2, a = w(ym) * (y1 - y0); C += 0.85 * fcd * a; MC += 0.85 * fcd * a * (R - ym); }
+    let S = 0, MS = 0; bars.forEach(y => { const s = clamp(Es * eps(y), -fyd, fyd), F = s * As / nb; S += F; MS += F * (R - y); });
+    return { N: C + S, M: MC + MS };
+  };
+  let lo = 1e-3, hi = 20 * D;
+  if (forcas(hi).N < Nd || forcas(lo).N > Nd) return 0;
+  for (let k = 0; k < 60; k++) { const x = (lo + hi) / 2; if (forcas(x).N > Nd) hi = x; else lo = x; }
+  return Math.max(0, forcas((lo + hi) / 2).M);
+}
+function asFlexao(Md, Nd, D, rs, fcd, fyd, Ac) {
+  if (!(Md > 0)) return 0;
+  if (mrdCirc(0, Nd, D, rs, fcd, fyd) >= Md) return 0;
+  let lo = 0, hi = 0.08 * Ac; if (mrdCirc(hi, Nd, D, rs, fcd, fyd) < Md) return NaN;
+  for (let k = 0; k < 50; k++) { const m = (lo + hi) / 2; if (mrdCirc(m, Nd, D, rs, fcd, fyd) >= Md) hi = m; else lo = m; }
+  return hi;
+}
+const tab4 = k => CO.tab4.find(t => t.k === k) || CO.tab4[0];
+const soloH = k => CO.soloH.find(s => s.k === k) || CO.soloH[2];
+function calcArm(a) {
+  const D = +a.D, L = +a.L, c = +a.c, Ac = Math.PI * D * D / 4, I = Math.PI * D ** 4 / 64, rs = D / 2 - c, da = D - 2 * c, tb = tab4(a.tipo);
+  const fckE = Math.min(+a.fck, tb.fck), gc = a.gcModo === "manual" ? +a.gc || tb.gc : tb.gc, fcd = fckE * 10 / gc, fyd = 5000 / 1.15, Es = 2.1e6;
+  const N = (+a.N || 0) * 1000, T = (+a.T || 0) * 1000, M0 = (+a.M || 0) * 1e5, H = (+a.H || 0) * 1000, atr = (+a.atrito || 0) * 1000, fiL = +a.fiL, fiT = +a.fiT;
+  const R = { a, D, L, c, Ac, I, rs, da, tb, fckE, gc, fcd, fyd, N, T, M0, H, atr, fiL, fiT, w: [] };
+  // 1 compressão
+  R.Ndp = 1.4 * N * (1 + 6 / D); R.Nrc = 0.85 * Ac * fcd; R.AsCcalc = Math.max(0, (R.Ndp - R.Nrc) / fyd); R.AsCmin = tb.rho / 100 * Ac; R.AsC = Math.max(R.AsCcalc, R.AsCmin);
+  R.sig = N / Ac; R.sigLim = tb.sig * 10; R.compArma = !(tb.sig > 0) || R.sig > R.sigLim;
+  if (R.Ndp > R.Nrc + 0.08 * Ac * fyd) R.w.push("A compressão de cálculo passa da capacidade da seção mesmo com 8% de armadura: aumente o diâmetro.");
+  // 2 tração
+  R.ftk = fckE; R.sigS = Math.sqrt((2 * 1.5 - 0.75) * Es * R.ftk / (3 * fiL)); R.AsT1 = 1.4 * T / fyd; R.AsT2 = T > 0 ? T / R.sigS : 0; R.AsT = Math.max(R.AsT1, R.AsT2);
+  // 3 carga horizontal e momento no topo
+  const E = (+a.E || 21000) * 10, EI = E * I, sh = soloH(a.solo), kv = a.situacao === "Submersa" ? sh.sub : sh.seca;
+  R.E = E; R.EI = EI; R.sh = sh; R.kv = kv; R.lat = H > 0 || M0 > 0;
+  const nz = 240, zs = Array.from({ length: nz + 1 }, (_, i) => L * 100 * i / nz);
+  if (sh.m === "H") {
+    const k = kv * D, lam = Math.pow(k / (4 * EI), 0.25); R.k = k; R.lam = lam; R.Lmin = 4 / lam / 100;
+    R.Mz = zs.map(x => { const e = Math.exp(-lam * x); return (H / lam) * e * Math.sin(lam * x) + M0 * e * (Math.cos(lam * x) + Math.sin(lam * x)); });
+    R.Vz = zs.map(x => { const e = Math.exp(-lam * x); return H * e * (Math.cos(lam * x) - Math.sin(lam * x)) - 2 * M0 * lam * e * Math.sin(lam * x); });
+    R.y0 = 2 * H * lam / k + 2 * M0 * lam * lam / k;
+  } else {
+    const Tm = Math.pow(EI / kv, 0.2); R.Tm = Tm; R.Lmin = 4 * Tm / 100;
+    R.Mz = zs.map(x => interp(MR_Z, MR_AM, x / Tm) * H * Tm + interp(MR_Z, MR_BM, x / Tm) * M0);
+    R.Vz = zs.map((x, i) => i === 0 ? H : -(R.Mz[i] - R.Mz[i - 1]) / (zs[i] - zs[i - 1]));
+    R.y0 = 2.435 * H * Tm ** 3 / EI + 1.623 * M0 * Tm * Tm / EI;
+  }
+  R.zs = zs; let im = 0; R.Mz.forEach((m, i) => { if (Math.abs(m) > Math.abs(R.Mz[im])) im = i; }); R.Mmax = Math.abs(R.Mz[im]); R.zMmax = zs[im] / 100;
+  R.Vmax = Math.max(...R.Vz.map(Math.abs));
+  if (R.lat && L < R.Lmin) R.w.push(`L = ${f(L, 1)} m é menor que a profundidade mínima de estaca longa (${f(R.Lmin)} m): as fórmulas de estaca longa não valem; reavalie como estaca curta.`);
+  // 4 flexão (seção circular, ELU)
+  R.Md = 1.4 * R.Mmax;
+  R.AsM0 = asFlexao(R.Md, 0, D, rs, fcd, fyd, Ac); R.AsMT = T > 0 && R.Md > 0 ? asFlexao(R.Md, -1.4 * T, D, rs, fcd, fyd, Ac) : 0;
+  R.AsMmin = R.Md > 0 ? 0.0015 * Ac : 0; R.AsM = Math.max(R.AsM0 || 0, R.AsMT || 0, R.AsMmin);
+  if (!isFinite(R.AsM0) || (T > 0 && R.Md > 0 && !isFinite(R.AsMT))) { R.w.push("O momento passa da capacidade da seção com 8% de armadura: aumente o diâmetro."); R.AsM = NaN; }
+  // 5 dispensa (NBR 6122:2022, 8.6.3)
+  R.dispensa = T === 0 && !R.lat && !R.compArma;
+  // 6 armadura longitudinal
+  const cand = [["Compressão", R.AsC], ["Tração", R.AsT], ["Momento", R.AsM]];
+  R.cand = cand; R.As = R.dispensa ? R.AsCmin : Math.max(...cand.map(x => x[1]));
+  R.gov = R.dispensa ? "Mínima (Tabela 4)" : cand.reduce((g, x) => x[1] > g[1] + 1e-9 ? x : g, cand[0])[0];
+  R.nCalc = R.As / aB(fiL); R.n = Math.max(6, Math.ceil(R.nCalc - 1e-9)); R.AsEf = R.n * aB(fiL);
+  R.livre = Math.PI * da / R.n - fiL / 10;
+  if (R.livre < Math.max(2, fiL / 10, 2.3)) R.w.push(`Espaço livre entre barras de ${f(R.livre, 1)} cm: pouco para o concreto passar. Use barra maior ou aumente o diâmetro.`);
+  if (R.AsEf > 0.04 * Ac) R.w.push("Armadura acima de 4% da seção.");
+  // 7 cortante e estribos (NBR 6118: modelo I, seção circular como retangular equivalente bw = D e d = D/2 + 2·rs/π)
+  R.bw = D; R.d = D / 2 + 2 * rs / Math.PI; R.Vsd = 1.4 * R.Vmax;
+  R.fctm = 0.3 * Math.pow(fckE, 2 / 3); R.fctd = 0.7 * R.fctm / gc; R.Vc = 0.6 * R.fctd * 10 * R.bw * R.d;
+  R.av2 = 1 - fckE / 250; R.VRd2 = 0.27 * R.av2 * fcd * R.bw * R.d;
+  R.fywk = +a.caT * 10; R.fywd = Math.min(R.fywk / 1.15, 435) * 10;
+  R.AswCalc = Math.max(0, R.Vsd - R.Vc) / (0.9 * R.d * R.fywd) * 100; R.AswMin = 0.2 * R.fctm / R.fywk * R.bw * 100; R.precisaV = R.Vsd > R.Vc; R.Asw = R.precisaV ? Math.max(R.AswCalc, R.AswMin) : 0;
+  R.sCalc = R.Asw > 0 ? 2 * aB(fiT) / R.Asw * 100 : Infinity; R.sMax = Math.min(20, D, 12 * fiL / 10); R.s = Math.max(5, Math.floor(Math.min(R.sCalc, R.sMax)));
+  R.AswEf = 2 * aB(fiT) / R.s * 100; R.vOk = R.Vsd <= R.VRd2;
+  if (!R.vOk) R.w.push("Cortante acima da resistência da biela (VRd2): aumente o diâmetro ou o fck.");
+  if (fiT < Math.max(5, fiL / 4)) R.w.push(`Estribo Ø ${f(fiT, 1)} menor que o mínimo (maior entre 5 mm e Ø/4 = ${f(fiL / 4, 1)} mm).`);
+  // 8 comprimento armado
+  R.lb = 40 * fiL / 10; const Lc = [];
+  Lc.push(["Mínimo da Tabela 4", tb.Lmin > 0 ? tb.Lmin : L]);
+  if (T > 0) Lc.push(["Tração (armadura em todo o comprimento)", L]);
+  if (!R.dispensa && R.compArma) { const z = atr > 0 ? L * (N - R.sigLim * Ac) / atr + R.lb / 100 : L; Lc.push(["Compressão acima do limite da Tabela 4", tb.sig > 0 ? Math.max(0, z) : L]); }
+  if (R.lat) { let iz = R.Mz.length - 1; const lim = 0.05 * R.Mmax; for (let i = im; i < R.Mz.length; i++) if (Math.abs(R.Mz[i]) < lim) { iz = i; break; } Lc.push(["Momento e carga horizontal (até M < 5% de Mmáx, + 40Ø)", zs[iz] / 100 + R.lb / 100]); }
+  R.Lc = Lc; R.Larm = Math.min(L, Math.ceil(Math.max(...Lc.map(x => x[1])) * 2) / 2);
+  // 9 quantitativos
+  R.vol = Ac * L / 1e4; R.kgL = R.n * mB(fiL) * R.Larm; R.nEst = Math.ceil(R.Larm * 100 / R.s) + 1; R.compEst = Math.PI * da / 100; R.kgT = R.nEst * R.compEst * mB(fiT);
+  return R;
+}
+
+/* ---------- interface da armadura ---------- */
+const AFIELDS = [["aObra", "obra"], ["aElem", "elemento"], ["aN", "N"], ["aT", "T"], ["aM", "M"], ["aH", "H"], ["aAtr", "atrito"], ["aD", "D"], ["aL", "L"], ["aFck", "fck"], ["aE", "E"], ["aGc", "gc"], ["aC", "c"]];
+const ASELS = [["aTipo", "tipo"], ["aGcModo", "gcModo"], ["aCAA", "CAA"], ["aFiL", "fiL"], ["aFiT", "fiT"], ["aCaT", "caT"], ["aSolo", "solo"], ["aSit", "situacao"]];
+function fillArm() {
+  $("aTipo").innerHTML = CO.tab4.map(t => `<option value="${t.k}">${esc(t.n)}</option>`).join("");
+  $("aSolo").innerHTML = CO.soloH.map(s => `<option value="${s.k}">${esc(s.n)}</option>`).join("");
+  $("aFiL").innerHTML = BARRAS.filter(x => x >= 10).map(x => `<option value="${x}">${f(x, x % 1 ? 1 : 0)}</option>`).join("");
+  $("aFiT").innerHTML = BARRAS.filter(x => x <= 12.5).map(x => `<option value="${x}">${f(x, x % 1 ? 1 : 0)}</option>`).join("");
+  AFIELDS.forEach(([id, k]) => { $(id).value = ar[k] == null ? "" : ar[k]; });
+  ASELS.forEach(([id, k]) => { $(id).value = String(ar[k]); });
+}
+function lerArm() {
+  AFIELDS.forEach(([id, k]) => { const v = $(id).value; ar[k] = /aObra|aElem/.test(id) ? v : +String(v).replace(",", "."); });
+  ASELS.forEach(([id, k]) => { const v = $(id).value; ar[k] = /aFiL|aFiT|aCaT/.test(id) ? +v : v; });
+}
+let lastA = null;
+function updateArm() {
+  $("aGc").closest(".field").style.opacity = ar.gcModo === "manual" ? 1 : 0.5;
+  if (!(ar.D >= 15 && ar.L >= 1 && ar.fck >= 10 && ar.c >= 2 && ar.c < ar.D / 2 - 1)) { $("aWarns").innerHTML = "<p>Confira diâmetro, comprimento, fck e cobrimento.</p>"; saveAr(); return; }
+  const A = calcArm(ar); lastA = A;
+  $("aWarns").innerHTML = A.w.concat(ar.fck > A.tb.fck ? [`fck limitado a ${A.tb.fck} MPa para ${A.tb.n.toLowerCase()} (NBR 6122:2022, Tabela 4).`] : []).map(x => `<p>${esc(x)}</p>`).join("");
+  $("aCards").innerHTML = [
+    ["Armadura longitudinal", A.dispensa ? `${A.n} Ø ${f(A.fiL, 1)}` : `${A.n} Ø ${f(A.fiL, 1)}`, `${f(A.AsEf)} cm² ≥ ${f(A.As)} cm² · governa: ${A.gov.toLowerCase()}`, "info"],
+    ["Estribos", `Ø ${f(A.fiT, 1)} c/ ${A.s}`, `CA-${ar.caT} · ${A.nEst} estribos`, A.vOk ? "info" : "bad"],
+    ["Comprimento armado", `${f(A.Larm, 1)} m`, A.Larm >= A.L - 1e-9 ? "armadura em todo o comprimento" : `de ${f(A.L, 1)} m`, "info"],
+    ["Carga horizontal", A.lat ? `Mmáx ${f(A.Mmax / 1e5, 3)} tf·m` : "sem H e M", A.lat ? `a ${f(A.zMmax)} m · prof. mín. ${f(A.Lmin)} m` : "", A.lat && A.L < A.Lmin ? "warn" : "info"]
+  ].map(([t, v, s, c]) => `<div class="card ${c}"><span class="t">${t}</span><span class="v" style="font-size:20px">${esc(v)}</span><span class="t">${esc(s)}</span></div>`).join("");
+  const row = (nm, calc, min, adot, gov) => `<tr><td class="l">${nm}</td><td class="num">${calc}</td><td class="num">${min}</td><td class="num${gov ? " sel" : ""}">${adot}</td></tr>`;
+  $("aTab").innerHTML = `<thead><tr><th>Esforço</th><th>As calculada (cm²)</th><th>As mínima (cm²)</th><th>As do esforço (cm²)</th></tr></thead><tbody>` +
+    row("Compressão: 1,4·N·(1 + 6/D) − 0,85·Ac·fcd", f(A.AsCcalc), f(A.AsCmin), f(A.AsC), A.gov === "Compressão") +
+    row("Tração: maior entre 1,4·T/fyd e fissuração", `${f(A.AsT1)} / ${f(A.AsT2)}`, "—", f(A.AsT), A.gov === "Tração") +
+    row(`Momento Md = ${f(A.Md / 1e5, 3)} tf·m (flexão${A.T > 0 ? " e flexo-tração" : " simples"})`, `${f(A.AsM0)}${A.T > 0 && A.Md > 0 ? " / " + f(A.AsMT) : ""}`, f(A.AsMmin), f(A.AsM), A.gov === "Momento") +
+    `<tr class="media"><td class="l">Adotada: ${A.n} Ø ${f(A.fiL, 1)} mm${A.dispensa ? " (dispensa de cálculo: só a mínima)" : ""}</td><td></td><td></td><td class="num sel">${f(A.AsEf)}</td></tr>` +
+    `<tr><td class="l">Estribos: ${A.precisaV ? `Asw = ${f(A.Asw)} cm²/m` : "construtivos (Vsd ≤ Vc)"} · Vsd = ${f(A.Vsd / 1000)} tf ≤ VRd2 = ${f(A.VRd2 / 1000)} tf</td><td></td><td></td><td class="num">Ø ${f(A.fiT, 1)} c/ ${A.s}</td></tr></tbody>`;
+  $("aGraf").innerHTML = `<figure><figcaption>Seção transversal</figcaption>${svgSecao(A)}</figure><figure><figcaption>Elevação: cargas e comprimento armado</figcaption>${svgElev(A)}</figure>` +
+    (A.lat ? `<figure><figcaption>Momento fletor ao longo da estaca</figcaption>${svgMz(A)}</figure>` : "") +
+    `<figure class="larga"><figcaption>Armadura longitudinal por esforço (cm²)</figcaption>${svgAs(A)}</figure>`;
+  saveAr(); if (memoModo === "arm") renderMemo();
+}
+function svgSecao(A) {
+  const S = 200, C = 100, Rr = 78, k = Rr / (A.D / 2), rs = A.rs * k;
+  let s = `<svg viewBox="0 0 ${S} 210" role="img" aria-label="Seção da estaca" font-family="Arial" font-size="10"><circle cx="${C}" cy="${C}" r="${Rr}" fill="#e7f0f9" stroke="#1f2b37" stroke-width="1.3"/><circle cx="${C}" cy="${C}" r="${rs + 3}" fill="none" stroke="#2e7d50" stroke-width="1.6"/>`;
+  for (let i = 0; i < A.n; i++) { const t = 2 * Math.PI * i / A.n - Math.PI / 2; s += `<circle cx="${(C + rs * Math.cos(t)).toFixed(1)}" cy="${(C + rs * Math.sin(t)).toFixed(1)}" r="${Math.max(2.2, A.fiL / 10 * k / 2).toFixed(1)}" fill="#b83a2e"/>`; }
+  s += `<text x="${C}" y="${C - 2}" text-anchor="middle" fill="#1f2b37">${A.n} Ø ${f(A.fiL, 1)}</text><text x="${C}" y="${C + 12}" text-anchor="middle" fill="#2e7d50">est. Ø ${f(A.fiT, 1)} c/ ${A.s}</text>`;
+  return s + `<line x1="${C - Rr}" x2="${C + Rr}" y1="${S + 2}" y2="${S + 2}" stroke="#5e6b78"/><text x="${C}" y="${S - 2}" text-anchor="middle" fill="#5e6b78">Ø ${f(A.D, 0)} cm · c = ${f(A.c, 1)} cm</text></svg>`;
+}
+function svgElev(A) {
+  const W = 240, H = 310, y0 = 60, Lp = 230, X = 96, sc = Lp / A.L, Y = z => y0 + z * sc;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Elevação da estaca" font-family="Arial" font-size="10"><defs><marker id="sta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2b37"/></marker></defs>`;
+  s += `<rect x="0" y="${y0}" width="${W}" height="${Lp + 12}" fill="#fbf1dc"/><line x1="0" x2="${W}" y1="${y0}" y2="${y0}" stroke="#8c5d08" stroke-width="1.4"/>`;
+  s += `<rect x="${X - 11}" y="${y0}" width="22" height="${Lp}" fill="#e7f0f9" stroke="#1f2b37"/><rect x="${X - 7}" y="${y0}" width="14" height="${A.Larm * sc}" fill="none" stroke="#b83a2e" stroke-width="1.4" stroke-dasharray="4 2"/>`;
+  s += `<text x="${X - 16}" y="${Y(A.L) + 3}" text-anchor="end">L = ${f(A.L, 1)} m</text><line x1="${X + 11}" x2="${X + 30}" y1="${Y(A.Larm)}" y2="${Y(A.Larm)}" stroke="#b83a2e"/><text x="${X + 33}" y="${Y(A.Larm) + 3}" fill="#b83a2e">armada até ${f(A.Larm, 1)} m</text>`;
+  if (A.lat) { if (A.Lmin <= A.L * 1.4) s += `<line x1="${X + 11}" x2="${X + 30}" y1="${Y(Math.min(A.Lmin, A.L + 0.6))}" y2="${Y(Math.min(A.Lmin, A.L + 0.6))}" stroke="#2e7d50" stroke-dasharray="3 2"/><text x="${X + 33}" y="${Y(Math.min(A.Lmin, A.L + 0.6)) + 3}" fill="#2e7d50">prof. mín. ${f(A.Lmin)} m</text>`;
+    s += `<line x1="${X + 11}" x2="${X + 30}" y1="${Y(A.zMmax)}" y2="${Y(A.zMmax)}" stroke="#2b6cb0" stroke-dasharray="3 2"/><text x="${X + 33}" y="${Y(A.zMmax) + 3}" fill="#2b6cb0">Mmáx ${f(A.Mmax / 1e5, 2)} tf·m</text>`; }
+  if (A.N > 0) s += `<line x1="${X - 6}" y1="6" x2="${X - 6}" y2="${y0 - 3}" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X - 10}" y="18" text-anchor="end">N ${f(A.N / 1000)} tf</text>`;
+  if (A.T > 0) s += `<line x1="${X + 6}" y1="${y0 - 3}" x2="${X + 6}" y2="6" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X + 10}" y="18">T ${f(A.T / 1000)} tf</text>`;
+  if (A.H > 0) s += `<line x1="${X - 60}" y1="${y0 - 8}" x2="${X - 13}" y2="${y0 - 8}" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X - 60}" y="${y0 - 13}">H ${f(A.H / 1000)} tf</text>`;
+  if (A.M0 > 0) s += `<path d="M${X + 18} ${y0 - 34} A 22 22 0 0 1 ${X + 26} ${y0 - 10}" fill="none" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X + 30}" y="${y0 - 30}">M ${f(A.M0 / 1e5, 2)} tf·m</text>`;
+  return s + `<text x="${W - 4}" y="${H - 4}" text-anchor="end" fill="#8c5d08">${esc(A.sh.n)}${A.a.situacao === "Submersa" ? ", submersa" : ""}</text></svg>`;
+}
+function svgMz(A) {
+  const W = 240, H = 310, y0 = 20, Lp = 270, x0 = 120, mx = Math.max(...A.Mz.map(Math.abs)) || 1, X = m => x0 + 95 * m / mx, Y = z => y0 + Lp * z / (A.L * 100);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Momento ao longo da estaca" font-family="Arial" font-size="10"><line x1="${x0}" x2="${x0}" y1="${y0}" y2="${y0 + Lp}" stroke="#1f2b37"/>`;
+  s += `<polygon fill="#2b6cb0" fill-opacity=".2" stroke="#2b6cb0" points="${x0},${y0} ${A.zs.map((z, i) => `${X(A.Mz[i]).toFixed(1)},${Y(z).toFixed(1)}`).join(" ")} ${x0},${y0 + Lp}"/>`;
+  const im = A.Mz.findIndex(m => Math.abs(Math.abs(m) - A.Mmax) < 1e-9);
+  { const xm = X(A.Mz[im]), dir = xm > W - 110 ? -1 : 1; s += `<text x="${xm + 4 * dir}" y="${Y(A.zs[im]) + 13}" text-anchor="${dir < 0 ? "end" : "start"}" fill="#2b6cb0">${f(A.Mmax / 1e5, 3)} tf·m (${f(A.zMmax)} m)</text>`; }
+  for (let z = 0; z <= A.L + 1e-9; z += Math.max(1, Math.round(A.L / 6))) s += `<text x="${x0 - 100}" y="${Y(z * 100) + 3}" fill="#5e6b78">${f(z, 0)} m</text><line x1="${x0 - 4}" x2="${x0}" y1="${Y(z * 100)}" y2="${Y(z * 100)}" stroke="#5e6b78"/>`;
+  return s + `<text x="${W - 4}" y="${H - 4}" text-anchor="end" fill="#5e6b78">${A.sh.m === "H" ? "Hetenyi" : "Miche (Matlock e Reese)"}</text></svg>`;
+}
+function svgAs(A) {
+  const W = 520, rows = A.cand, mx = Math.max(A.AsEf, ...rows.map(r => r[1] || 0)) * 1.15 || 1, x0 = 90, x1 = 500, X = v => x0 + (x1 - x0) * v / mx, H = 30 + rows.length * 26 + 20;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Armadura por esforço" font-family="Arial" font-size="11">`;
+  rows.forEach(([nm, v], i) => { const y = 14 + i * 26, g = nm === A.gov; s += `<text x="${x0 - 6}" y="${y + 11}" text-anchor="end">${nm}</text><rect x="${x0}" y="${y}" width="${Math.max(0, X(v || 0) - x0)}" height="14" rx="2" fill="${g ? "#2b6cb0" : "#d9e0e7"}"/><text x="${X(v || 0) + 4}" y="${y + 11}">${f(v)}</text>`; });
+  s += `<line x1="${X(A.AsEf)}" x2="${X(A.AsEf)}" y1="8" y2="${H - 18}" stroke="#2e7d50" stroke-width="2"/><text x="${Math.min(X(A.AsEf), x1 - 2)}" y="${H - 4}" text-anchor="end" fill="#2e7d50">adotada ${A.n} Ø ${f(A.fiL, 1)} = ${f(A.AsEf)} cm²</text>`;
+  return s + `<line x1="${x0}" x2="${x0}" y1="8" y2="${H - 18}" stroke="#5e6b78"/></svg>`;
+}
+
+/* ---------- memorial da armadura ---------- */
+function memoBlocksArm(A) {
+  const B = [], a = A.a, tf = x => f(x / 1000), tfm = x => f(x / 1e5, 3);
+  B.push({ t: "titulo", v: "Memorial de cálculo — armadura de estaca" });
+  B.push({ t: "cab", v: [["Projeto", a.obra], ["Estaca/pilar", a.elemento], ["Data", new Date().toLocaleDateString("pt-BR")], ["Unidades", "tf, kgf, cm, m"], ["Concreto", `fck ${f(a.fck, 0)} MPa`], ["Aço", `CA-50 · estribos CA-${a.caT}`]] });
+  B.push({ t: "h", v: "1. Dados" });
+  B.push({ t: "p", v: `Estaca ${A.tb.n.toLowerCase()} (γc = ${f(A.gc, 2)}${a.gcModo === "manual" ? ", informado" : ", NBR 6122:2022, Tabela 4"}; CAA ${a.CAA}), Ø ${f(A.D, 0)} cm, L = ${f(A.L, 1)} m, cobrimento até o centro da barra c = ${f(A.c, 1)} cm, barras Ø ${f(A.fiL, 1)} mm, estribos Ø ${f(A.fiT, 1)} mm CA-${a.caT}.` });
+  B.push({ t: "p", v: `Esforços característicos: compressão ${tf(A.N)} tf; tração ${tf(A.T)} tf; momento no topo ${tfm(A.M0)} tf·m; horizontal ${tf(A.H)} tf; atrito lateral ${tf(A.atr)} tf. Solo junto ao topo: ${A.sh.n.toLowerCase()}, ${String(a.situacao).toLowerCase()}.` });
+  B.push({ t: "eq", v: [`Ac = π·D²/4 = ${f(A.Ac)} cm²    fcd = fck/γc = ${f(A.fckE * 10, 0)}/${f(A.gc, 2)} = ${f(A.fcd)} kgf/cm²${a.fck > A.tb.fck ? ` (fck limitado a ${A.tb.fck} MPa, Tabela 4)` : ""}    fyd = 5.000/1,15 = ${f(A.fyd, 0)} kgf/cm²`] });
+  B.push({ t: "fig", v: svgSecao(A), cap: "Seção transversal.", w: 0.32 }, { t: "fig", v: svgElev(A), cap: "Elevação: cargas e comprimento armado.", w: 0.36 });
+  B.push({ t: "h", v: "2. Compressão" });
+  B.push({ t: "eq", v: [`Nd·(1 + 6/D) = 1,4·${f(A.N, 0)}·(1 + 6/${f(A.D, 0)}) = ${f(A.Ndp, 0)} kgf    0,85·Ac·fcd = ${f(A.Nrc, 0)} kgf`,
+    `As = (${f(A.Ndp, 0)} − ${f(A.Nrc, 0)})/${f(A.fyd, 0)} → **${f(A.AsCcalc)} cm²**    As,mín = ${f(A.tb.rho, 1)} %·Ac = **${f(A.AsCmin)} cm²**`,
+    `σ = N/Ac = ${f(A.sig)} kgf/cm² ${A.tb.sig > 0 ? (A.compArma ? ">" : "≤") + " " + f(A.sigLim, 0) + " kgf/cm² (Tabela 4) → " + (A.compArma ? "precisa armar à compressão" : "não precisa armar à compressão") : "→ armadura integral para este tipo de estaca"}`] });
+  B.push({ t: "h", v: "3. Tração" });
+  B.push({ t: "eq", v: A.T > 0 ? [`ELU: As = 1,4·T/fyd = 1,4·${f(A.T, 0)}/${f(A.fyd, 0)} = **${f(A.AsT1)} cm²**`,
+    `Fissuração: ftk = ${f(A.ftk)} kgf/cm²; σs = √[(2·1,5 − 0,75)·Es·ftk/(3·Ø)] = √[2,25·2,1·10⁶·${f(A.ftk)}/(3·${f(A.fiL, 1)})] = ${f(A.sigS, 0)} kgf/cm²`,
+    `As = T/σs = ${f(A.T, 0)}/${f(A.sigS, 0)} = **${f(A.AsT2)} cm²**    →  As,tração = **${f(A.AsT)} cm²**`] : ["Sem tração."] });
+  B.push({ t: "h", v: "4. Carga horizontal e momento no topo" });
+  if (!A.lat) B.push({ t: "p", v: "Sem carga horizontal nem momento no topo." });
+  else {
+    const L1 = A.sh.m === "H" ? [`I = π·D⁴/64 = ${f(A.I, 0)} cm⁴    E = ${f(A.E, 0)} kgf/cm²    kh = ${f(A.kv, 3)} kgf/cm³ → k = kh·D = ${f(A.k, 2)} kgf/cm²`,
+      `λ = [k/(4·E·I)]^(1/4) = ${f(A.lam * 100, 4)} 1/m    profundidade mínima (estaca longa) = 4/λ = **${f(A.Lmin)} m** (${A.L >= A.Lmin ? "atendida" : "não atendida"} com L = ${f(A.L, 1)} m)`,
+      `M(z) = (H/λ)·e^(−λz)·sen λz + M0·e^(−λz)·(cos λz + sen λz)    deslocamento no topo y0 = 2Hλ/k + 2M0λ²/k = ${f(A.y0, 3)} cm`]
+      : [`I = π·D⁴/64 = ${f(A.I, 0)} cm⁴    E = ${f(A.E, 0)} kgf/cm²    nh = ${f(A.kv, 3)} kgf/cm³ (reação = nh·z)`,
+        `T = (E·I/nh)^(1/5) = ${f(A.Tm / 100, 3)} m    profundidade mínima (estaca longa) = 4T = **${f(A.Lmin)} m** (${A.L >= A.Lmin ? "atendida" : "não atendida"} com L = ${f(A.L, 1)} m)`,
+        `M(z) = Am·H·T + Bm·M0 (Matlock e Reese, topo livre)    deslocamento no topo y0 = 2,435·H·T³/EI + 1,623·M0·T²/EI = ${f(A.y0, 3)} cm`];
+    B.push({ t: "p", v: A.sh.m === "H" ? "Método de Hetenyi: viga semi-infinita sobre base elástica, reação horizontal constante com a profundidade (argilas)." : "Método de Miche: reação horizontal crescente com a profundidade (areias, siltes e argila muito mole)." });
+    B.push({ t: "eq", v: L1.concat([`Momento máximo = **${tfm(A.Mmax)} tf·m** a ${f(A.zMmax)} m    cortante máximo = ${tf(A.Vmax)} tf`]) });
+    B.push({ t: "fig", v: svgMz(A), cap: "Momento fletor ao longo da estaca.", w: 0.36 });
+  }
+  B.push({ t: "h", v: "5. Momento (flexão na seção circular)" });
+  B.push({ t: "eq", v: A.Md > 0 ? [`Md = 1,4·Mmáx = ${tfm(A.Md)} tf·m    barras no círculo de diâmetro da = D − 2c = ${f(A.da, 1)} cm`,
+    `ELU (NBR 6118): bloco 0,85·fcd em 0,8x, εcu = 3,5‰, aço até 10‰; As distribuída no círculo.`,
+    `Flexão simples (N = 0): As = **${f(A.AsM0)} cm²**${A.T > 0 ? `    flexo-tração (Nd = −1,4·T): As = **${f(A.AsMT)} cm²**` : ""}    As,mín = 0,15 %·Ac = **${f(A.AsMmin)} cm²**`] : ["Sem momento."] });
+  B.push({ t: "h", v: "6. Armadura longitudinal" });
+  B.push({ t: "eq", v: [`As = maior(compressão ${f(A.AsC)}; tração ${f(A.AsT)}; momento ${f(A.AsM)}) = ${f(A.As)} cm²${A.dispensa ? " (dispensa: só a mínima)" : ""} → ${f(A.As)}/${f(aB(A.fiL), 3)} = ${f(A.nCalc)} → **${A.n} Ø ${f(A.fiL, 1)} mm** (arredondado para cima, mínimo 6 barras)`,
+    `As,ef = ${A.n}·${f(aB(A.fiL), 3)} = ${f(A.AsEf)} cm² ≥ As = ${f(A.As)} cm² → **OK**    espaço livre entre barras = ${f(A.livre, 1)} cm`] });
+  B.push({ t: "fig", v: svgAs(A), cap: "Armadura longitudinal por esforço; o esforço que governa em azul.", w: 0.85 });
+  B.push({ t: "h", v: "7. Dispensa de armadura — NBR 6122:2022, 8.6.3 e Tabela 4" });
+  B.push({ t: "eq", v: [A.dispensa ? `Só compressão e σ = ${f(A.sig)} ≤ ${f(A.sigLim, 0)} kgf/cm²: dispensa armadura de cálculo; armar o topo com a mínima (${f(A.tb.rho, 1)} %) em ${f(A.tb.Lmin, 1)} m.` : A.T > 0 || A.lat ? "Há tração, momento ou carga horizontal: a estaca é armada pelo cálculo (a dispensa vale só para compressão simples)." : "A tensão de compressão passa do limite da Tabela 4: a estaca é armada à compressão."] });
+  B.push({ t: "h", v: "8. Cortante e estribos (NBR 6118, modelo I)" });
+  B.push({ t: "eq", v: [`Seção circular como retangular equivalente: bw = D = ${f(A.bw, 0)} cm; d = D/2 + 2·rs/π = ${f(A.d, 1)} cm`,
+    `Vsd = 1,4·Vmáx = ${tf(A.Vsd)} tf    Vc = 0,6·fctd·bw·d = ${tf(A.Vc)} tf (fctd = 0,7·0,3·fck^(2/3)/γc = ${f(A.fctd, 3)} MPa)    VRd2 = 0,27·αv2·fcd·bw·d = ${tf(A.VRd2)} tf → **${A.vOk ? "OK" : "NÃO ATENDE"}**`,
+    A.precisaV ? `Vsd > Vc: Asw = máx[(Vsd − Vc)/(0,9·d·fywd) = ${f(A.AswCalc)}; Asw,mín = 0,2·fctm/fywk·bw = ${f(A.AswMin)}] = ${f(A.Asw)} cm²/m` : `Vsd ≤ Vc: estribos construtivos, como em pilares (NBR 6118, 18.4.3)`,
+    `s ≤ mín(20 cm; D; 12Ø = ${f(12 * A.fiL / 10, 1)} cm${A.precisaV ? `; 2·As,est/Asw = ${f(A.sCalc, 1)} cm` : ""}) → **estribos Ø ${f(A.fiT, 1)} c/ ${A.s} cm**    Asw,ef = ${f(A.AswEf)} cm²/m`] });
+  B.push({ t: "h", v: "9. Comprimento armado e quantitativos" });
+  B.push({ t: "tab", head: ["Critério", "Comprimento (m)"], al: ["l", "r"], rows: A.Lc.map(([n, v]) => [n, f(Math.min(v, A.L))]).concat([["**Comprimento armado adotado**", "**" + f(A.Larm, 1) + "**"]]) });
+  B.push({ t: "eq", v: [`Concreto ${f(A.vol, 3)} m³ · aço longitudinal ${f(A.kgL, 1)} kg (${A.n} Ø ${f(A.fiL, 1)} × ${f(A.Larm, 1)} m) · estribos ${f(A.kgT, 1)} kg (${A.nEst} × ${f(A.compEst, 2)} m)`] });
+  B.push({ t: "p", v: "Referências: NBR 6122:2022 (8.6.3 e Tabela 4); NBR 6118 (ELU, cortante, 18.4.3); Hetenyi (1946); Miche (1930); Matlock e Reese (1960). Coeficientes da Tabela 4 e da reação do solo conforme a aba Coeficientes do aplicativo Estacas." });
+  return B;
+}
+
+const armObj = () => clone(ar);
+// abre o modelo do aplicativo de referência (fck em kgf/cm², momento em kgf·m, nomes por extenso) ou o deste aplicativo
+function aplicarArm(o) {
+  const n = Object.assign(clone(AR_EX), o), ref = typeof o.tipo === "string" && !CO.tab4.some(t => t.k === o.tipo);
+  if (ref) { n.fck = (+o.fck || 300) / 10; n.M = (+o.M || 0) / 1000; n.elemento = o.elemento || "";
+    const tx = norm(o.tipo); n.tipo = (CO.tab4.find(t => tx.includes(norm(t.n).split(" ")[0]) && (!/fluido/.test(norm(t.n)) || /fluido|bentonit/.test(tx)) && (!/sem fluido/.test(norm(t.n)) || !/com fluido/.test(tx))) || CO.tab4[0]).k;
+    const sx = norm(o.solo); n.solo = (CO.soloH.find(s => norm(s.n) === sx) || CO.soloH.find(s => sx.includes(norm(s.n))) || CO.soloH[2]).k;
+    n.caT = +o.caT || 25; n.gc = n.gc || 3.1; }
+  ar = n; fillArm(); updateArm();
+}
+AFIELDS.forEach(([id]) => $(id).addEventListener("input", () => { lerArm(); updateArm(); }));
+ASELS.forEach(([id]) => $(id).addEventListener("change", () => { lerArm(); updateArm(); }));
+$("aTraz").addEventListener("click", () => { ar.D = Math.round((+st.D_mm || 0) / 10); ar.L = +st.L; if (last) ar.atrito = Math.round(last.med.Ql * 100) / 100; fillArm(); updateArm(); $("aStatus").textContent = `D = ${ar.D} cm, L = ${ar.L} m e atrito = Ql médio (${f(ar.atrito)} tf) trazidos da aba Capacidade.`; });
+$("aEx").addEventListener("click", () => { ar = clone(AR_EX); fillArm(); updateArm(); $("aStatus").textContent = "Exemplo restaurado."; });
+document.querySelectorAll("[data-memo]").forEach(b => b.addEventListener("click", () => { memoModo = b.dataset.memo; document.querySelectorAll("[data-memo]").forEach(x => x.classList.toggle("primary", x === b)); renderMemo(); $("memoStatus").textContent = ""; }));
+
+fillForm(); renderCoef(); listarLocais(0); update(); fillArm(); updateArm();
 try { const t = localStorage.getItem(KEY + "-tab"); const b = t && document.querySelector(`[data-tab="${t}"]`); if (b) b.click(); } catch (e) { }
 (async () => { try { sample = window.claude ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
   if (!sample) { $("btnImg").hidden = true; } })();
