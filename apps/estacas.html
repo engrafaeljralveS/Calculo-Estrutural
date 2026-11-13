@@ -152,13 +152,14 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
   <header class="top">
     <p class="eyebrow">Fundações profundas · NBR 6122:2022</p>
     <h1>Estacas</h1>
-    <p class="sub">Capacidade de carga pela sondagem SPT (P.P.C. Velloso, Aoki-Velloso, Décourt-Quaresma, Teixeira e Alonso) e armadura da estaca armada: compressão, tração, momento, carga horizontal (Hetenyi ou Miche), estribos e comprimento armado.</p>
+    <p class="sub">Capacidade de carga pela sondagem SPT (P.P.C. Velloso, Aoki-Velloso, Décourt-Quaresma, Teixeira e Alonso), armadura da estaca armada e recalque (Aoki-Lopes e Vesić).</p>
   </header>
   <div class="tabs noprint" role="tablist">
     <button role="tab" aria-selected="true" data-tab="pCalc"><span class="n">1</span>Capacidade</button>
     <button role="tab" aria-selected="false" data-tab="pArm"><span class="n">2</span>Armadura</button>
-    <button role="tab" aria-selected="false" data-tab="pMemo"><span class="n">3</span>Memoriais</button>
-    <button role="tab" aria-selected="false" data-tab="pCoef"><span class="n">4</span>Coeficientes</button>
+    <button role="tab" aria-selected="false" data-tab="pRec"><span class="n">3</span>Recalque</button>
+    <button role="tab" aria-selected="false" data-tab="pMemo"><span class="n">4</span>Memoriais</button>
+    <button role="tab" aria-selected="false" data-tab="pCoef"><span class="n">5</span>Coeficientes</button>
   </div>
 
   <section class="tabp" id="pCalc">
@@ -304,9 +305,53 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
     </div>
   </section>
 
+  <section class="tabp" id="pRec" hidden>
+    <div class="app wide">
+      <aside class="inputs">
+        <section>
+          <h2><span class="n">A</span>Carga e estaca</h2>
+          <p class="gnote" style="margin:0 0 8px">Usa a sondagem, a estaca (tipo, D e L) e a capacidade média (Ql e Qp) da aba Capacidade.</p>
+          <div class="g2">
+            <div class="field"><label for="rP">Carga de trabalho, P</label><div class="inp"><input id="rP" type="number" step="0.5" min="0"><span class="u">tf</span></div></div>
+            <div class="field"><label for="rEc">Módulo da estaca, Ec</label><div class="inp"><input id="rEc" type="number" step="500" min="1000"><span class="u">MPa</span></div></div>
+            <div class="field"><label for="rLim">Recalque admissível</label><div class="inp"><input id="rLim" type="number" step="1" min="1"><span class="u">mm</span></div></div>
+            <div class="field"><label for="rXi">Vesić: distribuição do atrito, ξ</label><div class="inp"><select id="rXi" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="0.5">uniforme (0,5)</option><option value="0.67">triangular (0,67)</option></select></div></div>
+          </div>
+          <div class="btnrow" style="margin-top:6px"><button class="btn sm" type="button" id="rUsaQadm">Usar a Qadm média da aba Capacidade</button></div>
+          <p class="gnote">Berberian: o recalque governa — admita a carga que não causa dano à estrutura (da ordem de 10 a 15 mm em vãos de 4 a 6 m).</p>
+        </section>
+        <section>
+          <h2><span class="n">B</span>Solo</h2>
+          <div class="g2">
+            <div class="field"><label for="rGn">Peso específico acima do NA</label><div class="inp"><input id="rGn" type="number" step="0.05" min="1"><span class="u">tf/m³</span></div></div>
+            <div class="field"><label for="rGs">Peso específico submerso</label><div class="inp"><input id="rGs" type="number" step="0.05" min="0.3"><span class="u">tf/m³</span></div></div>
+          </div>
+          <p class="gnote">Módulo do solo abaixo da ponta (Aoki-Lopes simplificado): E = E₀·[(σv₀ + Δσ)/σv₀]ⁿ, com E₀ = α·K·N (K de Aoki-Velloso). α e n na aba Coeficientes.</p>
+          <p class="status" id="rStatus"></p>
+        </section>
+      </aside>
+      <div class="results">
+        <div class="verdicts" id="rCards"></div>
+        <div class="warns" id="rWarns"></div>
+        <div class="panel">
+          <h2><span class="n">1</span>Recalque na carga de trabalho</h2>
+          <div class="tw"><table class="res" id="rTab"></table></div>
+        </div>
+        <div class="panel">
+          <h2><span class="n">2</span>Gráficos</h2>
+          <div class="graf" id="rGraf" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"></div>
+        </div>
+        <div class="panel">
+          <h2><span class="n">3</span>Camadas abaixo da ponta</h2>
+          <div class="tw"><table class="res" id="rCam"></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="tabp" id="pMemo" hidden>
     <div class="btnrow noprint" style="justify-content:center;margin-bottom:6px">
-      <div class="tabs" role="group" aria-label="Memorial" style="border:0"><button class="btn sm primary" type="button" data-memo="cap">Capacidade de carga</button><button class="btn sm" type="button" data-memo="arm">Armadura</button></div>
+      <div class="tabs" role="group" aria-label="Memorial" style="border:0"><button class="btn sm primary" type="button" data-memo="cap">Capacidade de carga</button><button class="btn sm" type="button" data-memo="arm">Armadura</button><button class="btn sm" type="button" data-memo="rec">Recalque</button></div>
     </div>
     <div class="btnrow noprint" style="justify-content:center;margin-bottom:10px">
       <button class="btn primary" type="button" id="btnWord">Gerar memorial Word</button>
@@ -339,6 +384,11 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
       <h2><span class="n">5</span>Armadura: reação horizontal do solo</h2>
       <p class="gnote" style="margin:0 0 8px">Hetenyi: kh constante (kgf/cm³), reação por metro = kh·D. Miche: nh (kgf/cm³), reação = nh·z (valores de Terzaghi para areias). Argila média = 0,8 kgf/cm³ como no memorial de referência; os demais são valores de ordem de grandeza.</p>
       <div class="tw"><table class="coef" id="tabSH"></table></div>
+    </div>
+    <div class="panel">
+      <h2><span class="n">6</span>Recalque: Aoki-Lopes e Vesić</h2>
+      <p class="gnote" style="margin:0 0 8px">α de E₀ = α·K·N por tipo de estaca (Cintra e Aoki: 6 cravadas, 4 hélice contínua, 3 escavadas); expoente n por solo (0,5 granulares, 0 argilas); Cp de Vesić (1977), valores médios das faixas.</p>
+      <div class="tw"><table class="coef" id="tabRec"></table></div>
       <div class="btnrow" style="margin-top:10px"><button class="btn" type="button" id="coefReset">Restaurar coeficientes padrão</button><span class="status" id="coefStatus" style="margin:0"></span></div>
     </div>
   </section>
@@ -508,7 +558,7 @@ function update() {
   $("graf").innerHTML = `<figure class="larga"><figcaption>Ruptura por método: atrito + ponta, e Qadm da norma</figcaption>${svgBarras(R)}<div class="leg"><span><i style="background:#2b6cb0"></i>atrito lateral Ql</span><span><i style="background:#d9902f"></i>ponta Qp</span><span><i style="background:#2e7d50"></i>Qadm (FSg da norma)</span></div></figure>` +
     `<figure class="larga"><figcaption>Perfil de sondagem e estaca</figcaption><div style="max-width:380px;margin:0 auto">${svgPerfil(R)}</div></figure>` +
     `<figure class="larga"><figcaption>Qadm (norma) × comprimento</figcaption>${svgCurvas(R)}<div class="leg">${METODOS.map(([k, nm], i) => `<span><i style="background:${CURC[i]}"></i>${nm}</span>`).join("")}<span><i style="background:#1f2b37"></i>média</span></div></figure>`;
-  if (memoModo === "cap") renderMemo(); save();
+  if (memoModo === "cap") renderMemo(); save(); if (window.__recOk) updateRec();
 }
 
 /* ---------- gráficos ---------- */
@@ -626,7 +676,7 @@ function memoBlocks(R) {
 }
 const bold = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/_SPT/g, "<sub>SPT</sub>");
 let memoModo = "cap";
-const blocosAtuais = () => memoModo === "arm" ? (lastA ? memoBlocksArm(lastA) : []) : (last ? memoBlocks(last) : []);
+const blocosAtuais = () => memoModo === "arm" ? (lastA ? memoBlocksArm(lastA) : []) : memoModo === "rec" ? (lastRc ? memoBlocksRec(lastRc) : [{ t: "p", v: "Recalque avaliado só para estaca comprimida (aba Capacidade em tração)." }]) : (last ? memoBlocks(last) : []);
 function renderMemo() {
   $("memo").innerHTML = blocosAtuais().map(b => {
     if (b.t === "titulo") return `<h2>${esc(b.v)}</h2>`;
@@ -730,7 +780,7 @@ async function gerarWord() {
   const m = $("memoStatus"), b = $("btnWord"); if (memoModo === "arm" ? !lastA : !last) return;
   b.disabled = true; m.className = "status"; m.textContent = "Gerando o memorial…";
   try {
-    const bytes = await buildDocx(blocosAtuais()), nome = memoModo === "arm" ? `memorial-armadura-estaca-${(ar.obra || "obra").replace(/[^\w.-]+/g, "_")}-D${ar.D}.docx` : `memorial-estaca-${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}-${(st.sondagem || "SP").replace(/[^\w.-]+/g, "_")}-L${last.Lp}.docx`;
+    const bytes = await buildDocx(blocosAtuais()), nome = memoModo === "rec" ? `memorial-recalque-estaca-${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}-L${last.Lp}.docx` : memoModo === "arm" ? `memorial-armadura-estaca-${(ar.obra || "obra").replace(/[^\w.-]+/g, "_")}-D${ar.D}.docx` : `memorial-estaca-${(st.obra || "obra").replace(/[^\w.-]+/g, "_")}-${(st.sondagem || "SP").replace(/[^\w.-]+/g, "_")}-L${last.Lp}.docx`;
     const ok = await saveFile(nome, bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     m.className = ok ? "status ok" : "status err"; m.textContent = ok ? `Memorial salvo: ${nome} — confira a pasta Downloads.` : `Download indisponível nesta visualização. Use "Imprimir / PDF" ou abra o programa pelo site ${SITE}.`;
   } catch (e) { m.className = "status err"; m.textContent = e && e.code === "declined" ? "Download cancelado." : "Não foi possível gerar o memorial: " + (e && e.message || e); }
@@ -739,13 +789,14 @@ async function gerarWord() {
 
 /* ---------- modelos ---------- */
 const sayM = t => { $("modStatus").textContent = t; };
-const modeloObj = () => ({ obra: st.obra, cidade: st.cidade, edificacao: st.edificacao, sondagem: st.sondagem, tipo: st.tipo, D_mm: st.D_mm, L: st.L, Vbase_L: 0, NA: st.NA, CS: st.CS, secao: st.secao, carga: st.carga, spt: st.spt.map(r => ({ N: +r.N, solo: r.solo })), armadura: armObj() });
+const modeloObj = () => ({ obra: st.obra, cidade: st.cidade, edificacao: st.edificacao, sondagem: st.sondagem, tipo: st.tipo, D_mm: st.D_mm, L: st.L, Vbase_L: 0, NA: st.NA, CS: st.CS, secao: st.secao, carga: st.carga, spt: st.spt.map(r => ({ N: +r.N, solo: r.solo })), armadura: armObj(), recalque: clone(rc) });
 const modeloJSON = () => JSON.stringify(modeloObj(), null, 1);
 function aplicarModelo(txt, origem) {
   let o; try { o = JSON.parse(String(txt).replace(/^﻿/, "")); } catch (e) { sayM("O conteúdo não é um modelo válido (JSON com erro)."); return false; }
   if (o && !Array.isArray(o.spt) && ("fiL" in o || "fck" in o)) { aplicarArm(o); sayM(`Armadura ${o.obra ? `“${o.obra}” ` : ""}aberta na aba Armadura${origem ? ` (${origem})` : ""}.`); return true; }
   if (!o || !Array.isArray(o.spt) || !o.spt.length) { sayM("O arquivo não tem a sondagem (lista spt)."); return false; }
   if (o.armadura && typeof o.armadura === "object") aplicarArm(o.armadura);
+  if (o.recalque && typeof o.recalque === "object") rc = Object.assign(clone(RC_EX), o.recalque); else rc.P = null;
   const n = Object.assign(clone(EXEMPLO), o);
   n.spt = o.spt.map(r => ({ N: Math.max(0, +r.N || 0), solo: CO.solos.some(s => s.c === r.solo) ? r.solo : (soloDeTexto(r.solo) || "ARGI") }));
   n.tipo = CO.tipos.some(t => t.id === +o.tipo) ? +o.tipo : 4; n.NA = o.NA == null || o.NA === "" ? null : +o.NA;
@@ -800,13 +851,15 @@ function renderCoef() {
     CO.tab4.map((t, i) => `<tr><td class="l">${esc(t.n)}</td>${["fck", "gc", "rho", "Lmin", "sig"].map(k => `<td>${num(`tab4.${i}.${k}`, t[k])}</td>`).join("")}</tr>`).join("") + "</tbody>";
   $("tabSH").innerHTML = `<thead><tr><th>Solo</th><th>Método</th><th>Seco (kgf/cm³)</th><th>Submerso (kgf/cm³)</th></tr></thead><tbody>` +
     CO.soloH.map((t, i) => `<tr><td class="l">${esc(t.n)}</td><td class="l">${t.m === "H" ? "Hetenyi (kh)" : "Miche (nh)"}</td><td>${num(`soloH.${i}.seca`, t.seca)}</td><td>${num(`soloH.${i}.sub`, t.sub)}</td></tr>`).join("") + "</tbody>";
+  $("tabRec").innerHTML = `<thead><tr><th>Estaca</th><th>α (E₀ = α·K·N)</th></tr></thead><tbody>` + CO.tipos.map(t => `<tr><td class="l">${t.id}. ${esc(t.n)}</td><td>${num(`rec.alfa.${t.id}`, CO.rec.alfa[t.id])}</td></tr>`).join("") +
+    `<tr><th>Grupo de solo</th><th>n</th><th>Cp cravada</th><th>Cp escavada</th></tr>` + ["areia", "silte", "argila"].map(g => `<tr><td class="l">${g === "silte" ? "silte (intermediário)" : g}</td><td>${num(`rec.n.${g}`, CO.rec.n[g])}</td><td>${num(`rec.cp.${g}.0`, CO.rec.cp[g][0])}</td><td>${num(`rec.cp.${g}.1`, CO.rec.cp[g][1])}</td></tr>`).join("") + "</tbody>";
   $("tabTeix").innerHTML = `<thead><tr><th>Solo</th>${TEIX_COL.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` + TEIX_CAT.map((c, i) => `<tr><td class="l">${c}</td>${TEIX_COL.map((_, j) => `<td>${num(`teix.${i}.${j}`, CO.teix[i][j])}</td>`).join("")}</tr>`).join("") + "</tbody>";
 }
 document.addEventListener("change", e => {
   const p = e.target.dataset && e.target.dataset.c; if (!p) return;
   const ks = p.split("."), last = ks.pop(); let o = CO; ks.forEach(k => o = o[k]);
   const v = e.target.tagName === "SELECT" && last === "g" ? e.target.value : +e.target.value;
-  if (typeof v === "number" && !isFinite(v)) return; o[last] = v; saveCoef(); update(); updateArm(); $("coefStatus").textContent = "Coeficiente alterado e guardado neste navegador.";
+  if (typeof v === "number" && !isFinite(v)) return; o[last] = v; saveCoef(); update(); updateArm(); updateRec(); $("coefStatus").textContent = "Coeficiente alterado e guardado neste navegador.";
 });
 
 /* ---------- eventos ---------- */
@@ -829,7 +882,7 @@ $("tabRes").addEventListener("change", e => { const k = e.target.dataset.m; if (
 $("btnWord").addEventListener("click", gerarWord);
 $("btnPrint").addEventListener("click", () => window.print());
 $("exemplo").addEventListener("click", () => { st = clone(EXEMPLO); excl = {}; fillForm(); update(); sayM("Exemplo restaurado."); });
-$("coefReset").addEventListener("click", () => { CO = { solos: clone(SOLOS_DEF), teix: clone(TEIX_DEF), tipos: clone(TIPOS_DEF), tab4: clone(TAB4_DEF), soloH: clone(SOLOH_DEF) }; saveCoef(); renderCoef(); fillForm(); update(); fillArm(); updateArm(); $("coefStatus").textContent = "Coeficientes padrão restaurados."; });
+$("coefReset").addEventListener("click", () => { CO = { solos: clone(SOLOS_DEF), teix: clone(TEIX_DEF), tipos: clone(TIPOS_DEF), tab4: clone(TAB4_DEF), soloH: clone(SOLOH_DEF), rec: clone(REC_DEF) }; saveCoef(); renderCoef(); fillForm(); update(); fillArm(); updateArm(); $("coefStatus").textContent = "Coeficientes padrão restaurados."; });
 $("salvaLocal").addEventListener("click", () => {
   const nome = [st.obra, st.edificacao, st.sondagem, `L${st.L}`].filter(Boolean).join(" · ") || "modelo", a = lerLocais(), i = a.findIndex(m => m.nome === nome), item = { nome, quando: Date.now(), txt: modeloJSON() };
   if (i >= 0) a[i] = item; else a.push(item); a.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
@@ -1127,6 +1180,140 @@ $("aTraz").addEventListener("click", () => { ar.D = Math.round((+st.D_mm || 0) /
 $("aEx").addEventListener("click", () => { ar = clone(AR_EX); fillArm(); updateArm(); $("aStatus").textContent = "Exemplo restaurado."; });
 document.querySelectorAll("[data-memo]").forEach(b => b.addEventListener("click", () => { memoModo = b.dataset.memo; document.querySelectorAll("[data-memo]").forEach(x => x.classList.toggle("primary", x === b)); renderMemo(); $("memoStatus").textContent = ""; }));
 
+/* =================== RECALQUE DA ESTACA =================== */
+// Aoki-Lopes simplificado (Cintra e Aoki): α de E₀ = α·K·N por tipo de estaca; n por grupo de solo. Vesić (1977): Cp por grupo e execução.
+const REC_DEF = { alfa: { 1: 6, 2: 6, 3: 6, 4: 3, 5: 3, 6: 4, 7: 3, 8: 3 }, n: { areia: 0.5, silte: 0.5, argila: 0 },
+  cp: { areia: [0.03, 0.135], silte: [0.04, 0.105], argila: [0.025, 0.045] } };
+if (!CO.rec || !CO.rec.alfa || !CO.rec.cp) CO.rec = clone(REC_DEF);
+const RC_EX = { P: null, Ec: 21000, lim: 15, xi: 0.5, gn: 1.8, gs: 0.8 };
+let rc = clone(RC_EX);
+try { const a = JSON.parse(localStorage.getItem(KEY + "-rec") || "null"); if (a) rc = Object.assign(clone(RC_EX), a); } catch (e) { }
+const saveRc = () => { try { localStorage.setItem(KEY + "-rec", JSON.stringify(rc)); } catch (e) { } };
+
+function recBase(R) {
+  const t = R.t, G = R.G, n = R.lay.length, Ec = (+rc.Ec || 21000) * 100, Qlm = R.med.Ql, Qpm = R.med.Qp, Qu = R.med.Qu;
+  const ak = R.out.aoki, w = R.lay.slice(0, t).map(l => ak.ak(l) * ak.Nc(l)), sw = w.reduce((a, x) => a + x, 0);
+  const RLi = w.map(x => sw > 0 ? Qlm * x / sw : Qlm / Math.max(1, t));
+  const NA = st.NA != null && isFinite(st.NA) ? +st.NA : Infinity, gn = +rc.gn || 1.8, gs = +rc.gs || 0.8;
+  const sv = z => { let s = 0; const zn = Math.min(z, NA); s += gn * zn; if (z > NA) s += gs * (z - NA); return s; };
+  const alfa = CO.rec.alfa[R.T.id] || 3, cr = R.T.cr ? 0 : 1;
+  return { R, t, G, n, Ec, Qlm, Qpm, Qu, RLi, sv, alfa, cr, L: R.Lp };
+}
+function recAL(B, P) {
+  const { R, t, G, n, Ec, RLi, sv, alfa, L } = B;
+  let rest = P; const mob = RLi.map(r => { const m = Math.min(r, rest); rest -= m; return m; }); const Pp = Math.max(0, rest);
+  let acc = 0, re = 0; const Nfuste = mob.map(m => { const Nm = P - acc - m / 2; acc += m; re += Nm * 1 / (G.Ap * Ec); return Nm; });
+  const loads = mob.map((m, i) => ({ F: m, z: i + 0.5 })).concat([{ F: Pp, z: L }]);
+  const cam = []; let rs = 0;
+  for (let j = t + 1; j < n; j++) {
+    const l = R.lay[j], zj = j + 0.5, ds = loads.reduce((a, q) => a + (q.z < zj && q.F > 0 ? 4 * q.F / (Math.PI * Math.pow(G.D + (zj - q.z), 2)) : 0), 0);
+    const s0 = sv(zj), E0 = alfa * l.s.K * Math.max(1, l.N), nn = CO.rec.n[l.s.g] || 0, E = E0 * Math.pow((s0 + ds) / s0, nn), dr = ds / E;
+    rs += dr; cam.push({ z: l.z, l, s0, ds, E0, E, dr, nn });
+  }
+  return { P, mob, Pp, Nfuste, re, rs, rho: re + rs, cam };
+}
+function recVesic(B, P, al) {
+  const { G, Ec, Qpm, L, R, cr } = B, Qwp = al.Pp, Qws = P - al.Pp, xi = +rc.xi || 0.5, qp = Qpm / G.Ap, g = R.lay[R.t] ? R.lay[R.t].s.g : "areia";
+  const Cp = CO.rec.cp[g][cr], Cs = (0.93 + 0.16 * Math.sqrt(L / G.D)) * Cp;
+  const r1 = (Qwp + xi * Qws) * L / (G.Ap * Ec), r2 = qp > 0 ? Cp * Qwp / (G.D * qp) : 0, r3 = qp > 0 ? Cs * Qws / (L * qp) : 0;
+  return { Qwp, Qws, xi, qp, Cp, Cs, r1, r2, r3, rho: r1 + r2 + r3, g };
+}
+let lastRc = null;
+function updateRec() {
+  if (!last) return;
+  const R = last;
+  if (R.tr) { lastRc = null; $("rWarns").innerHTML = "<p>A aba Capacidade está em tração: o recalque é avaliado só para estaca comprimida.</p>"; $("rCards").innerHTML = ""; $("rTab").innerHTML = ""; $("rGraf").innerHTML = ""; $("rCam").innerHTML = ""; if (memoModo === "rec") renderMemo(); return; }
+  if (rc.P == null || !isFinite(rc.P)) rc.P = Math.round(R.med.nor * 10) / 10;
+  ["P", "Ec", "lim", "gn", "gs"].forEach(k => { const el = $("r" + { P: "P", Ec: "Ec", lim: "Lim", gn: "Gn", gs: "Gs" }[k]); if (document.activeElement !== el) el.value = rc[k]; });
+  $("rXi").value = String(rc.xi);
+  const B = recBase(R), P = +rc.P || 0, al = recAL(B, P), ve = recVesic(B, P, al), D = B.G.D, lim = (+rc.lim || 15) / 1000;
+  const mey = D * P / (30 * B.Qu), dec = D / 100;
+  // carga que dá o recalque admissível (Aoki-Lopes)
+  let Plim = null; if (recAL(B, B.Qu).rho > lim) { let lo = 0, hi = B.Qu; for (let k = 0; k < 50; k++) { const m = (lo + hi) / 2; if (recAL(B, m).rho > lim) hi = m; else lo = m; } Plim = lo; }
+  const curva = Array.from({ length: 21 }, (_, i) => { const p = B.Qu * i / 20, a = recAL(B, p); return { p, al: a.rho, ve: recVesic(B, p, a).rho }; });
+  lastRc = { B, P, al, ve, mey, dec, lim, Plim, curva };
+  const w = [];
+  if (B.t + 1 >= B.n) w.push("Não há sondagem abaixo da ponta: o recalque do solo (Aoki-Lopes) fica sem camadas. Estenda a sondagem.");
+  else if (B.n - (B.t + 1) < 3) w.push(`Só ${B.n - B.t - 1} m de sondagem abaixo da ponta: o recalque do solo pode estar subestimado.`);
+  if (P > R.med.nor * 1.001) w.push(`A carga de trabalho (${f(P)} tf) é maior que a Qadm média da norma (${f(R.med.nor)} tf).`);
+  if (Plim != null && Plim < P) w.push(`Pelo recalque admissível de ${f(rc.lim, 0)} mm, a carga deveria ficar em até ${f(Plim)} tf (Aoki-Lopes): o recalque governa.`);
+  $("rWarns").innerHTML = w.map(x => `<p>${esc(x)}</p>`).join("");
+  const mm = x => f(x * 1000, 1) + " mm", ok = x => x <= lim;
+  $("rCards").innerHTML = [
+    ["Aoki-Lopes", mm(al.rho), `encurtamento ${mm(al.re)} + solo ${mm(al.rs)}`, ok(al.rho) ? "ok" : "bad"],
+    ["Vesić (1977)", mm(ve.rho), `fuste ${mm(ve.r1)} · ponta ${mm(ve.r2)} · atrito ${mm(ve.r3)}`, ok(ve.rho) ? "ok" : "bad"],
+    ["Carga p/ " + f(rc.lim, 0) + " mm", Plim == null ? "não governa" : f(Plim) + " tf", Plim == null ? "recalque < limite até Qu" : "Aoki-Lopes", Plim != null && Plim < P ? "warn" : "info"],
+    ["Carga de trabalho", f(P) + " tf", `Qadm média ${f(R.med.nor)} · Qu ${f(B.Qu)} tf`, "info"]
+  ].map(([t, v, s, c]) => `<div class="card ${c}"><span class="t">${t}</span><span class="v" style="font-size:20px">${esc(v)}</span><span class="t">${esc(s)}</span></div>`).join("");
+  $("rTab").innerHTML = `<thead><tr><th>Método</th><th>Parcelas</th><th>Recalque</th><th>Situação</th></tr></thead><tbody>` +
+    `<tr><td class="l">Aoki-Lopes simplificado</td><td class="l">encurtamento elástico ${mm(al.re)} + camadas abaixo da ponta ${mm(al.rs)} (Pp = ${f(al.Pp)} tf)</td><td class="num sel">${mm(al.rho)}</td><td class="l">${ok(al.rho) ? "≤" : ">"} ${f(rc.lim, 0)} mm</td></tr>` +
+    `<tr><td class="l">Vesić (1977)</td><td class="l">${mm(ve.r1)} + ${mm(ve.r2)} + ${mm(ve.r3)} (Cp = ${f(ve.Cp, 3)})</td><td class="num sel">${mm(ve.rho)}</td><td class="l">${ok(ve.rho) ? "≤" : ">"} ${f(rc.lim, 0)} mm</td></tr>` +
+    `<tr><td class="l">Meyerhof (empírico)</td><td class="l">r = D/(30·FS), FS = Qu/P = ${f(B.Qu / P)}</td><td class="num">${mm(mey)}</td><td class="l">referência</td></tr>` +
+    `<tr><td class="l">Décourt (empírico)</td><td class="l">r ≈ D/100 para P = Qu/2 = ${f(B.Qu / 2)} tf</td><td class="num">${mm(dec)}</td><td class="l">referência</td></tr></tbody>`;
+  $("rGraf").innerHTML = `<figure class="larga"><figcaption>Carga × recalque</figcaption>${svgCurvaRec(lastRc)}<div class="leg"><span><i style="background:#2b6cb0"></i>Aoki-Lopes</span><span><i style="background:#b5651d"></i>Vesić</span><span><i style="background:#b83a2e"></i>recalque admissível</span><span><i style="background:#2e7d50"></i>carga de trabalho</span></div></figure>` +
+    `<figure><figcaption>Transferência de carga (Aoki-Lopes)</figcaption>${svgTransf(lastRc)}</figure>`;
+  $("rCam").innerHTML = `<thead><tr><th>Cota (m)</th><th>Solo</th><th>N</th><th>σv₀ (tf/m²)</th><th>Δσ (tf/m²)</th><th>E₀ (tf/m²)</th><th>E (tf/m²)</th><th>Δρ (mm)</th></tr></thead><tbody>` +
+    (al.cam.length ? al.cam.map(c => `<tr><td class="num">${c.z}</td><td class="l">${esc(c.l.s.n)}</td><td class="num">${c.l.N}</td><td class="num">${f(c.s0)}</td><td class="num">${f(c.ds, 3)}</td><td class="num">${f(c.E0, 0)}</td><td class="num">${f(c.E, 0)}</td><td class="num">${f(c.dr * 1000, 2)}</td></tr>`).join("") : `<tr><td colspan="8" class="l">sem camadas abaixo da ponta</td></tr>`) + "</tbody>";
+  saveRc(); if (memoModo === "rec") renderMemo();
+}
+function svgCurvaRec(K) {
+  const W = 520, H = 280, x0 = 50, x1 = 505, y0 = 245, y1 = 12, C = K.curva, mxP = K.B.Qu, mxR = Math.max(K.lim * 1.6, Math.min(K.lim * 3, Math.max(...C.map(c => Math.max(c.al, c.ve))))) * 1000;
+  const stR = [1, 2, 5, 10, 20, 50, 100].find(s => mxR / s <= 7) || 200, topR = Math.ceil(mxR / stR) * stR, stP = [5, 10, 20, 25, 50, 100].find(s => mxP / s <= 7) || 200;
+  const X = p => x0 + (x1 - x0) * p / mxP, Y = r => y1 + (y0 - y1) * Math.min(r * 1000, topR) / topR;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva carga recalque" font-family="Arial" font-size="10">`;
+  for (let r = 0; r <= topR + 1e-9; r += stR) s += `<line x1="${x0}" x2="${x1}" y1="${Y(r / 1000)}" y2="${Y(r / 1000)}" stroke="#d9e0e7"/><text x="${x0 - 5}" y="${Y(r / 1000) + 3}" text-anchor="end" fill="#5e6b78">${r}</text>`;
+  for (let p = 0; p <= mxP + 1e-9; p += stP) s += `<text x="${X(p)}" y="${y0 + 14}" text-anchor="middle" fill="#5e6b78">${p}</text>`;
+  s += `<line x1="${x0}" x2="${x1}" y1="${Y(K.lim)}" y2="${Y(K.lim)}" stroke="#b83a2e" stroke-dasharray="5 3"/><text x="${x1}" y="${Y(K.lim) - 4}" text-anchor="end" fill="#b83a2e">${f(K.lim * 1000, 0)} mm</text>`;
+  s += `<line x1="${X(K.P)}" x2="${X(K.P)}" y1="${y1}" y2="${y0}" stroke="#2e7d50" stroke-dasharray="3 3"/><text x="${X(K.P) + 4}" y="${y1 + 10}" fill="#2e7d50">P = ${f(K.P, 1)} tf</text>`;
+  [["al", "#2b6cb0"], ["ve", "#b5651d"]].forEach(([k, c]) => { s += `<polyline fill="none" stroke="${c}" stroke-width="2" points="${C.map(q => `${X(q.p).toFixed(1)},${Y(q[k]).toFixed(1)}`).join(" ")}"/>`; });
+  return s + `<text x="${(x0 + x1) / 2}" y="${H - 6}" text-anchor="middle" fill="#5e6b78">carga P (tf)</text><text x="12" y="${(y0 + y1) / 2}" transform="rotate(-90 12 ${(y0 + y1) / 2})" text-anchor="middle" fill="#5e6b78">recalque (mm), para baixo</text></svg>`;
+}
+function svgTransf(K) {
+  const al = K.al, L = K.B.L, n = K.B.n, W = 280, H = 320, y0 = 20, hz = (H - 40) / n, x0 = 70, x1 = 260, X = v => x0 + (x1 - x0) * v / (K.P || 1), Y = z => y0 + z * hz;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Transferência de carga" font-family="Arial" font-size="10"><rect x="20" y="${y0}" width="12" height="${L * hz}" fill="#2b6cb0" opacity=".85"/>`;
+  const pts = [[K.P, 0]]; let acc = K.P; al.mob.forEach((m, i) => { acc -= m; pts.push([acc, i + 1]); }); pts.push([al.Pp, L]);
+  s += `<polygon fill="#2b6cb0" fill-opacity=".15" stroke="#2b6cb0" points="${x0},${Y(0)} ${pts.map(([v, z]) => `${X(v).toFixed(1)},${Y(z).toFixed(1)}`).join(" ")} ${x0},${Y(L)}"/>`;
+  s += `<text x="${X(K.P)}" y="${y0 - 6}" text-anchor="end" fill="#1f2b37">P = ${f(K.P, 1)} tf</text><text x="${Math.max(X(al.Pp), x0) + 6}" y="${Y(L) - 5}" fill="#1f2b37">Pp = ${f(al.Pp, 1)} tf</text>`;
+  al.cam.forEach(c => { s += `<rect x="${x0}" y="${Y(c.z - 1) + 1}" width="${Math.min(x1 - x0, Math.max(1, (x1 - x0) * c.dr / Math.max(...al.cam.map(q => q.dr))))}" height="${hz - 2}" fill="#d9902f" opacity=".6"/>`; });
+  for (let z = 0; z <= n; z += Math.max(1, Math.round(n / 8))) s += `<text x="${x0 - 6}" y="${Y(z) + 3}" text-anchor="end" fill="#5e6b78">${z}</text>`;
+  return s + `<line x1="16" x2="${x1}" y1="${Y(L)}" y2="${Y(L)}" stroke="#2b6cb0" stroke-dasharray="4 3"/><text x="${x1}" y="${H - 4}" text-anchor="end" fill="#d9902f">laranja: Δρ por camada abaixo da ponta</text></svg>`;
+}
+function memoBlocksRec(K) {
+  const B = [], R = K.B.R, G = K.B.G, al = K.al, ve = K.ve, mm = x => f(x * 1000, 2) + " mm";
+  B.push({ t: "titulo", v: "Memorial de cálculo — recalque de estaca" });
+  B.push({ t: "cab", v: [["Projeto", st.obra], ["Local", st.cidade], ["Edificação/pilar", st.edificacao], ["Sondagem", st.sondagem], ["Data", new Date().toLocaleDateString("pt-BR")], ["Unidades", "tf, m, mm"]] });
+  B.push({ t: "h", v: "1. Dados" });
+  B.push({ t: "p", v: `Estaca ${R.T.n.toLowerCase()}, ${G.q ? "lado" : "Ø"} ${f(st.D_mm, 0)} mm, L = ${K.B.L} m. Carga de trabalho P = ${f(K.P)} tf. Capacidade média (aba Capacidade): Ql = ${f(K.B.Qlm)} tf, Qp = ${f(K.B.Qpm)} tf, Qu = ${f(K.B.Qu)} tf. Ec = ${f(rc.Ec, 0)} MPa. Recalque admissível ${f(rc.lim, 0)} mm.` });
+  B.push({ t: "p", v: `Peso específico ${f(rc.gn, 2)} tf/m³ acima do NA e ${f(rc.gs, 2)} tf/m³ submerso; NA ${st.NA != null && isFinite(st.NA) ? "a " + f(st.NA) + " m" : "não encontrado"}.` });
+  B.push({ t: "h", v: "2. Aoki-Lopes simplificado (Cintra e Aoki)" });
+  B.push({ t: "p", v: "O atrito Ql (média dos métodos) é distribuído pelas camadas na proporção de α·K·N (Aoki-Velloso) e mobilizado de cima para baixo; a ponta recebe Pp = P − ΣRL mobilizado. Cada carga é espraiada a 1:2 até as camadas abaixo da ponta." });
+  B.push({ t: "tab", head: ["Cota", "Solo", "N", "RL da camada (tf)", "RL mobilizado (tf)", "Normal no meio da camada (tf)"], al: ["r", "l", "r", "r", "r", "r"],
+    rows: al.mob.map((m, i) => [i + 1, R.lay[i].s.n, R.lay[i].N, f(K.B.RLi[i]), f(m), f(al.Nfuste[i])]) });
+  B.push({ t: "eq", v: [`Encurtamento elástico: ρe = Σ(N·Δz)/(Ap·Ec) = Σ(N·1 m)/(${f(G.Ap, 4)}·${f(K.B.Ec, 0)}) = **${mm(al.re)}**`,
+    `Pp = ${f(al.Pp)} tf    Δσ = 4·F/[π·(D + h)²] (espraiamento 1:2)    E = E₀·[(σv₀ + Δσ)/σv₀]ⁿ, E₀ = ${K.B.alfa}·K·N`] });
+  B.push({ t: "tab", head: ["Cota", "Solo", "N", "σv₀ (tf/m²)", "Δσ (tf/m²)", "E₀ (tf/m²)", "n", "E (tf/m²)", "Δρ (mm)"], al: ["r", "l", "r", "r", "r", "r", "r", "r", "r"],
+    rows: al.cam.map(c => [c.z, c.l.s.n, c.l.N, f(c.s0), f(c.ds, 3), f(c.E0, 0), f(c.nn, 2), f(c.E, 0), f(c.dr * 1000, 2)]) });
+  B.push({ t: "eq", v: [`Recalque do solo ρs = Σ(Δσ/E)·Δz = **${mm(al.rs)}**`, `ρ = ρe + ρs = ${mm(al.re)} + ${mm(al.rs)} = **${mm(al.rho)}** ${al.rho <= K.lim ? "≤" : ">"} ${f(rc.lim, 0)} mm`] });
+  B.push({ t: "h", v: "3. Vesić (1977)" });
+  B.push({ t: "eq", v: [`Qwp = ${f(ve.Qwp)} tf (ponta)    Qws = ${f(ve.Qws)} tf (atrito)    ξ = ${f(ve.xi, 2)}    qp = Qp/Ap = ${f(ve.qp)} tf/m²`,
+    `ρ1 = (Qwp + ξ·Qws)·L/(Ap·Ec) = **${mm(ve.r1)}**`,
+    `ρ2 = Cp·Qwp/(D·qp) = ${f(ve.Cp, 3)}·${f(ve.Qwp)}/(${f(G.D, 3)}·${f(ve.qp)}) = **${mm(ve.r2)}**    (Cp para ${ve.g}, estaca ${K.B.cr ? "escavada" : "cravada"})`,
+    `ρ3 = Cs·Qws/(L·qp), Cs = (0,93 + 0,16·√(L/D))·Cp = ${f(ve.Cs, 3)} → **${mm(ve.r3)}**`,
+    `ρ = ρ1 + ρ2 + ρ3 = **${mm(ve.rho)}** ${ve.rho <= K.lim ? "≤" : ">"} ${f(rc.lim, 0)} mm`] });
+  B.push({ t: "h", v: "4. Referências empíricas" });
+  B.push({ t: "eq", v: [`Meyerhof: r = D/(30·FS), FS = Qu/P = ${f(K.B.Qu / K.P)} → r = ${mm(K.mey)}`, `Décourt: r ≈ D/100 = ${mm(K.dec)} para P = Qu/2 = ${f(K.B.Qu / 2)} tf`] });
+  B.push({ t: "h", v: "5. Carga limitada pelo recalque" });
+  B.push({ t: "p", v: K.Plim == null ? `Pelo Aoki-Lopes, o recalque fica abaixo de ${f(rc.lim, 0)} mm até a carga de ruptura média: o recalque não governa.` : `Pelo Aoki-Lopes, a carga que produz ${f(rc.lim, 0)} mm é ${f(K.Plim)} tf. ${K.Plim < K.P ? "A carga de trabalho passa desse valor: o recalque governa (Berberian) e a carga admitida deve ser reduzida." : "A carga de trabalho fica abaixo desse valor."}` });
+  B.push({ t: "fig", v: svgCurvaRec(K), cap: "Carga × recalque: Aoki-Lopes (azul) e Vesić (marrom); limite tracejado em vermelho.", w: 0.9 });
+  B.push({ t: "fig", v: svgTransf(K), cap: "Transferência de carga ao longo da estaca e recalque por camada abaixo da ponta.", w: 0.45 });
+  B.push({ t: "p", v: "Referências: Cintra e Aoki, Fundações por estacas (cap. 7, recalque); Aoki e Lopes (1975); Vesić (1977); Meyerhof; Décourt; Berberian. Coeficientes α, n e Cp conforme a aba Coeficientes do aplicativo Estacas." });
+  return B;
+}
+[["rP", "P"], ["rEc", "Ec"], ["rLim", "lim"], ["rGn", "gn"], ["rGs", "gs"]].forEach(([id, k]) => $(id).addEventListener("input", () => { const v = +String($(id).value).replace(",", "."); if (isFinite(v) && $(id).value !== "") { rc[k] = v; updateRec(); } }));
+$("rXi").addEventListener("change", () => { rc.xi = +$("rXi").value; updateRec(); });
+$("rUsaQadm").addEventListener("click", () => { if (last) { rc.P = Math.round(last.med.nor * 10) / 10; $("rP").value = rc.P; updateRec(); $("rStatus").textContent = `P = ${f(rc.P, 1)} tf (Qadm média da norma).`; } });
+
+window.__recOk = true;
 fillForm(); renderCoef(); listarLocais(0); update(); fillArm(); updateArm();
 try { const t = localStorage.getItem(KEY + "-tab"); const b = t && document.querySelector(`[data-tab="${t}"]`); if (b) b.click(); } catch (e) { }
 (async () => { try { sample = window.claude ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
