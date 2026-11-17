@@ -499,7 +499,7 @@ td .pill { font-size: 11.5px; padding: 2px 8px; }
       <section class="panel" aria-label="Tensão no solo">
         <h2><span class="n">H</span>Tensão no solo</h2>
         <div class="tablewrap" id="soil-table"></div>
-        <p class="msg" style="margin-top:10px">Tensão de contato p = k<sub>v</sub> · w nas molas sob a laje de fundo e a aba (k<sub>v</sub> em kN/m³ = kPa por metro de recalque; tensões em kPa = kN/m²; 1 kgf/cm² = 98,07 kPa), nas combinações características g + q, sem majorar: é a tensão efetiva transmitida ao solo, já descontada a subpressão. A máxima, que ocorre em geral junto às paredes e na aba, é comparada com a tensão admissível σ<sub>adm</sub> do laudo geotécnico (aba Esforços, apoio elástico).</p>
+        <p class="msg" style="margin-top:10px">Tensão de contato p = k<sub>v</sub> · w nas molas sob a laje de fundo e a aba (k<sub>v</sub> em kN/m³ = kPa por metro de recalque; tensões em kPa = kN/m²; 1 kgf/cm² = 98,07 kPa), nas combinações características g + q, sem majorar: é a tensão efetiva transmitida ao solo, já descontada a subpressão. A máxima, que ocorre em geral junto às paredes e na aba, é comparada com a tensão admissível σ<sub>adm</sub> do laudo geotécnico (aba Esforços, apoio elástico). A média (Σ reações ÷ área da base, laje de fundo + aba) é a que se compara com a soma das reações de um modelo externo. As situações têm cargas diferentes: o teste de estanqueidade é feito antes do reaterro e sem água externa (sem subpressão), por isso costuma ter tensão maior que a operação.</p>
       </section>
 
       <details class="panel">
@@ -1701,10 +1701,11 @@ const Arm = (function () {
     // tensão de contato (kPa = kN/m²) nas combinações características de cada situação
     const pOf = r => { let v = 0; if (r && !r.floated) fe.surfNodes.bot.forEach(i => { if (r.press[i] > v) v = r.press[i]; }); return v; };
     const SITU = { vazia: 'operação, caixa vazia', cheia: 'operação, caixa cheia', teste: 'teste de estanqueidade', constr: 'etapa construtiva' };
-    const soilList = (fe.carIdx || [NCOMB.car]).map(i => ({ st: st(i) || 'vazia', lab: SITU[st(i) || 'vazia'], p: pOf(fe.results[i]) }));
+    const Abot = circ ? Math.PI * Math.pow(p.B / 2 + p.ep + p.ba, 2) : (p.B + 2 * p.ep + 2 * p.ba) * (p.L + 2 * p.ep + 2 * p.ba), pMed = car.R / Abot;
+    const nSpr = fe.surfNodes.bot.length || 1;
+    const soilList = (fe.carIdx || [NCOMB.car]).map(i => { const r = fe.results[i] || {}; return { st: st(i) || 'vazia', lab: SITU[st(i) || 'vazia'], p: pOf(r), R: r.floated ? 0 : (r.R || 0), pm: r.floated ? 0 : (r.R || 0) / Abot, fl: !!r.floated, cont: r.floated ? 0 : Math.max(0, 1 - (r.lifted || 0) / nSpr) }; });
     const pMax = (soilList.find(x => x.st === 'vazia') || { p: pOf(car) }).p;
     const pMaxC = (soilList.find(x => x.st === 'constr') || { p: 0 }).p;
-    const Abot = circ ? Math.PI * Math.pow(p.B / 2 + p.ep + p.ba, 2) : (p.B + 2 * p.ep + 2 * p.ba) * (p.L + 2 * p.ep + 2 * p.ba), pMed = car.R / Abot;
     const sadm = p.sadm > 0 ? p.sadm : null, sTop = Math.max(...soilList.map(x => x.p));
     const gov = soilList.reduce((b, x) => x.p > b.p ? x : b, soilList[0]);
     const soil = { pMax, pMaxC, pMed, sadm, sMax: sTop, gov, list: soilList, ok: sadm == null ? null : sTop <= sadm + 1e-9, util: sadm ? sTop / sadm : null };
@@ -2429,10 +2430,12 @@ function soilCard(A) {
     `recalque máx. ${fmt(A.wMax, 2)} mm`);
 }
 function soilTableHtml(A) {
-  const s = A.soil, K = Arm.KGF, r = (l, v, b) => `<tr${b ? ' class="tot"' : ''}><td class="l">${l}</td><td class="num">${fmt(v, 1)}</td><td class="num">${fmt(v / K, 2)}</td></tr>`;
-  return `<table class="calc"><thead><tr><th class="l">Tensão de contato (característica g + q)</th><th class="num" style="text-transform:none">kPa</th><th class="num" style="text-transform:none">kgf/cm²</th></tr></thead><tbody>` +
-    (s.list || []).map(x => r('Máxima, ' + x.lab, x.p)).join('') + r('Média na operação, caixa vazia (Σ reações ÷ área da laje de fundo)', s.pMed) +
-    (s.sadm ? r('Tensão admissível σ<sub>adm</sub>', s.sadm, true) : '') + `</tbody></table>` +
+  const s = A.soil, K = Arm.KGF, obs = x => x.fl ? 'flutua: sem contato com o solo' : x.cont < 0.999 ? `contato em ${fmt(x.cont * 100, 0)} % da base` : 'contato em toda a base';
+  const COND = { vazia: 'com reaterro, N.A. e sobrecarga', cheia: 'com reaterro, N.A., sobrecarga e água interna', teste: 'sem reaterro, sem N.A. externo e sem subpressão, cheia', constr: 'sem laje de topo, escavação alagada até o N.A. da etapa' };
+  return `<table class="calc"><thead><tr><th class="l">Situação (característica g + q)</th><th class="num" style="text-transform:none">Máxima, kPa</th><th class="num" style="text-transform:none">Máxima, kgf/cm²</th><th class="num" style="text-transform:none">Média Σ reações ÷ área, kPa</th><th class="l" style="text-transform:none">Contato</th></tr></thead><tbody>` +
+    (s.list || []).map(x => `<tr><td class="l">${x.lab}<br><small style="color:var(--muted)">${COND[x.st] || ''}</small></td><td class="num">${fmt(x.p, 1)}</td><td class="num">${fmt(x.p / K, 2)}</td><td class="num">${fmt(x.pm, 1)}</td><td class="l">${obs(x)}</td></tr>`).join('') +
+    (s.sadm ? `<tr class="tot"><td class="l">Tensão admissível σ<sub>adm</sub></td><td class="num">${fmt(s.sadm, 1)}</td><td class="num">${fmt(s.sadm / K, 2)}</td><td></td><td></td></tr>` : '') + `</tbody></table>` +
+    ((s.list || []).some(x => x.fl || x.cont < 0.5) ? `<p class="msg" style="margin-top:8px;color:var(--bad)">Em alguma situação a caixa flutua ou toca o solo só em parte da base: a carga vertical efetiva (peso + solo − subpressão) é quase nula ou para cima. Nessas situações a tensão máxima é pequena e instável (concentra em poucos nós); confira a aba Flutuação.</p>` : '') +
     (s.sadm ? `<p class="msg" style="margin-top:8px;font-weight:600;color:var(${s.ok ? '--ok' : '--bad'})">${s.ok ? '✓' : '✕'} σ<sub>máx</sub> = ${fmt(s.sMax / K, 2)} kgf/cm² ${s.ok ? '≤' : '>'} σ<sub>adm</sub> = ${fmt(s.sadm / K, 2)} kgf/cm² (${fmt(s.util * 100, 0)} %). ${s.ok ? 'O solo resiste à carga aplicada.' : 'O solo não resiste: aumente a aba ou a área da laje de fundo, ou reveja a fundação.'}</p>` : '');
 }
 function feSummaryHtml(fe, A) {
@@ -3055,11 +3058,11 @@ async function buildMemorialFull(D) {
 
   body.push(H2('2.5 Tensão no solo'));
   {
-    const s = A.soil, K = Arm.KGF, r = (l, v, b) => [b ? { t: l, b: true } : l, num(v, 1), { t: fmt(v / K, 2), al: 'right', b: !!b }];
-    const rs = (s.list || []).map(x => r('Máxima, ' + x.lab, x.p));
-    rs.push(r('Média na operação, caixa vazia (Σ reações ÷ área da laje de fundo)', s.pMed));
-    if (s.sadm) rs.push(r('Tensão admissível σ_adm', s.sadm, true));
-    body.push(table([5806, 1800, 1800], ['Tensão de contato (característica g + q)', 'kPa', 'kgf/cm²'], rs));
+    const s = A.soil, K = Arm.KGF;
+    const rs = (s.list || []).map(x => [x.lab + (x.fl ? ' (flutua)' : x.cont < 0.999 ? ` (contato em ${fmt(x.cont * 100, 0)} %)` : ''), num(x.p, 1), { t: fmt(x.p / K, 2), al: 'right' }, num(x.pm, 1)]);
+    if (s.sadm) rs.push([{ t: 'Tensão admissível σ_adm', b: true }, num(s.sadm, 1), { t: fmt(s.sadm / K, 2), al: 'right', b: true }, '']);
+    body.push(table([4406, 1600, 1600, 1800], ['Situação (característica g + q)', 'Máxima, kPa', 'Máxima, kgf/cm²', 'Média Σ reações ÷ área, kPa'], rs));
+    body.push(txt('Teste de estanqueidade: caixa cheia antes do reaterro, sem N.A. externo e sem subpressão. Etapa construtiva: sem laje de topo, escavação alagada até o N.A. da etapa. Operação: com reaterro, N.A., subpressão e sobrecarga.', { color: C.muted, sz: 16 }));
     body.push(txt(`Tensão p = k_v · w nas molas sob a laje de fundo e a aba (k_v = ${fmt(p.kv, 0)} kN/m³), nas combinações características, sem majorar; é a tensão efetiva, já descontada a subpressão.` +
       (s.sadm ? ` σ_máx = ${fmt(s.sMax / K, 2)} kgf/cm² ${s.ok ? '≤' : '>'} σ_adm = ${fmt(s.sadm / K, 2)} kgf/cm² (${fmt(s.util * 100, 0)} %): ${s.ok ? 'atende' : 'não atende'}.` : ''), { color: C.muted, sz: 16 }));
   }
