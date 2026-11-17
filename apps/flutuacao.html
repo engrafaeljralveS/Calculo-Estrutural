@@ -675,7 +675,9 @@ const Calc = (function () {
     // Prisma de solo: cunha que parte da borda da laje inferior (com a aba), na cota da face superior
     // dela, e sobe até o terreno abrindo para fora com o ângulo φ (medido da vertical), nas quatro faces,
     // com os cantos. Fração saturada com γ′ = γsat − γw, como o solo sobre a aba.
+    // Sem aba não há solo apoiado na estrutura: a cunha não entra (o atrito lateral nas paredes é desprezado, a favor da segurança).
     const prisma = (() => {
+      if (!(p.ba > 0)) return { h: 0, tg: 0, a: 0, V: 0, Vsat: 0, Vdry: 0, W: 0, gS: 0, semAba: true };
       const h = Math.max(0, 0 - z.botTop), tg = Math.tan(Math.max(0, p.phi) * Math.PI / 180), satTop = Math.min(0, p.zw);
       const gS = Math.max(0, p.gsat - p.gw), n = 400, dt = h / n;
       let V = 0, Vsat = 0, W = 0;
@@ -707,7 +709,7 @@ const Calc = (function () {
         { key: 'superior', label: 'Peso da laje de topo', W: Ws, div: p.fc, incl: oper },
         { key: 'soloAba', label: 'Solo sobre a aba inferior', W: soloAba.W, div: p.fs, incl: oper },
         { key: 'soloTopo', label: 'Solo sobre a laje de topo', W: soloTopo.W, div: p.fst, incl: oper },
-        { key: 'prisma', label: 'Prisma de solo (ângulo φ)', W: prisma.W, div: p.fpr, incl: oper && !!p.prisma }
+        { key: 'prisma', label: p.ba > 0 ? 'Prisma de solo (ângulo φ)' : 'Prisma de solo (sem aba: não se aplica)', W: prisma.W, div: p.fpr, incl: oper && !!p.prisma && p.ba > 0 }
       ];
       if (Wchim > 0) parts.splice(3, 0, { key: 'chamine', label: 'Chaminé da abertura (até o terreno)', W: Wchim, div: p.fc, incl: oper });
       if (p.wa > 0) parts.push({ key: 'adicional', label: 'Peso adicional (equipamentos, ancoragens)', W: p.wa, div: p.fa, incl: oper });
@@ -2068,7 +2070,7 @@ const LAYOUT = [
   { sec: 'geo', title: 'Cota, concreto e carga adicional', cols: 3, keys: ['zs', 'gc', 'wa'], note: 'z<sub>s</sub>: cota da face superior da laje de topo, negativa abaixo do terreno (z = 0); valor de exemplo. W<sub>ad</sub>: equipamentos, blocos de ancoragem etc., só na etapa de operação.' },
   { sec: 'solo', title: 'Peso específico', cols: 2, keys: ['gd', 'gsat'] },
   { sec: 'solo', title: 'Resistência ao cisalhamento', cols: 2, keys: ['phi', 'c'] },
-  { sec: 'solo', title: 'Prisma de solo (etapa de operação)', cols: 2, keys: ['fpr'], check: { key: 'prisma', text: 'Considerar o prisma de solo na verificação à flutuação (etapa de operação)' }, note: 'Cunha de solo que parte da borda da aba, na face superior da laje inferior, e sobe até o terreno abrindo com o ângulo φ (medido da vertical), nas quatro faces e nos cantos. Não entra na etapa construtiva.' },
+  { sec: 'solo', title: 'Prisma de solo (etapa de operação)', cols: 2, keys: ['fpr'], check: { key: 'prisma', text: 'Considerar o prisma de solo na verificação à flutuação (etapa de operação)' }, note: 'Só com aba: sem aba não há solo apoiado na estrutura e a cunha não entra (o atrito lateral nas paredes é desprezado, a favor da segurança). Cunha de solo que parte da borda da aba, na face superior da laje inferior, e sobe até o terreno abrindo com o ângulo φ (medido da vertical), nas quatro faces e nos cantos. Não entra na etapa construtiva.' },
   { sec: 'agua', title: 'Nível d\'água e peso da água', cols: 2, keys: ['zw', 'gw'], note: 'z<sub>w</sub> em relação ao terreno (z = 0). Ex.: 2,0 m abaixo do terreno = −2,00.' },
   { sec: 'agua', title: 'Água dentro da caixa (reservatório)', cols: 2, keys: ['hag'], check: { key: 'agua', text: 'Considerar água interna nos esforços: caixa cheia em operação e teste de estanqueidade (cheia, sem reaterro)' }, note: 'h<sub>ag</sub> acima da face superior da laje de fundo, até a altura livre H. Pressão nas faces internas das paredes e na laje de fundo; na caixa circular, gera tração anelar nas paredes. Na flutuação, a água interna não entra como peso resistente (a favor da segurança).' },
   { sec: 'agua', title: 'Rebaixo do lençol freático (etapa construtiva)', cols: 2, keys: ['zr'], note: 'Cota até onde as ponteiras mantêm o lençol, por exemplo −1,20. Na etapa construtiva o nível d\'água passa a ser o menor entre z<sub>w</sub> e z<sub>r</sub>, e a subpressão diminui. Vazio = sem rebaixo.' },
@@ -2370,7 +2372,7 @@ function memorialDocXml(m, imgs) {
     ['N.A. zw · rebaixo zr', `${fz(p.zw)} m · ${p.zr != null ? fz(p.zr) + ' m' : 'sem rebaixo'}`],
     ['Divisores: concreto · aba', `${fmt(p.fc, 2)} · ${fmt(p.fs, 2)}`],
     ['Divisores: topo · adicional', `${fmt(p.fst, 2)} · ${fmt(p.fa, 2)}`],
-    ['Prisma de solo (φ)', p.prisma ? `÷ ${fmt(p.fpr, 2)} · ${fmt(m.prisma.W, 1)} kN` : 'não considerado']
+    ['Prisma de solo (φ)', !(p.ba > 0) ? 'não se aplica (sem aba)' : p.prisma ? `÷ ${fmt(p.fpr, 2)} · ${fmt(m.prisma.W, 1)} kN` : 'não considerado']
   ];
   const kc = (t, w, v) => wCell(w, wPar(wRun(t, { sz: SZ, b: v, color: v ? '1b2830' : '566872' }), { al: v ? 'right' : 'left' }), { bottom: LN });
   const inRows = [wRow([wCell(10546, wPar(wRun('DADOS DE ENTRADA', { b: true, sz: 13, color: '1d5f8a' })), { span: 4, bottom: '1d5f8a' })])];
@@ -3015,13 +3017,13 @@ async function buildMemorialFull(D) {
     ['Solo seco γ_d · saturado γ_sat', `${fmt(p.gd, 1)} · ${fmt(p.gsat, 1)} kN/m³`], ['Ângulo de atrito φ · coesão c', `${fmt(p.phi, 1)}° · ${fmt(p.c, 1)} kPa`],
     ['Nível d\'água z_w', `${fz(p.zw)} m`], ['Rebaixo na etapa construtiva z_r', p.zr != null ? `${fz(p.zr)} m` : 'sem rebaixo'],
     ['Divisores: concreto · solo sobre a aba', `${fmt(p.fc, 2)} · ${fmt(p.fs, 2)}`], ['Divisores: solo sobre a laje · adicional', `${fmt(p.fst, 2)} · ${fmt(p.fa, 2)}`],
-    ['Prisma de solo (ângulo φ, operação)', p.prisma ? `considerado, divisor ${fmt(p.fpr, 2)}` : 'não considerado'], ['Prisma: abertura no terreno · volume', `${fmt(m.prisma.a)} m · ${fmt(m.prisma.V)} m³`],
+    ['Prisma de solo (ângulo φ, operação)', !(p.ba > 0) ? 'não se aplica: sem aba não há solo apoiado na estrutura (atrito lateral desprezado)' : p.prisma ? `considerado, divisor ${fmt(p.fpr, 2)}` : 'não considerado'], ['Prisma: abertura no terreno · volume', `${fmt(m.prisma.a)} m · ${fmt(m.prisma.V)} m³`],
     ['Água interna (só nos esforços)', aux.hag > 0 ? `h_ag = ${fmt(aux.hag)} m acima da laje de fundo` : 'não considerada'], ['Tensão admissível do solo σ_adm', `${fmt(p.sadm, 0)} kPa`]
   ]));
   body.push(H2('1.2 Seções e ações atuantes'));
   const iC = await addImg(memorialSvg(m, false)), iO = await addImg(memorialSvg(m, true));
   body.push(figure(iC, 'Figura 1 · Seção transversal na etapa construtiva: escavação aberta, sem solo junto às paredes e sobre a aba, com água até o nível do lençol; peso das paredes e da laje inferior, e subpressão' + (m.subC.rebaixo ? ' (N.A. rebaixado)' : '') + '.', 0.86));
-  body.push(figure(iO, 'Figura 2 · Seção transversal na etapa de operação: pesos, solo sobre a laje e a aba' + (p.prisma ? ', prisma de solo (ângulo φ)' : '') + ', empuxo lateral e subpressão.', 0.86));
+  body.push(figure(iO, 'Figura 2 · Seção transversal na etapa de operação: pesos, solo sobre a laje e a aba' + (p.prisma && p.ba > 0 ? ', prisma de solo (ângulo φ)' : '') + ', empuxo lateral e subpressão.', 0.86));
   body.push(H2('1.3 Fator de segurança'));
   const stageRows = (title, st) => {
     const rows = [{ span: title }];
@@ -3515,7 +3517,8 @@ if (typeof document !== 'undefined') {
   let armOv = {};
   try { const o = JSON.parse(localStorage.getItem(OVKEY) || 'null'); if (o && typeof o === 'object') armOv = o; } catch (e) {}
   const saveOv = () => { try { localStorage.setItem(OVKEY, JSON.stringify(armOv)); } catch (e) {} };
-  function syncChecks() { LAYOUT.forEach(g => { if (g.check) el(g.check.key).checked = !!state[g.check.key]; }); }
+  function syncChecks() { LAYOUT.forEach(g => { if (g.check) el(g.check.key).checked = !!state[g.check.key]; }); syncPrisma(); }
+  function syncPrisma() { const cb = el('prisma'); if (!cb) return; const sem = !(state.ba > 0); cb.disabled = sem; const lb = cb.closest('label'); if (lb) { lb.style.opacity = sem ? 0.5 : 1; lb.title = sem ? 'Sem aba, a cunha de solo não entra na verificação: não há solo apoiado na estrutura (o atrito lateral nas paredes é desprezado, a favor da segurança).' : ''; } }
   const TABS = ['flut', 'esf', 'arm'];
   let curTab = 'flut';
   function setTab(t) {
@@ -3804,6 +3807,7 @@ if (typeof document !== 'undefined') {
     document.querySelectorAll('[data-seg]').forEach(sg => sg.querySelectorAll('button').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.v === state[sg.dataset.seg]))));
   }
   function render() {
+    syncPrisma();
     syncForma();
     el('stale').hidden = [...invalid].every(k => (state.forma === 'circ' ? ['B', 'L', 'lo'] : ['D']).includes(k));
     const m = Calc.compute(state);
