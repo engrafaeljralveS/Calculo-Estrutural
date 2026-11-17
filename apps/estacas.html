@@ -280,6 +280,7 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
         <section>
           <h2><span class="n">D</span>Solo (carga horizontal)</h2>
           <div class="field" style="margin-bottom:8px"><label for="aModo">Reação horizontal do solo</label><div class="inp"><select id="aModo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="spt">por metro, pela sondagem da aba Capacidade (recomendado)</option><option value="unico">solo único, escolhido abaixo</option></select></div></div>
+          <div class="field" style="margin-bottom:8px"><label for="aYlim">Deslocamento horizontal admissível no topo</label><div class="inp"><input id="aYlim" type="number" step="1" min="1"><span class="u">mm</span></div></div>
           <div class="g2" id="aSoloUnico">
             <div class="field"><label for="aSolo">Solo junto ao topo</label><div class="inp"><select id="aSolo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select></div></div>
             <div class="field"><label for="aSit">Situação</label><div class="inp"><select id="aSit" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option>Seca</option><option>Submersa</option></select></div></div>
@@ -932,7 +933,7 @@ const SOLOH_DEF = [
 ];
 if (!CO.tab4 || CO.tab4.length !== TAB4_DEF.length) CO.tab4 = clone(TAB4_DEF);
 if (!CO.soloH || CO.soloH.length !== SOLOH_DEF.length) CO.soloH = clone(SOLOH_DEF);
-const AR_EX = { obra: "Exemplo", elemento: "", N: 26, atrito: 18, T: 15, M: 0.1, H: 0, D: 40, L: 15, fck: 30, c: 5, E: 21000, tipo: "broca", modoSolo: "spt", solo: "argMe", situacao: "Submersa", fiL: 12.5, fiT: 6.3, caT: 25, gcModo: "norma", gc: 3.1, CAA: "II" };
+const AR_EX = { obra: "Exemplo", elemento: "", N: 26, atrito: 18, T: 15, M: 0.1, H: 0, D: 40, L: 15, fck: 30, c: 5, E: 21000, tipo: "broca", modoSolo: "spt", yLim: 10, solo: "argMe", situacao: "Submersa", fiL: 12.5, fiT: 6.3, caT: 25, gcModo: "norma", gc: 3.1, CAA: "II" };
 let ar = clone(AR_EX);
 try { const a = JSON.parse(localStorage.getItem(KEY + "-arm") || "null"); if (a && a.D) ar = Object.assign(clone(AR_EX), a); } catch (e) { }
 const saveAr = () => { try { localStorage.setItem(KEY + "-arm", JSON.stringify(ar)); } catch (e) { } };
@@ -1071,7 +1072,7 @@ function calcArm(a) {
 }
 
 /* ---------- interface da armadura ---------- */
-const AFIELDS = [["aObra", "obra"], ["aElem", "elemento"], ["aN", "N"], ["aT", "T"], ["aM", "M"], ["aH", "H"], ["aAtr", "atrito"], ["aD", "D"], ["aL", "L"], ["aFck", "fck"], ["aE", "E"], ["aGc", "gc"], ["aC", "c"]];
+const AFIELDS = [["aYlim", "yLim"], ["aObra", "obra"], ["aElem", "elemento"], ["aN", "N"], ["aT", "T"], ["aM", "M"], ["aH", "H"], ["aAtr", "atrito"], ["aD", "D"], ["aL", "L"], ["aFck", "fck"], ["aE", "E"], ["aGc", "gc"], ["aC", "c"]];
 const ASELS = [["aModo", "modoSolo"], ["aTipo", "tipo"], ["aGcModo", "gcModo"], ["aCAA", "CAA"], ["aFiL", "fiL"], ["aFiT", "fiT"], ["aCaT", "caT"], ["aSolo", "solo"], ["aSit", "situacao"]];
 function fillArm() {
   $("aTipo").innerHTML = CO.tab4.map(t => `<option value="${t.k}">${esc(t.n)}</option>`).join("");
@@ -1096,7 +1097,8 @@ function updateArm() {
     ["Armadura longitudinal", A.dispensa ? `${A.n} Ø ${f(A.fiL, 1)}` : `${A.n} Ø ${f(A.fiL, 1)}`, `${f(A.AsEf)} cm² ≥ ${f(A.As)} cm² · governa: ${A.gov.toLowerCase()}`, "info"],
     ["Estribos", `Ø ${f(A.fiT, 1)} c/ ${A.s}`, `CA-${ar.caT} · ${A.nEst} estribos`, A.vOk ? "info" : "bad"],
     ["Comprimento armado", `${f(A.Larm, 1)} m`, A.Larm >= A.L - 1e-9 ? "armadura em todo o comprimento" : `de ${f(A.L, 1)} m`, "info"],
-    ["Carga horizontal", A.lat ? `Mmáx ${f(A.Mmax / 1e5, 3)} tf·m` : "sem H e M", A.lat ? `a ${f(A.zMmax)} m · ${A.wk ? `y0 = ${f(A.y0 * 10, 1)} mm (molas por metro)` : `prof. mín. ${f(A.Lmin)} m`}` : "", A.lat && A.Lmin && A.L < A.Lmin ? "warn" : "info"]
+    ["Carga horizontal", A.lat ? `Mmáx ${f(A.Mmax / 1e5, 3)} tf·m` : "sem H e M", A.lat ? `a ${f(A.zMmax)} m · ${A.wk ? "molas por metro (SPT)" : `prof. mín. ${f(A.Lmin)} m`}` : "", A.lat && A.Lmin && A.L < A.Lmin ? "warn" : "info"],
+    ["Deslocamento horizontal", A.lat ? `${f(Math.abs(A.y0) * 10, 2)} mm` : "0 mm", A.lat ? `no topo · ${Math.abs(A.y0) * 10 <= (+ar.yLim || 10) + 1e-9 ? "≤" : ">"} ${f(+ar.yLim || 10, 1)} mm admissível` : "sem H e M", !A.lat ? "info" : Math.abs(A.y0) * 10 <= (+ar.yLim || 10) + 1e-9 ? "ok" : "bad"]
   ].map(([t, v, s, c]) => `<div class="card ${c}"><span class="t">${t}</span><span class="v" style="font-size:20px">${esc(v)}</span><span class="t">${esc(s)}</span></div>`).join("");
   const row = (nm, calc, min, adot, gov) => `<tr><td class="l">${nm}</td><td class="num">${calc}</td><td class="num">${min}</td><td class="num${gov ? " sel" : ""}">${adot}</td></tr>`;
   $("aTab").innerHTML = `<thead><tr><th>Esforço</th><th>As calculada (cm²)</th><th>As mínima (cm²)</th><th>As do esforço (cm²)</th></tr></thead><tbody>` +
@@ -1173,7 +1175,7 @@ function memoBlocksArm(A) {
     B.push({ t: "eq", v: [`I = π·D⁴/64 = ${f(A.I, 0)} cm⁴    E = ${f(A.E, 0)} kgf/cm²    EI = ${f(A.EI / 1e6, 1)}·10⁶ kgf·cm²`] });
     B.push({ t: "tab", head: ["Cota (m)", "Solo", "N", "Classe", "Método", "kh ou nh (kgf/cm³)", "K no meio do metro (kgf/cm²)", "y (mm)", "M (tf·m)"], al: ["r", "l", "r", "l", "l", "r", "r", "r", "r"],
       rows: A.prof.map(p => [p.cota, p.solo, p.N, p.classe + (p.sub ? " (sub.)" : ""), p.met === "H" ? "Hetenyi" : "Miche", f(p.kv, 3), f(p.K, 2), f(p.y * 10, 2), f(p.M / 1e5, 3)]) });
-    B.push({ t: "eq", v: [`Deslocamento no topo y0 = **${f(A.y0 * 10, 2)} mm**    momento máximo = **${tfm(A.Mmax)} tf·m** a ${f(A.zMmax)} m    cortante máximo = ${tf(A.Vmax)} tf`] });
+    B.push({ t: "eq", v: [`Deslocamento horizontal no topo y0 = **${f(Math.abs(A.y0) * 10, 2)} mm** ${Math.abs(A.y0) * 10 <= (+a.yLim || 10) ? "≤" : ">"} ${f(+a.yLim || 10, 1)} mm (admissível)`, `Momento máximo = **${tfm(A.Mmax)} tf·m** a ${f(A.zMmax)} m    cortante máximo = ${tf(A.Vmax)} tf`] });
     B.push({ t: "fig", v: svgMz(A), cap: "Momento fletor ao longo da estaca (molas por metro).", w: 0.36 });
   }
   else {
@@ -1184,7 +1186,7 @@ function memoBlocksArm(A) {
         `T = (E·I/nh)^(1/5) = ${f(A.Tm / 100, 3)} m    profundidade mínima (estaca longa) = 4T = **${f(A.Lmin)} m** (${A.L >= A.Lmin ? "atendida" : "não atendida"} com L = ${f(A.L, 1)} m)`,
         `M(z) = Am·H·T + Bm·M0 (Matlock e Reese, topo livre)    deslocamento no topo y0 = 2,435·H·T³/EI + 1,623·M0·T²/EI = ${f(A.y0, 3)} cm`];
     B.push({ t: "p", v: A.sh.m === "H" ? "Método de Hetenyi: viga semi-infinita sobre base elástica, reação horizontal constante com a profundidade (argilas)." : "Método de Miche: reação horizontal crescente com a profundidade (areias, siltes e argila muito mole)." });
-    B.push({ t: "eq", v: L1.concat([`Momento máximo = **${tfm(A.Mmax)} tf·m** a ${f(A.zMmax)} m    cortante máximo = ${tf(A.Vmax)} tf`]) });
+    B.push({ t: "eq", v: L1.concat([`Deslocamento horizontal no topo = **${f(Math.abs(A.y0) * 10, 2)} mm** ${Math.abs(A.y0) * 10 <= (+a.yLim || 10) ? "≤" : ">"} ${f(+a.yLim || 10, 1)} mm (admissível)`, `Momento máximo = **${tfm(A.Mmax)} tf·m** a ${f(A.zMmax)} m    cortante máximo = ${tf(A.Vmax)} tf`]) });
     B.push({ t: "fig", v: svgMz(A), cap: "Momento fletor ao longo da estaca.", w: 0.36 });
   }
   B.push({ t: "h", v: "5. Momento (flexão na seção circular)" });
