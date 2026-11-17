@@ -502,6 +502,11 @@ td .pill { font-size: 11.5px; padding: 2px 8px; }
         <p class="msg" style="margin-top:10px">Tensão de contato p = k<sub>v</sub> · w nas molas sob a laje de fundo e a aba (k<sub>v</sub> em kN/m³ = kPa por metro de recalque; tensões em kPa = kN/m²; 1 kgf/cm² = 98,07 kPa), nas combinações características g + q, sem majorar: é a tensão efetiva transmitida ao solo, já descontada a subpressão. A máxima, que ocorre em geral junto às paredes e na aba, é comparada com a tensão admissível σ<sub>adm</sub> do laudo geotécnico (aba Esforços, apoio elástico). A média (Σ reações ÷ área da base, laje de fundo + aba) é a que se compara com a soma das reações de um modelo externo. As situações têm cargas diferentes: o teste de estanqueidade é feito antes do reaterro e sem água externa (sem subpressão), por isso costuma ter tensão maior que a operação.</p>
       </section>
 
+      <section class="panel" aria-label="Punção na laje de topo">
+        <h2><span class="n">I</span>Punção na laje de topo (veículo)</h2>
+        <div class="tablewrap" id="punc-table"></div>
+      </section>
+
       <details class="panel">
         <summary>Método e limitações</summary>
         <ul class="lim">
@@ -860,6 +865,7 @@ function FEengine() {
     const chim = opening && g.chimH > 0;
     const xk = [0, xf, xw], yk = [0, yf, yw];
     if (opening) { xk.push(bo / 2); yk.push(lo / 2); if (chim) { xk.push(Math.min(bo / 2 + ep, xf)); yk.push(Math.min(lo / 2 + ep, yf)); } }
+    else if (g.bv > 0) { xk.push(Math.min(g.bv / 2, xf)); yk.push(Math.min(g.bv / 2, yf)); }
     // refino junto às ligações: do eixo até uma espessura além da face, passo ≤ t/4
     const hj = t => Math.max(0.02, t / 4);
     const zx = [[xf - ep / 2, xo + ep / 2, hj(ep)]], zy = [[yf - ep / 2, yo + ep / 2, hj(ep)]];
@@ -1114,6 +1120,18 @@ function FEengine() {
       if (e.s === 'bot' && e.c[0] < G.xf && e.c[1] < G.yf) return [0, 0, -L.gwI * L.hagW];
       return null;
     }) : new Float64Array(n));
+    // 6: sobrecarga de veículo no centro da laje de topo (1/4 no modelo); com abertura, carga de linha no contorno (tampa)
+    F.push((() => {
+      if (!(L.Pv > 0)) return new Float64Array(n);
+      if (G.bo > 0 && G.lo > 0) {
+        const Fv = new Float64Array(n), bo2 = Math.min(G.bo / 2, G.xf), lo2 = Math.min(G.lo / 2, G.yf), w = L.Pv / (2 * (G.bo + G.lo));
+        lineLoad(Fv, q => near(q[2], g.Hc) && near(q[0], bo2) && q[1] <= lo2 + 1e-9, 1, [0, 0, -w]);
+        lineLoad(Fv, q => near(q[2], g.Hc) && near(q[1], lo2) && q[0] <= bo2 + 1e-9, 0, [0, 0, -w]);
+        return Fv;
+      }
+      const hb = Math.min(g.bv / 2, G.xf), hl = Math.min(g.bv / 2, G.yf), pv = L.Pv / (4 * hb * hl);
+      return areaLoad(mesh, eq, n, (x, y, z, e) => e.s === 'top' && e.c[0] < hb && e.c[1] < hl ? [0, 0, -pv] : null);
+    })());
     const Fz = F.map(Fv => { let s = 0; for (let i = 0; i < nn; i++) { const q = eq[6 * i + 2]; if (q >= 0) s += Fv[q]; } return s; });
 
     // ---- solução com molas (só compressão)
@@ -1237,7 +1255,7 @@ function FEengine() {
     const node = (r, z) => { const k = r.toFixed(6) + '|' + z.toFixed(6); if (!key.has(k)) { key.set(k, nodes.length); nodes.push([r, 0, z]); } return key.get(k); };
     const chain = (pts, s, t, sign, Ef) => { for (let i = 1; i < pts.length; i++) elems.push({ s, n: [pts[i - 1], pts[i]], t, sign, Ef: Ef || 1 }); };
     // topo: r crescente; normal local (0, 1) = para cima = para fora
-    const rt = axiDiv(ro, Rc, [xf, chim ? ro + g.ep : -1], hs);
+    const rt = axiDiv(ro, Rc, [xf, chim ? ro + g.ep : -1, !ro && g.bv > 0 ? Math.min(g.bv / Math.sqrt(Math.PI), xf - 0.02) : -1], hs);
     chain(rt.map(r => node(r, Hc)), 'top', g.es, 1, g.noTop ? 1e-4 : 1);
     // parede: z crescente de 0 a Hc (normal local (−1, 0) = para dentro → sign −1)
     const zw = axiDiv(0, Hc, [g.ei / 2, Hc - g.es / 2, ...(zMust || [])], hs);
@@ -1282,7 +1300,9 @@ function FEengine() {
       (r, z, e) => e.s === 'top' ? [0, -L.q] : (e.s === 'bot' && r > xo + 1e-9) ? [0, -L.q] : null,
       (r, z, e) => e.s === 'wx' ? [-L.Kq * kO, 0] : null,
       (r, z, e) => L.sepU && e.s === 'bot' ? [0, L.uBase - (r > xo + 1e-9 ? (L.qAbaW || 0) : 0)] : null,
-      (r, z, e) => !(L.hagW > 0) ? null : e.s === 'wx' ? (z >= g.ei / 2 - 1e-9 && z < zi ? [L.gwI * (zi - z) * kI, 0] : null) : (e.s === 'bot' && r < xf - 1e-9) ? [0, -L.gwI * L.hagW] : null
+      (r, z, e) => !(L.hagW > 0) ? null : e.s === 'wx' ? (z >= g.ei / 2 - 1e-9 && z < zi ? [L.gwI * (zi - z) * kI, 0] : null) : (e.s === 'bot' && r < xf - 1e-9) ? [0, -L.gwI * L.hagW] : null,
+      // 6: veículo no centro da laje de topo, em círculo de mesma área do quadrado espraiado (sem abertura)
+      (r, z, e) => { if (!(L.Pv > 0) || G.ro > 0 || e.s !== 'top') return null; const rv = Math.min(g.bv / Math.sqrt(Math.PI), xf - 0.02); return r < rv + 1e-9 ? [0, -L.Pv / (Math.PI * rv * rv)] : null; }
     ];
     const EF = comps.map(fn => mesh.elems.map(e => { const P1 = mesh.nodes[e.n[0]], P2 = mesh.nodes[e.n[1]]; return axiElemF([P1[0], P1[2]], [P2[0], P2[2]], (r, z) => fn(r, z, e)); }));
     const F = EF.map(list => { const Fv = new Float64Array(n); list.forEach((ef, k) => { const d = edofs(mesh.elems[k]); for (let p = 0; p < 6; p++) if (d[p] >= 0) Fv[d[p]] += ef.fg[p]; }); return Fv; });
@@ -1295,11 +1315,15 @@ function FEengine() {
     add(0, cTop, 1, -(L.qtSelf + L.qtSoil) * Astrip); add(2, cTop, 1, -L.q * Astrip);
     add(1, cTop, 0, -integ(pg, L.dA - g.es / 2, L.dA) * TWO_PI * xo); add(1, cBot, 0, -integ(pg, L.dB, L.dB + g.ei / 2) * TWO_PI * xo);
     add(3, cTop, 0, -L.Kq * g.es / 2 * TWO_PI * xo); add(3, cBot, 0, -L.Kq * g.ei / 2 * TWO_PI * xo);
+    // veículo com abertura: a tampa leva a carga ao anel da borda da abertura (força total do anel)
+    const cOpen = L.Pv > 0 && G.ro > 0 ? mesh.nodes.findIndex(q => Math.abs(q[0] - G.ro) < 1e-7 && Math.abs(q[2] - g.Hc) < 1e-7) : -1;
+    if (cOpen >= 0) add(6, cOpen, 1, -L.Pv);
     const Fz = F.map(Fv => { let s = 0; for (let i = 0; i < nn; i++) { const q = eq[3 * i + 1]; if (q >= 0) s += Fv[q]; } return s; });
     // parcelas nodais das cargas de anel (para as forças de extremidade dos elementos)
     const ring = F.map(() => new Map());
     const ringAdd = (k, nd, d, v) => { const m = ring[k]; const a = m.get(nd) || [0, 0, 0]; a[d] += v; m.set(nd, a); };
     ringAdd(0, cTop, 1, -(L.qtSelf + L.qtSoil) * Astrip); ringAdd(2, cTop, 1, -L.q * Astrip);
+    if (cOpen >= 0) ringAdd(6, cOpen, 1, -L.Pv);
 
     // ---- solução com molas só de compressão
     const solveWith = (active, rhsList) => {
@@ -1513,7 +1537,8 @@ const Arm = (function () {
       K, gd: p.gd, gp, gw: p.gw, dw, cT, dA, dB,
       qtSelf: p.gc * p.es, qtSoil: svT(cover), qChim: p.gc * (m.vol.chimH || 0), qbSelf: p.gc * p.ei, uBase: uw(-z.base),
       // peso das paredes só na altura livre H (o trecho dentro das lajes já está no peso delas)
-      qAba: svT(dAba), wallW: p.gc * p.ep * p.H / Hc, q: p.q, Kq: K * p.q, hagW: hag, gwI: p.gw
+      qAba: svT(dAba), wallW: p.gc * p.ep * p.H / Hc, q: p.q, Kq: K * p.q, hagW: hag, gwI: p.gw,
+      Pv: Math.max(0, +p.Pv || 0), bv: Math.max(0.05, +p.av || 0.2) + 2 * cover + p.es
     };
     const tag = (t, st, lab) => ({ t, st, lab });
     const G = [p.gg, p.gg, p.gq, p.gq], combos = [];
@@ -1532,16 +1557,17 @@ const Arm = (function () {
       combos.push({ f: [1, 1, 1, 1, 0, 1], tag: tag('car', 'cheia', 'Caixa cheia: característica') });
     }
     const geo = circ
-      ? { circ: true, Bc, Lc: Bc, Hc, ep: p.ep, es: p.es, ei: p.ei, ba: p.ba, bo: m.vol.openArea > 0 ? m.vol.boE : 0, lo: m.vol.openArea > 0 ? m.vol.boE : 0, chimH: m.vol.chimH || 0, h: p.hm / 100 }
-      : { Bc, Lc, Hc, ep: p.ep, es: p.es, ei: p.ei, ba: p.ba, bo: m.vol.openArea > 0 ? m.vol.boE : 0, lo: m.vol.openArea > 0 ? m.vol.loE : 0, chimH: m.vol.chimH || 0, h: p.hm / 100 };
+      ? { circ: true, bv: loads.Pv > 0 ? loads.bv : 0, Bc, Lc: Bc, Hc, ep: p.ep, es: p.es, ei: p.ei, ba: p.ba, bo: m.vol.openArea > 0 ? m.vol.boE : 0, lo: m.vol.openArea > 0 ? m.vol.boE : 0, chimH: m.vol.chimH || 0, h: p.hm / 100 }
+      : { bv: loads.Pv > 0 ? loads.bv : 0, Bc, Lc, Hc, ep: p.ep, es: p.es, ei: p.ei, ba: p.ba, bo: m.vol.openArea > 0 ? m.vol.boE : 0, lo: m.vol.openArea > 0 ? m.vol.loE : 0, chimH: m.vol.chimH || 0, h: p.hm / 100 };
     const matE = { E: Math.round(P.Ecs * 1000), nu: 0.2 };
-    const strip = c => c.map(x => ({ f: x.f, lin: x.lin }));
+    // componente 6 (veículo) acompanha a sobrecarga vertical (componente 2)
+    const strip = c => c.map(x => ({ f: x.f.length === 6 ? x.f.concat([x.f[2]]) : x.f, lin: x.lin }));
     const inp = { geo, mat: matE, kv: p.kv, loads, combos: strip(combos) };
     const inps = [inp], meta = [combos.map(c => c.tag)];
     // Teste de estanqueidade: estrutura completa, cheia até h_ag, antes do reaterro (sem solo, sem água externa,
     // sem sobrecarga); peso próprio e água interna como ações separadas.
     if (hag > 0) {
-      const lt = Object.assign({}, loads, { K: 0, Kq: 0, gw: 0, cT: 0, qtSoil: 0, qChim: 0, qAba: 0, q: 0, uBase: 0, sepU: false });
+      const lt = Object.assign({}, loads, { K: 0, Kq: 0, gw: 0, cT: 0, qtSoil: 0, qChim: 0, qAba: 0, q: 0, Pv: 0, uBase: 0, sepU: false });
       const ct = [];
       for (let a = 0; a < 4; a++) { const g = (a & 1) ? p.gg : 1, w = (a & 2) ? p.gg : 1; ct.push({ f: [g, 0, 0, 0, 0, w], tag: tag('elu', 'teste', a === 3 ? 'Teste de estanqueidade: ELU' : '') }); }
       ct.push({ f: [1, 0, 0, 0, 0, 1], tag: tag('els', 'teste', 'Teste de estanqueidade: serviço (característica)') });
@@ -1552,7 +1578,7 @@ const Arm = (function () {
     // (componente 1) e sobre a aba, junto com a subpressão (componente 4); peso próprio no componente 0.
     const zwc = p.zr != null && Number.isFinite(p.zr) ? Math.min(p.zw, p.zr) : p.zw;
     const uC = p.gw * Math.max(0, zwc - z.base), qAbaWC = p.gw * Math.max(0, zwc - z.botTop);
-    const lc = Object.assign({}, loads, { K: 0, Kq: 0, gw: p.gw, dw: -zwc, cT: 0, qtSelf: 0, qtSoil: 0, qChim: 0, qAba: 0, q: 0, uBase: uC, qAbaW: p.ba > 0 ? qAbaWC : 0, sepU: true, hagW: 0 });
+    const lc = Object.assign({}, loads, { K: 0, Kq: 0, gw: p.gw, dw: -zwc, cT: 0, qtSelf: 0, qtSoil: 0, qChim: 0, qAba: 0, q: 0, Pv: 0, uBase: uC, qAbaW: p.ba > 0 ? qAbaWC : 0, sepU: true, hagW: 0 });
     const cc = [];
     for (let a = 0; a < 4; a++) { const g = (a & 1) ? p.gg : 1, u = (a & 2) ? p.gg : 1; cc.push({ f: [g, u, 0, 0, u, 0], tag: tag('elu', 'constr', a === 3 ? 'Etapa construtiva: ELU (peso e água majorados)' : '') }); }
     cc.push({ f: [1, 1, 0, 0, 1, 0], tag: tag('els', 'constr', 'Etapa construtiva: característica') });
@@ -1985,10 +2011,10 @@ const DEFAULTS = {
   forma: 'ret', B: 2.10, L: 2.50, D: 2.50, H: 2.10, ep: 0.20, ei: 0.20, es: 0.20, zs: -0.50, ba: 0.20, gc: 25,
   gd: 17, gsat: 19, phi: 30, c: 0, zw: -2.00, gw: 10,
   fc: 1.10, fs: 1.10, fst: 1.10, fa: 1.10, fpr: 1.30, prisma: true, fsmin: 1.00, abaConstr: true, bo: 0, lo: 0, wa: 0, chamine: true, zr: null,
-  fck: 30, fyk: 500, gmc: 1.40, gms: 1.15, dl: 4.0, wlim: 0.30, q: 4, gg: 1.40, gq: 1.40, psi1: 0.40, k0: true, kv: 30000, sadm: 200, hm: 10, agua: true, hag: 2.10, wlimE: 0.20
+  fck: 30, fyk: 500, gmc: 1.40, gms: 1.15, dl: 4.0, wlim: 0.30, q: 4, gg: 1.40, gq: 1.40, psi1: 0.40, k0: true, kv: 30000, sadm: 200, hm: 10, agua: true, hag: 2.10, wlimE: 0.20, Pv: 75, av: 0.20
 };
 const ARM_KEYS = ['fck', 'fyk', 'gmc', 'gms', 'dl', 'wlim', 'wlimE'];
-const ESF_KEYS = ['q', 'gg', 'gq', 'psi1', 'k0', 'kv', 'sadm', 'hm'];
+const ESF_KEYS = ['q', 'Pv', 'av', 'gg', 'gq', 'psi1', 'k0', 'kv', 'sadm', 'hm'];
 const FIELDS = [
   { key: 'B', lab: 'Largura, B', tip: 'Largura interna livre', unit: 'm', gt: 0 },
   { key: 'L', lab: 'Comprimento, L', tip: 'Comprimento interno livre', unit: 'm', gt: 0 },
@@ -2025,6 +2051,8 @@ const FIELDS = [
   { key: 'wlim', lab: 'Abertura limite, w<sub>k,lim</sub>', tip: 'Abertura máxima de fissuras', unit: 'mm', gt: 0, dec: 2 },
   { key: 'wlimE', lab: 'w<sub>k,lim</sub> de estanqueidade', tip: 'Abertura máxima de fissuras com a caixa cheia (operação e teste de estanqueidade)', unit: 'mm', gt: 0, dec: 2 },
   { key: 'q', lab: 'Sobrecarga no terreno, q', tip: 'Sobrecarga variável sobre o terreno e a laje de topo', unit: 'kN/m²', ge: 0, dec: 1 },
+  { key: 'Pv', lab: 'Sobrecarga de veículo, P<sub>v</sub>', tip: 'Carga concentrada no centro da laje de topo (0 = sem veículo)', unit: 'kN', ge: 0, dec: 1 },
+  { key: 'av', lab: 'Lado da área de contato, a', tip: 'Lado do quadrado de contato da roda na superfície', unit: 'm', gt: 0, dec: 2 },
   { key: 'gg', lab: 'γ<sub>g</sub> permanentes', tip: 'Coeficiente de ponderação das ações permanentes (solo, água, peso próprio)', unit: '', ge: 1, dec: 2 },
   { key: 'gq', lab: 'γ<sub>q</sub> sobrecarga', tip: 'Coeficiente de ponderação da sobrecarga', unit: '', ge: 0, dec: 2 },
   { key: 'psi1', lab: 'ψ<sub>1</sub> (frequente)', tip: 'Fator de redução da sobrecarga na combinação frequente (fissuração)', unit: '', ge: 0, le: 1, dec: 2 },
@@ -2050,6 +2078,7 @@ const LAYOUT = [
   { sec: 'am', title: 'Seção e fissuração', cols: 2, keys: ['dl', 'wlim', 'wlimE'], note: 'Seção de cálculo b = 100 cm e h = espessura do elemento. w<sub>k,lim</sub>: CAA I 0,4 mm; CAA II e III 0,3 mm; CAA IV 0,2 mm (NBR 6118, Tabela 13.4), na caixa vazia. w<sub>k,lim</sub> de estanqueidade: vale com a caixa cheia (operação e teste de estanqueidade); usualmente 0,1 a 0,2 mm, conforme a norma específica de reservatórios.' },
   { sec: 'aa', title: 'Apoio elástico (Winkler)', cols: 2, keys: ['kv', 'sadm'], note: 'k<sub>v</sub> em kN/m³ (kPa por metro de recalque): molas sob a laje de fundo e a aba, só de compressão. Ordem de grandeza: argila mole 5.000–15.000; areia média 20.000–50.000; areia compacta 50.000–120.000 kN/m³. σ<sub>adm</sub> em kPa = kN/m² (1 kgf/cm² = 98,07 kPa; 200 kPa ≈ 2,0 kgf/cm²): a maior tensão de contato característica é comparada com ela. Use os valores do laudo geotécnico.' },
   { sec: 'aa', title: 'Sobrecarga e empuxo', cols: 2, keys: ['q'], check: { key: 'k0', text: 'Empuxo em repouso K<sub>0</sub> = 1 − sen φ (desmarcado: empuxo ativo K<sub>a</sub>, com a coesão)' }, note: 'q atua sobre a laje de topo, sobre a aba e nas paredes como K · q.' },
+  { sec: 'aa', title: 'Sobrecarga de veículo', cols: 2, keys: ['Pv', 'av'], note: 'Carga concentrada variável no centro da laje de topo (0 = sem veículo), espraiada a 45° pelo solo de cobertura e pela meia espessura da laje: quadrado de lado a + 2·cobertura + e<sub>s</sub> no plano médio. Com abertura na laje de topo, a tampa leva a carga às bordas da abertura (carga de linha no contorno). Entra nas combinações com a sobrecarga vertical (0 ou γ<sub>q</sub>; ψ<sub>1</sub> no ELS frequente).' },
   { sec: 'aa', title: 'Coeficientes', cols: 3, keys: ['gg', 'gq', 'psi1'], note: 'ELU: cada ação com 1,0 ou γ<sub>g</sub> (permanentes) e 0 ou γ<sub>q</sub> (sobrecarga), nas 16 combinações. ELS frequente: g + ψ<sub>1</sub> q. ψ<sub>1</sub> pela NBR 6118, Tabela 11.2: 0,4 sem predominância de equipamentos ou de concentração de pessoas; 0,6 com predominância; 0,7 em bibliotecas, arquivos, oficinas e garagens. Para tráfego de veículos, use o valor da norma de cargas móveis aplicável.' },
   { sec: 'emod', title: 'Malha', cols: 2, keys: ['hm'], note: 'Elementos de casca de até h; junto às ligações parede-laje a malha é refinada (até e/4). 10 cm é um bom padrão; malhas abaixo de 7,5 cm ficam lentas.' }
 ];
@@ -2428,6 +2457,27 @@ function soilCard(A) {
   return card('Tensão no solo', `característica, máxima (${s.gov ? s.gov.lab : 'operação'})`, st, fmt(s.sMax / K, 2),
     `kgf/cm² (${fmt(s.sMax, 1)} kPa)<br>` + (s.sadm ? `σ<sub>adm</sub> = ${fmt(s.sadm / K, 2)} kgf/cm² (${fmt(s.sadm, 0)} kPa) · ${fmt(s.util * 100, 0)} %<br>` : 'informe σ<sub>adm</sub> para verificar<br>') +
     `recalque máx. ${fmt(A.wMax, 2)} mm`);
+}
+// punção da laje de topo sob a carga de veículo (NBR 6118, 19.5), área carregada no topo da laje
+function puncCalc(m) {
+  const p = m.p; if (!(p.Pv > 0)) return null;
+  const P = Arm.mat(p), cover = Math.max(0, -m.z.topTop), a1 = Math.max(0.05, +p.av || 0.2) + 2 * cover, d = p.es - p.dl / 100;
+  const open = (m.vol.openArea || 0) > 0, Fsd = p.gq * p.Pv, fcd = p.fck / p.gmc, av2 = 1 - p.fck / 250, rho = 0.0015;
+  const u0 = 4 * a1, u1 = 4 * a1 + 2 * Math.PI * 2 * d;
+  const t0 = Fsd / (u0 * d) / 1000, t1 = Fsd / (u1 * d) / 1000, tR2 = 0.27 * av2 * fcd, tR1 = 0.13 * (1 + Math.sqrt(20 / (d * 100))) * Math.cbrt(100 * rho * p.fck);
+  const vao = m.circ ? p.D : Math.min(p.B, p.L), alcanca = a1 / 2 + 2 * d >= vao / 2;
+  return { open, a1, d, Fsd, u0, u1, t0, t1, tR1, tR2, rho, alcanca, cover, ok0: t0 <= tR2, ok1: t1 <= tR1 };
+}
+function puncHtml(m) {
+  const c = puncCalc(m);
+  if (!c) return '<p class="msg">Sem sobrecarga de veículo (P<sub>v</sub> = 0 na aba Esforços, item B).</p>';
+  if (c.open) return '<p class="msg">Laje de topo com abertura: a tampa leva a carga do veículo às bordas da abertura, sem carga concentrada na laje. A flexão e o cortante dessa carga estão no modelo de elementos finitos e na verificação das armaduras.</p>';
+  const r = (l, v, lim, ok) => `<tr><td class="l">${l}</td><td class="num">${fmt(v, 3)}</td><td class="num">${fmt(lim, 3)}</td><td class="l" style="color:var(${ok ? '--ok' : '--bad'});font-weight:600">${ok ? '✓ atende' : '✕ não atende'}</td></tr>`;
+  return `<table class="calc"><thead><tr><th class="l">Contorno (NBR 6118, 19.5)</th><th class="num" style="text-transform:none">τ<sub>Sd</sub>, MPa</th><th class="num" style="text-transform:none">τ<sub>Rd</sub>, MPa</th><th class="l">Situação</th></tr></thead><tbody>` +
+    r(`C (face da área carregada), u<sub>0</sub> = ${fmt(c.u0, 2)} m: τ<sub>Rd2</sub> = 0,27·α<sub>v2</sub>·f<sub>cd</sub>`, c.t0, c.tR2, c.ok0) +
+    (c.alcanca ? `<tr><td class="l" colspan="4">C′ (a 2d da área carregada) chega aos apoios: a carga é transmitida direto às paredes e a punção em C′ não governa; o cortante está no modelo de elementos finitos.</td></tr>` :
+      r(`C′ (a 2d), u<sub>1</sub> = ${fmt(c.u1, 2)} m: τ<sub>Rd1</sub> = 0,13·(1 + √(20/d))·(100·ρ·f<sub>ck</sub>)<sup>1/3</sup>, ρ = ${fmt(c.rho * 100, 2)} %`, c.t1, c.tR1, c.ok1)) +
+    `</tbody></table><p class="msg" style="margin-top:8px">F<sub>Sd</sub> = γ<sub>q</sub>·P<sub>v</sub> = ${fmt(c.Fsd, 1)} kN em quadrado de ${fmt(c.a1, 2)} m no topo da laje (lado a + 2·cobertura de solo de ${fmt(c.cover, 2)} m, espraiamento a 45°); d = ${fmt(c.d * 100, 1)} cm. τ<sub>Rd1</sub> com a taxa mínima de 0,15 % (a favor da segurança). A flexão e o cortante do veículo entram no modelo de elementos finitos e na verificação das armaduras da laje de topo.</p>`;
 }
 function soilTableHtml(A) {
   const s = A.soil, K = Arm.KGF, obs = x => x.fl ? 'flutua: sem contato com o solo' : x.cont < 0.999 ? `contato em ${fmt(x.cont * 100, 0)} % da base` : 'contato em toda a base';
@@ -3001,6 +3051,7 @@ async function buildMemorialFull(D) {
     ['Subpressão na base', `z_w = ${fz(aux.zwc)} m`, num(aux.uC), 'permanente'],
     ['Água sobre a aba (para baixo)', `z_w = ${fz(aux.zwc)} m`, num(aux.qAbaWC || 0), 'permanente'],
     ['Sobrecarga no terreno q', 'topo e aba', num(p.q), 'variável'],
+    ...(p.Pv > 0 ? [['Sobrecarga de veículo P_v (kN, concentrada)', `centro da laje de topo, quadrado de ${fmt(aux.bv, 2)} m no plano médio`, num(p.Pv), 'variável']] : []),
     { span: `Pressão lateral nas paredes (kPa), ${aux.k0 ? 'K_0 = 1 − sen φ' : 'K_a'} = ${fmt(aux.K, 3)}` },
     ['Eixo da laje de topo', `z = ${fz(-aux.dA)} m`, num(pg(aux.dA)), 'solo + água'],
     ...(dw > aux.dA && dw < aux.dB ? [['Nível d\'água', `z = ${fz(-dw)} m`, num(pg(dw)), 'solo + água']] : []),
@@ -3068,6 +3119,18 @@ async function buildMemorialFull(D) {
   }
 
   /* ===== 3. Armaduras ===== */
+  {
+    const c = puncCalc(m);
+    if (c) {
+      body.push(H2('2.6 Punção na laje de topo (veículo)'));
+      if (c.open) body.push(txt('Laje de topo com abertura: a tampa leva a carga do veículo às bordas da abertura, sem carga concentrada na laje; a flexão e o cortante dessa carga estão no modelo e nas armaduras.'));
+      else {
+        body.push(txt(`F_Sd = γ_q · P_v = ${fmt(p.gq, 2)} × ${fmt(p.Pv, 1)} = ${fmt(c.Fsd, 1)} kN, em quadrado de ${fmt(c.a1, 2)} m no topo da laje (lado ${fmt(+p.av, 2)} m + 2 × ${fmt(c.cover, 2)} m de cobertura, espraiamento a 45°); d = ${fmt(c.d * 100, 1)} cm (NBR 6118, 19.5).`));
+        body.push(txt(`Contorno C: u_0 = ${fmt(c.u0, 2)} m, τ_Sd = ${fmt(c.t0, 3)} MPa ${c.ok0 ? '≤' : '>'} τ_Rd2 = 0,27·α_v2·f_cd = ${fmt(c.tR2, 3)} MPa: ${c.ok0 ? 'atende' : 'não atende'}.`));
+        body.push(txt(c.alcanca ? 'Contorno C′ (a 2d) chega aos apoios: a carga vai direto às paredes e a punção em C′ não governa.' : `Contorno C′ (a 2d): u_1 = ${fmt(c.u1, 2)} m, τ_Sd = ${fmt(c.t1, 3)} MPa ${c.ok1 ? '≤' : '>'} τ_Rd1 = ${fmt(c.tR1, 3)} MPa (com ρ = 0,15 %, a favor da segurança): ${c.ok1 ? 'atende' : 'não atende'}.`));
+      }
+    }
+  }
   body.push(H1('3. Dimensionamento das armaduras (NBR 6118)'));
   body.push(kv([
     ['Concreto f_ck · γ_c', `${fmt(p.fck, 0)} MPa · ${fmt(p.gmc, 2)}`], ['Aço f_yk · γ_s', `${fmt(p.fyk, 0)} MPa · ${fmt(p.gms, 2)}`],
@@ -3673,6 +3736,7 @@ if (typeof document !== 'undefined') {
       STRIP_TXT[view.sk] + ' Rótulos nas faces dos apoios e nos extremos da região de dimensionamento; o trecho tracejado fica dentro dos nós parede-laje e não é usado no dimensionamento.' + ` Caso: ${caseName}.`;
     el('env-table').innerHTML = envTableHtml(A);
     el('soil-table').innerHTML = soilTableHtml(A);
+    el('punc-table').innerHTML = puncHtml(m);
 
     // aba Armaduras
     const sel = {}, chk = {};
@@ -3792,7 +3856,7 @@ window.E3 = (function () {
   const SNAME = { top: 'Laje de topo', bot: 'Laje de fundo e aba', wx: 'Parede longa', wy: 'Parede curta' };
   const ST = { vazia: 'Caixa vazia', cheia: 'Caixa cheia', teste: 'Teste de estanqueidade', constr: 'Etapa construtiva' };
   const TT = { elu: 'ELU', els: 'ELS frequente', car: 'característica', lin: 'linear' };
-  const SYM = ['G', 'E', 'Qv', 'Qh', 'U', 'A'];
+  const SYM = ['G', 'E', 'Qv', 'Qh', 'U', 'A', 'Pv'];
   // índice local da direção 1 (paredes: horizontal/anelar · lajes: paralela a B/radial) em [M1, M2, ...]
   const D1 = { top: 0, bot: 1, wx: 0, wy: 1 };
   const MIR4 = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
