@@ -279,11 +279,12 @@ textarea.cola{width:100%;min-height:80px;font:12px var(--f-mono);border:1px soli
         </section>
         <section>
           <h2><span class="n">D</span>Solo (carga horizontal)</h2>
-          <div class="g2">
+          <div class="field" style="margin-bottom:8px"><label for="aModo">Reação horizontal do solo</label><div class="inp"><select id="aModo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option value="spt">por metro, pela sondagem da aba Capacidade (recomendado)</option><option value="unico">solo único, escolhido abaixo</option></select></div></div>
+          <div class="g2" id="aSoloUnico">
             <div class="field"><label for="aSolo">Solo junto ao topo</label><div class="inp"><select id="aSolo" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"></select></div></div>
             <div class="field"><label for="aSit">Situação</label><div class="inp"><select id="aSit" style="flex:1;border:0;padding:5px;font:inherit;background:transparent"><option>Seca</option><option>Submersa</option></select></div></div>
           </div>
-          <p class="gnote">Hetenyi (reação constante) para argilas; Miche (reação crescente com a profundidade) para areias, siltes e argila muito mole. Coeficientes na aba Coeficientes.</p>
+          <p class="gnote"><b>Por metro:</b> estaca como viga sobre molas (Winkler), uma mola a cada 25 cm com o solo, o N<sub>SPT</sub> e o nível d'água de cada metro da sondagem: argilas com reação constante na camada (Hetenyi), areias, siltes e argila muito mole com reação crescente com a profundidade (Miche/Terzaghi). <b>Solo único:</b> fórmulas fechadas de Hetenyi ou Miche para solo homogêneo. Coeficientes na aba Coeficientes.</p>
         </section>
         <section>
           <div class="btnrow"><button class="btn sm" type="button" id="aTraz">Trazer D e L da aba Capacidade</button><button class="btn sm" type="button" id="aEx">Restaurar exemplo</button></div>
@@ -558,7 +559,7 @@ function update() {
   $("graf").innerHTML = `<figure class="larga"><figcaption>Ruptura por método: atrito + ponta, e Qadm da norma</figcaption>${svgBarras(R)}<div class="leg"><span><i style="background:#2b6cb0"></i>atrito lateral Ql</span><span><i style="background:#d9902f"></i>ponta Qp</span><span><i style="background:#2e7d50"></i>Qadm (FSg da norma)</span></div></figure>` +
     `<figure class="larga"><figcaption>Perfil de sondagem e estaca</figcaption><div style="max-width:380px;margin:0 auto">${svgPerfil(R)}</div></figure>` +
     `<figure class="larga"><figcaption>Qadm (norma) × comprimento</figcaption>${svgCurvas(R)}<div class="leg">${METODOS.map(([k, nm], i) => `<span><i style="background:${CURC[i]}"></i>${nm}</span>`).join("")}<span><i style="background:#1f2b37"></i>média</span></div></figure>`;
-  if (memoModo === "cap") renderMemo(); save(); if (window.__recOk) updateRec();
+  if (memoModo === "cap") renderMemo(); save(); if (window.__recOk) { updateRec(); if (ar.modoSolo !== "unico") updateArm(); }
 }
 
 /* ---------- gráficos ---------- */
@@ -931,7 +932,7 @@ const SOLOH_DEF = [
 ];
 if (!CO.tab4 || CO.tab4.length !== TAB4_DEF.length) CO.tab4 = clone(TAB4_DEF);
 if (!CO.soloH || CO.soloH.length !== SOLOH_DEF.length) CO.soloH = clone(SOLOH_DEF);
-const AR_EX = { obra: "Exemplo", elemento: "", N: 26, atrito: 18, T: 15, M: 0.1, H: 0, D: 40, L: 15, fck: 30, c: 5, E: 21000, tipo: "broca", solo: "argMe", situacao: "Submersa", fiL: 12.5, fiT: 6.3, caT: 25, gcModo: "norma", gc: 3.1, CAA: "II" };
+const AR_EX = { obra: "Exemplo", elemento: "", N: 26, atrito: 18, T: 15, M: 0.1, H: 0, D: 40, L: 15, fck: 30, c: 5, E: 21000, tipo: "broca", modoSolo: "spt", solo: "argMe", situacao: "Submersa", fiL: 12.5, fiT: 6.3, caT: 25, gcModo: "norma", gc: 3.1, CAA: "II" };
 let ar = clone(AR_EX);
 try { const a = JSON.parse(localStorage.getItem(KEY + "-arm") || "null"); if (a && a.D) ar = Object.assign(clone(AR_EX), a); } catch (e) { }
 const saveAr = () => { try { localStorage.setItem(KEY + "-arm", JSON.stringify(ar)); } catch (e) { } };
@@ -968,6 +969,37 @@ function asFlexao(Md, Nd, D, rs, fcd, fyd, Ac) {
 }
 const tab4 = k => CO.tab4.find(t => t.k === k) || CO.tab4[0];
 const soloH = k => CO.soloH.find(s => s.k === k) || CO.soloH[2];
+// classe do solo (NBR 6484) pelo grupo e pelo N de cada metro -> linha da tabela de reação horizontal
+function classeH(l) {
+  const g = solo(l.solo).g, N = +l.N || 0;
+  if (g === "argila") return N <= 2 ? "argMM" : N <= 5 ? "argMo" : N <= 10 ? "argMe" : N <= 19 ? "argRi" : "argDu";
+  if (g === "silte") return N <= 10 ? "silF" : "silC";
+  return N <= 8 ? "arF" : N <= 18 ? "arM" : "arC";
+}
+// estaca como viga sobre molas (Winkler), elementos de 25 cm, topo livre e ponta livre; molas pela sondagem, metro a metro
+function winkler(a, D, L, EI, H, M0) {
+  const Lc = L * 100, nel = Math.max(4, Math.round(Lc / 25)), h = Lc / nel, nn = nel + 1, nd = 2 * nn, NA = st.NA != null && isFinite(st.NA) ? st.NA * 100 : Infinity;
+  const camada = z => { const i = Math.min(Math.floor(z / 100), st.spt.length - 1); const l = st.spt[i]; const k = classeH(l), sh = soloH(k); return { i, l, k, sh }; };
+  const Kz = z => { const c = camada(Math.min(z, Lc - 1e-6)), kv = z > NA ? c.sh.sub : c.sh.seca; return c.sh.m === "H" ? kv * D : kv * z; };
+  const Kmat = Array.from({ length: nd }, () => new Float64Array(nd)), F = new Float64Array(nd);
+  const k1 = EI / h ** 3, ke = [[12, 6 * h, -12, 6 * h], [6 * h, 4 * h * h, -6 * h, 2 * h * h], [-12, -6 * h, 12, -6 * h], [6 * h, 2 * h * h, -6 * h, 4 * h * h]];
+  for (let e = 0; e < nel; e++) { const d = [2 * e, 2 * e + 1, 2 * e + 2, 2 * e + 3]; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) Kmat[d[i]][d[j]] += k1 * ke[i][j]; }
+  const zn = Array.from({ length: nn }, (_, i) => i * h), kn = zn.map((z, i) => { const t = i === 0 || i === nn - 1 ? h / 2 : h, zm = i === 0 ? h / 4 : i === nn - 1 ? z - h / 4 : z; return Kz(zm) * t; });
+  kn.forEach((k, i) => { Kmat[2 * i][2 * i] += k; });
+  F[0] = H; F[1] = -M0;
+  // eliminação de Gauss em banda (largura 3)
+  const A = Kmat.map(r => Array.from(r)), b = Array.from(F), n = nd;
+  for (let c = 0; c < n; c++) { // matriz simétrica positiva definida: sem pivotamento
+    if (Math.abs(A[c][c]) < 1e-12) return { wkErro: true, zs: zn, Mz: zn.map(() => 0), Vz: zn.map(() => 0), y0: 0, Lmin: null };
+    for (let r = c + 1; r < Math.min(n, c + 4); r++) { const m = A[r][c] / A[c][c]; if (!m) continue; for (let k = c; k < Math.min(n, c + 4); k++) A[r][k] -= m * A[c][k]; b[r] -= m * b[c]; } }
+  const u = new Array(n).fill(0); for (let r = n - 1; r >= 0; r--) { let sm = b[r]; for (let k = r + 1; k < Math.min(n, r + 4); k++) sm -= A[r][k] * u[k]; u[r] = sm / A[r][r]; }
+  const y = zn.map((_, i) => u[2 * i]), Rj = y.map((v, i) => kn[i] * v);
+  const Mz = zn.map((z, i) => { let m = M0 + H * z; for (let j = 0; j < i; j++) m -= Rj[j] * (z - zn[j]); return m; });
+  const Vz = zn.map((z, i) => { let v = H; for (let j = 0; j < i; j++) v -= Rj[j]; return v; });
+  const prof = []; for (let m = 0; m < Math.ceil(L - 1e-9); m++) { const zm = Math.min(m * 100 + 50, Lc - 1), c = camada(zm), ii = Math.min(nn - 1, Math.round(zm / h)), kv = zm > NA ? c.sh.sub : c.sh.seca;
+    prof.push({ cota: m + 1, solo: solo(c.l.solo).n, N: c.l.N, classe: c.sh.n, met: c.sh.m, kv, sub: zm > NA, K: Kz(zm), y: y[ii], M: Mz[ii] }); }
+  return { zs: zn, Mz, Vz, yz: y, y0: y[0], Lmin: null, prof, extrap: L > st.spt.length, residuo: Math.abs(Mz[nn - 1]) };
+}
 function calcArm(a) {
   const D = +a.D, L = +a.L, c = +a.c, Ac = Math.PI * D * D / 4, I = Math.PI * D ** 4 / 64, rs = D / 2 - c, da = D - 2 * c, tb = tab4(a.tipo);
   const fckE = Math.min(+a.fck, tb.fck), gc = a.gcModo === "manual" ? +a.gc || tb.gc : tb.gc, fcd = fckE * 10 / gc, fyd = 5000 / 1.15, Es = 2.1e6;
@@ -983,7 +1015,9 @@ function calcArm(a) {
   const E = (+a.E || 21000) * 10, EI = E * I, sh = soloH(a.solo), kv = a.situacao === "Submersa" ? sh.sub : sh.seca;
   R.E = E; R.EI = EI; R.sh = sh; R.kv = kv; R.lat = H > 0 || M0 > 0;
   const nz = 240, zs = Array.from({ length: nz + 1 }, (_, i) => L * 100 * i / nz);
-  if (sh.m === "H") {
+  R.wk = a.modoSolo !== "unico" && st.spt && st.spt.length > 0;
+  if (R.wk) Object.assign(R, winkler(a, D, L, EI, H, M0));
+  else if (sh.m === "H") {
     const k = kv * D, lam = Math.pow(k / (4 * EI), 0.25); R.k = k; R.lam = lam; R.Lmin = 4 / lam / 100;
     R.Mz = zs.map(x => { const e = Math.exp(-lam * x); return (H / lam) * e * Math.sin(lam * x) + M0 * e * (Math.cos(lam * x) + Math.sin(lam * x)); });
     R.Vz = zs.map(x => { const e = Math.exp(-lam * x); return H * e * (Math.cos(lam * x) - Math.sin(lam * x)) - 2 * M0 * lam * e * Math.sin(lam * x); });
@@ -994,9 +1028,11 @@ function calcArm(a) {
     R.Vz = zs.map((x, i) => i === 0 ? H : -(R.Mz[i] - R.Mz[i - 1]) / (zs[i] - zs[i - 1]));
     R.y0 = 2.435 * H * Tm ** 3 / EI + 1.623 * M0 * Tm * Tm / EI;
   }
-  R.zs = zs; let im = 0; R.Mz.forEach((m, i) => { if (Math.abs(m) > Math.abs(R.Mz[im])) im = i; }); R.Mmax = Math.abs(R.Mz[im]); R.zMmax = zs[im] / 100;
+  if (!R.wk) R.zs = zs; const zsA = R.zs; let im = 0; R.Mz.forEach((m, i) => { if (Math.abs(m) > Math.abs(R.Mz[im])) im = i; }); R.Mmax = Math.abs(R.Mz[im]); R.zMmax = zsA[im] / 100;
   R.Vmax = Math.max(...R.Vz.map(Math.abs));
-  if (R.lat && L < R.Lmin) R.w.push(`L = ${f(L, 1)} m é menor que a profundidade mínima de estaca longa (${f(R.Lmin)} m): as fórmulas de estaca longa não valem; reavalie como estaca curta.`);
+  if (R.wk && R.extrap) R.w.push(`A estaca (${f(L, 1)} m) passa do fim da sondagem (${st.spt.length} m): abaixo dela foi usado o último metro do laudo.`);
+  if (R.wk && R.wkErro) R.w.push("Não foi possível montar as molas do solo (reação nula). Confira a sondagem.");
+  if (R.lat && R.Lmin && L < R.Lmin) R.w.push(`L = ${f(L, 1)} m é menor que a profundidade mínima de estaca longa (${f(R.Lmin)} m): as fórmulas de estaca longa não valem; reavalie como estaca curta.`);
   // 4 flexão (seção circular, ELU)
   R.Md = 1.4 * R.Mmax;
   R.AsM0 = asFlexao(R.Md, 0, D, rs, fcd, fyd, Ac); R.AsMT = T > 0 && R.Md > 0 ? asFlexao(R.Md, -1.4 * T, D, rs, fcd, fyd, Ac) : 0;
@@ -1036,7 +1072,7 @@ function calcArm(a) {
 
 /* ---------- interface da armadura ---------- */
 const AFIELDS = [["aObra", "obra"], ["aElem", "elemento"], ["aN", "N"], ["aT", "T"], ["aM", "M"], ["aH", "H"], ["aAtr", "atrito"], ["aD", "D"], ["aL", "L"], ["aFck", "fck"], ["aE", "E"], ["aGc", "gc"], ["aC", "c"]];
-const ASELS = [["aTipo", "tipo"], ["aGcModo", "gcModo"], ["aCAA", "CAA"], ["aFiL", "fiL"], ["aFiT", "fiT"], ["aCaT", "caT"], ["aSolo", "solo"], ["aSit", "situacao"]];
+const ASELS = [["aModo", "modoSolo"], ["aTipo", "tipo"], ["aGcModo", "gcModo"], ["aCAA", "CAA"], ["aFiL", "fiL"], ["aFiT", "fiT"], ["aCaT", "caT"], ["aSolo", "solo"], ["aSit", "situacao"]];
 function fillArm() {
   $("aTipo").innerHTML = CO.tab4.map(t => `<option value="${t.k}">${esc(t.n)}</option>`).join("");
   $("aSolo").innerHTML = CO.soloH.map(s => `<option value="${s.k}">${esc(s.n)}</option>`).join("");
@@ -1052,6 +1088,7 @@ function lerArm() {
 let lastA = null;
 function updateArm() {
   $("aGc").closest(".field").style.opacity = ar.gcModo === "manual" ? 1 : 0.5;
+  $("aSoloUnico").style.opacity = ar.modoSolo === "unico" ? 1 : 0.45;
   if (!(ar.D >= 15 && ar.L >= 1 && ar.fck >= 10 && ar.c >= 2 && ar.c < ar.D / 2 - 1)) { $("aWarns").innerHTML = "<p>Confira diâmetro, comprimento, fck e cobrimento.</p>"; saveAr(); return; }
   const A = calcArm(ar); lastA = A;
   $("aWarns").innerHTML = A.w.concat(ar.fck > A.tb.fck ? [`fck limitado a ${A.tb.fck} MPa para ${A.tb.n.toLowerCase()} (NBR 6122:2022, Tabela 4).`] : []).map(x => `<p>${esc(x)}</p>`).join("");
@@ -1059,7 +1096,7 @@ function updateArm() {
     ["Armadura longitudinal", A.dispensa ? `${A.n} Ø ${f(A.fiL, 1)}` : `${A.n} Ø ${f(A.fiL, 1)}`, `${f(A.AsEf)} cm² ≥ ${f(A.As)} cm² · governa: ${A.gov.toLowerCase()}`, "info"],
     ["Estribos", `Ø ${f(A.fiT, 1)} c/ ${A.s}`, `CA-${ar.caT} · ${A.nEst} estribos`, A.vOk ? "info" : "bad"],
     ["Comprimento armado", `${f(A.Larm, 1)} m`, A.Larm >= A.L - 1e-9 ? "armadura em todo o comprimento" : `de ${f(A.L, 1)} m`, "info"],
-    ["Carga horizontal", A.lat ? `Mmáx ${f(A.Mmax / 1e5, 3)} tf·m` : "sem H e M", A.lat ? `a ${f(A.zMmax)} m · prof. mín. ${f(A.Lmin)} m` : "", A.lat && A.L < A.Lmin ? "warn" : "info"]
+    ["Carga horizontal", A.lat ? `Mmáx ${f(A.Mmax / 1e5, 3)} tf·m` : "sem H e M", A.lat ? `a ${f(A.zMmax)} m · ${A.wk ? `y0 = ${f(A.y0 * 10, 1)} mm (molas por metro)` : `prof. mín. ${f(A.Lmin)} m`}` : "", A.lat && A.Lmin && A.L < A.Lmin ? "warn" : "info"]
   ].map(([t, v, s, c]) => `<div class="card ${c}"><span class="t">${t}</span><span class="v" style="font-size:20px">${esc(v)}</span><span class="t">${esc(s)}</span></div>`).join("");
   const row = (nm, calc, min, adot, gov) => `<tr><td class="l">${nm}</td><td class="num">${calc}</td><td class="num">${min}</td><td class="num${gov ? " sel" : ""}">${adot}</td></tr>`;
   $("aTab").innerHTML = `<thead><tr><th>Esforço</th><th>As calculada (cm²)</th><th>As mínima (cm²)</th><th>As do esforço (cm²)</th></tr></thead><tbody>` +
@@ -1086,13 +1123,13 @@ function svgElev(A) {
   s += `<rect x="0" y="${y0}" width="${W}" height="${Lp + 12}" fill="#fbf1dc"/><line x1="0" x2="${W}" y1="${y0}" y2="${y0}" stroke="#8c5d08" stroke-width="1.4"/>`;
   s += `<rect x="${X - 11}" y="${y0}" width="22" height="${Lp}" fill="#e7f0f9" stroke="#1f2b37"/><rect x="${X - 7}" y="${y0}" width="14" height="${A.Larm * sc}" fill="none" stroke="#b83a2e" stroke-width="1.4" stroke-dasharray="4 2"/>`;
   s += `<text x="${X - 16}" y="${Y(A.L) + 3}" text-anchor="end">L = ${f(A.L, 1)} m</text><line x1="${X + 11}" x2="${X + 30}" y1="${Y(A.Larm)}" y2="${Y(A.Larm)}" stroke="#b83a2e"/><text x="${X + 33}" y="${Y(A.Larm) + 3}" fill="#b83a2e">armada até ${f(A.Larm, 1)} m</text>`;
-  if (A.lat) { if (A.Lmin <= A.L * 1.4) s += `<line x1="${X + 11}" x2="${X + 30}" y1="${Y(Math.min(A.Lmin, A.L + 0.6))}" y2="${Y(Math.min(A.Lmin, A.L + 0.6))}" stroke="#2e7d50" stroke-dasharray="3 2"/><text x="${X + 33}" y="${Y(Math.min(A.Lmin, A.L + 0.6)) + 3}" fill="#2e7d50">prof. mín. ${f(A.Lmin)} m</text>`;
+  if (A.lat) { if (A.Lmin && A.Lmin <= A.L * 1.4) s += `<line x1="${X + 11}" x2="${X + 30}" y1="${Y(Math.min(A.Lmin, A.L + 0.6))}" y2="${Y(Math.min(A.Lmin, A.L + 0.6))}" stroke="#2e7d50" stroke-dasharray="3 2"/><text x="${X + 33}" y="${Y(Math.min(A.Lmin, A.L + 0.6)) + 3}" fill="#2e7d50">prof. mín. ${f(A.Lmin)} m</text>`;
     s += `<line x1="${X + 11}" x2="${X + 30}" y1="${Y(A.zMmax)}" y2="${Y(A.zMmax)}" stroke="#2b6cb0" stroke-dasharray="3 2"/><text x="${X + 33}" y="${Y(A.zMmax) + 3}" fill="#2b6cb0">Mmáx ${f(A.Mmax / 1e5, 2)} tf·m</text>`; }
   if (A.N > 0) s += `<line x1="${X - 6}" y1="6" x2="${X - 6}" y2="${y0 - 3}" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X - 10}" y="18" text-anchor="end">N ${f(A.N / 1000)} tf</text>`;
   if (A.T > 0) s += `<line x1="${X + 6}" y1="${y0 - 3}" x2="${X + 6}" y2="6" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X + 10}" y="18">T ${f(A.T / 1000)} tf</text>`;
   if (A.H > 0) s += `<line x1="${X - 60}" y1="${y0 - 8}" x2="${X - 13}" y2="${y0 - 8}" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X - 60}" y="${y0 - 13}">H ${f(A.H / 1000)} tf</text>`;
   if (A.M0 > 0) s += `<path d="M${X + 18} ${y0 - 34} A 22 22 0 0 1 ${X + 26} ${y0 - 10}" fill="none" stroke="#1f2b37" stroke-width="1.8" marker-end="url(#sta)"/><text x="${X + 30}" y="${y0 - 30}">M ${f(A.M0 / 1e5, 2)} tf·m</text>`;
-  return s + `<text x="${W - 4}" y="${H - 4}" text-anchor="end" fill="#8c5d08">${esc(A.sh.n)}${A.a.situacao === "Submersa" ? ", submersa" : ""}</text></svg>`;
+  return s + `<text x="${W - 4}" y="${H - 4}" text-anchor="end" fill="#8c5d08">${A.wk ? "solo da sondagem, metro a metro" : esc(A.sh.n) + (A.a.situacao === "Submersa" ? ", submersa" : "")}</text></svg>`;
 }
 function svgMz(A) {
   const W = 240, H = 310, y0 = 20, Lp = 270, x0 = 120, mx = Math.max(...A.Mz.map(Math.abs)) || 1, X = m => x0 + 95 * m / mx, Y = z => y0 + Lp * z / (A.L * 100);
@@ -1101,7 +1138,7 @@ function svgMz(A) {
   const im = A.Mz.findIndex(m => Math.abs(Math.abs(m) - A.Mmax) < 1e-9);
   { const xm = X(A.Mz[im]), dir = xm > W - 110 ? -1 : 1; s += `<text x="${xm + 4 * dir}" y="${Y(A.zs[im]) + 13}" text-anchor="${dir < 0 ? "end" : "start"}" fill="#2b6cb0">${f(A.Mmax / 1e5, 3)} tf·m (${f(A.zMmax)} m)</text>`; }
   for (let z = 0; z <= A.L + 1e-9; z += Math.max(1, Math.round(A.L / 6))) s += `<text x="${x0 - 100}" y="${Y(z * 100) + 3}" fill="#5e6b78">${f(z, 0)} m</text><line x1="${x0 - 4}" x2="${x0}" y1="${Y(z * 100)}" y2="${Y(z * 100)}" stroke="#5e6b78"/>`;
-  return s + `<text x="${W - 4}" y="${H - 4}" text-anchor="end" fill="#5e6b78">${A.sh.m === "H" ? "Hetenyi" : "Miche (Matlock e Reese)"}</text></svg>`;
+  return s + `<text x="${W - 4}" y="${H - 4}" text-anchor="end" fill="#5e6b78">${A.wk ? "Winkler, molas por metro (SPT)" : A.sh.m === "H" ? "Hetenyi" : "Miche (Matlock e Reese)"}</text></svg>`;
 }
 function svgAs(A) {
   const W = 520, rows = A.cand, mx = Math.max(A.AsEf, ...rows.map(r => r[1] || 0)) * 1.15 || 1, x0 = 90, x1 = 500, X = v => x0 + (x1 - x0) * v / mx, H = 30 + rows.length * 26 + 20;
@@ -1131,6 +1168,14 @@ function memoBlocksArm(A) {
     `As = T/σs = ${f(A.T, 0)}/${f(A.sigS, 0)} = **${f(A.AsT2)} cm²**    →  As,tração = **${f(A.AsT)} cm²**`] : ["Sem tração."] });
   B.push({ t: "h", v: "4. Carga horizontal e momento no topo" });
   if (!A.lat) B.push({ t: "p", v: "Sem carga horizontal nem momento no topo." });
+  else if (A.wk) {
+    B.push({ t: "p", v: `Estaca como viga sobre base elástica (Winkler), com elementos de 25 cm e uma mola por nó; topo livre com H e M0, ponta livre. A rigidez das molas vem da sondagem da aba Capacidade, metro a metro: o grupo do solo e o N definem a classe (NBR 6484) e a reação; argilas com reação constante na camada, K = kh·D (Hetenyi); areias, siltes e argila muito mole com reação crescente, K = nh·z (Miche/Terzaghi); abaixo do NA${st.NA != null && isFinite(st.NA) ? ` (${f(st.NA)} m)` : ""}, valores submersos.` });
+    B.push({ t: "eq", v: [`I = π·D⁴/64 = ${f(A.I, 0)} cm⁴    E = ${f(A.E, 0)} kgf/cm²    EI = ${f(A.EI / 1e6, 1)}·10⁶ kgf·cm²`] });
+    B.push({ t: "tab", head: ["Cota (m)", "Solo", "N", "Classe", "Método", "kh ou nh (kgf/cm³)", "K no meio do metro (kgf/cm²)", "y (mm)", "M (tf·m)"], al: ["r", "l", "r", "l", "l", "r", "r", "r", "r"],
+      rows: A.prof.map(p => [p.cota, p.solo, p.N, p.classe + (p.sub ? " (sub.)" : ""), p.met === "H" ? "Hetenyi" : "Miche", f(p.kv, 3), f(p.K, 2), f(p.y * 10, 2), f(p.M / 1e5, 3)]) });
+    B.push({ t: "eq", v: [`Deslocamento no topo y0 = **${f(A.y0 * 10, 2)} mm**    momento máximo = **${tfm(A.Mmax)} tf·m** a ${f(A.zMmax)} m    cortante máximo = ${tf(A.Vmax)} tf`] });
+    B.push({ t: "fig", v: svgMz(A), cap: "Momento fletor ao longo da estaca (molas por metro).", w: 0.36 });
+  }
   else {
     const L1 = A.sh.m === "H" ? [`I = π·D⁴/64 = ${f(A.I, 0)} cm⁴    E = ${f(A.E, 0)} kgf/cm²    kh = ${f(A.kv, 3)} kgf/cm³ → k = kh·D = ${f(A.k, 2)} kgf/cm²`,
       `λ = [k/(4·E·I)]^(1/4) = ${f(A.lam * 100, 4)} 1/m    profundidade mínima (estaca longa) = 4/λ = **${f(A.Lmin)} m** (${A.L >= A.Lmin ? "atendida" : "não atendida"} com L = ${f(A.L, 1)} m)`,
